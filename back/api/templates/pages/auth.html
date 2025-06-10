@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    AuthPage
+    <button onclick="testCookie()">test http</button>
+    <button onclick="testCall()">test http</button>
+
+    <script>
+        var apiUrl = "https://limits1214-tetris.duckdns.org"
+        const testCookie = async () => {
+            const f = await fetch(`${apiUrl}/api/auth/testcookie`, {
+            method: 'GET',
+            credentials: 'include'
+            });
+            const j = await f.json();
+            console.log(`j:`, j);
+        }
+
+        const testCall = async () => {
+            const f = await fetch(`${apiUrl}/api/auth/testcall`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            const j = await f.json();
+            console.log(`j:`, j);
+        }
+    </script>
+</body>
+</html>

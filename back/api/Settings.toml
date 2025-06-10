@@ -1,0 +1,20 @@
+[dynamo]
+table_name = "Test"
+
+[jwt]
+jwt_access_secret = "access_access_access_access_access_access_access_access_access_access"
+jwt_refresh_secret = "refresh_refresh_refresh_refresh_refresh_refresh_refresh_refresh_refresh"
+# 1 * 60
+jwt_access_time = 60
+# 1 * 60 * 60 * 24
+jwt_refresh_time = 86400
+
+[cookie]
+secure = false
+
+[sec]
+aes128key = "0123456789abcdef"
+
+
+[redis]
+redis_url = "redis://@localhost"

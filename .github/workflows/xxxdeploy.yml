@@ -1,0 +1,133 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [prd]
+
+jobs:
+  build-client:
+    name: Build & Deploy Client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install & Build Vite App
+        working-directory: ./client
+        run: |
+          npm install
+          npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./client/dist
+
+  build-server:
+    name: Build & Upload Server
+    runs-on: ubuntu-latest
+    needs: build-client
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Rust
+        run: |
+          rustup update stable
+        #   rustup target add aarch64-unknown-linux-gnu
+
+      - name: Install cross
+        run: |
+          cargo install cross
+
+      - name: Cross Compile
+        working-directory: ./server
+        run: |
+          cross build --release --target aarch64-unknown-linux-gnu
+
+      - name: Zip Target
+        working-directory: ./server
+        run: |
+          mkdir dist
+          cp target/aarch64-unknown-linux-gnu/release/tetris-server dist
+          cp Settings.toml dist
+          zip -r dist.zip dist/
+
+      - name: Get Github Actions IP
+        id: ip
+        uses: haythem/public-ip@v1.2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Add Github Actions IP to Security group
+        run: |
+          aws ec2 authorize-security-group-ingress --group-id ${{ secrets.AWS_SG_ID }} --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+      - name: Upload to EC2
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.AWS_SSH_HOST }}
+          username: ${{ secrets.AWS_SSH_USERNAME }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          port: ${{ secrets.AWS_SSH_PORT }}
+          source: "./server/dist.zip"
+          target: "~/tetris"
+
+      - name: SSH Commands
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.AWS_SSH_HOST }}
+          username: ${{ secrets.AWS_SSH_USERNAME }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          port: ${{ secrets.AWS_SSH_PORT }}
+          script_stop: true
+          script: |
+            echo "start"
+
+            cd ~/tetris/server
+
+            echo "unzip dist"
+            unzip -o dist.zip
+
+            cd dist
+
+            echo "kill exists port"
+            pid=$(lsof -t -i :4000)
+            if [ -n "$pid" ]; then
+                kill -9 $pid
+                echo "Killed port 4000 process pid = $pid"
+            else
+                echo "No process found on port 4000"
+            fi
+
+            echo "start server"
+            chmod +x tetris-server
+            nohup ./tetris-server > /dev/null 2>&1 &
+
+            echo "end"
+
+      - name: Remove Github Actions IP From Security Group
+        run: |
+          aws ec2 revoke-security-group-ingress --group-id ${{ secrets.AWS_SG_ID }} --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+    #   - name: Upload to EC2
+    #     env:
+    #       HOST: ${{ secrets.EC2_HOST }}
+    #       USER: ${{ secrets.EC2_USER }}
+    #       KEY: ${{ secrets.EC2_SSH_KEY }}
+    #     run: |
+    #       echo "$KEY" > key.pem
+    #       chmod 600 key.pem
+    #       scp -i key.pem server/target/aarch64-unknown-linux-gnu/release/your_binary $USER@$HOST:/home/$USER/your_binary

@@ -1,0 +1,51 @@
+[package]
+name = "t2ris-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+anyhow = "1"
+thiserror = "2"
+
+rand = "0.9"
+time = "0.3"
+chrono = "0.4"
+
+config = "0.15"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+tokio = { version = "1", features = ["full"] }
+
+listenfd = "1"
+axum = { version = "0.8", features = ["ws"] }
+axum-extra = { version = "0.10", features = ["cookie", "typed-header"] }
+tower = { version = "0.5", features = ["full"] }
+tower-http = { version = "0.6", features = ["full"] }
+hyper = { version = "1", features = ["full"] }
+askama = "0.14.0"
+futures = "0.3"
+
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-dynamodb = "1.79.0"
+
+validator = "0.20"
+regex = "1"
+
+jsonwebtoken = "9.3.1"
+nanoid = "0.4"
+argon2 = "0.5.3"
+base64 = "0.22"
+hex = "0.4.3"
+sha2 = "0.10.9"
+tracing-appender = "0.2.3"
+
+
+bb8 = "0.9.0"
+bb8-redis = "0.23.0"
+redis = { version = "0.32.0", features = ["tokio-comp", "json"] }
+redis-macros = "0.5.4"

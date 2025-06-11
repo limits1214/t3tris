@@ -1,6 +1,12 @@
 FROM rust:1.87-slim AS builder
 
-RUN apt-get update && apt-get install -y musl-tools
+RUN apt update && apt install -y \
+    musl-tools \
+    gcc-aarch64-linux-gnu \
+    pkg-config \
+    && rustup target add aarch64-unknown-linux-musl
+
+ENV CC_aarch64_unknown_linux_musl=aarch64-linux-gnu-gcc
 
 WORKDIR /workspace
 

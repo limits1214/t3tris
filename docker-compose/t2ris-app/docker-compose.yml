@@ -1,0 +1,25 @@
+services:
+  front:
+    # build: ../../front
+    image: ghcr.io/limits1214/t2ris-front:latest
+    container_name: t2ris-front
+    # restart: always
+    networks:
+      - shared
+
+  back-api:
+    # build:
+    #   context: ../../back
+    #   dockerfile: api/Dockerfile
+    image: ghcr.io/limits1214/t2ris-back-api:latest
+    container_name: t2ris-back-api
+    environment:
+      ENV__REDIS__REDIS_URL: ${REDIS_URL}
+    # restart: always
+    networks:
+      - shared
+
+networks:
+  shared:
+    name: t2ris-shared-net
+    external: true

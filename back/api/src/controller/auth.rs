@@ -8,7 +8,7 @@ use crate::{app::state::ArcAppState, into_response::html_template::HtmlTemplate}
 
 pub fn auth_router(_state: ArcAppState) -> Router<ArcAppState> {
     Router::new()
-        .route("/auth", get(auth_page))
+        // .route("/auth", get(auth_page))
         .route("/api/auth/testcookie", get(test_http_only_cookie))
         .route("/api/auth/testcall", get(test_call))
 }

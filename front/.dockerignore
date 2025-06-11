@@ -1,0 +1,28 @@
+# --- Node 환경 관련 ---
+node_modules
+npm-debug.log
+yarn.lock
+
+# --- Git 관련 ---
+.git
+.gitignore
+
+# --- 환경파일 (보안 위험) ---
+# .env
+# .env.local
+# .env.*  # 혹시라도 다른 변형이 생길 때 대비
+
+# --- 빌드 산출물 (불필요) ---
+dist
+
+# --- 시스템 파일 ---
+.DS_Store
+Thumbs.db
+
+# --- 문서 & 기타 ---
+README.md
+*.md
+
+# --- 도커파일 자체 ---
+Dockerfile
+docker-compose.yml

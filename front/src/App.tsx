@@ -6,7 +6,7 @@ import TestPage from './page/TestPage.tsx'
 
 function App() {
   return (
-    <BrowserRouter basename='/Tetris'>
+    <BrowserRouter>
       <Routes>
         <Route element={<DefaultLayout/>}>
           <Route index element={<HomePage/>}></Route>

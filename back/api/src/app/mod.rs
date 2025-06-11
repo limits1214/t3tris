@@ -8,7 +8,10 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
-    app::{config::AppConfig, state::ArcAppState},
+    app::{
+        config::{AppConfig, APP_CONFIG},
+        state::ArcAppState,
+    },
     controller::init_controller_router,
     controller_ws::init_controller_ws_router,
 };
@@ -19,7 +22,11 @@ pub mod state;
 
 pub async fn app_start() {
     AppConfig::init().await;
+
+    let test = &APP_CONFIG.get().unwrap().settings.redis.redis_url;
+
     let _guard = init_tracing();
+    tracing::info!("redisurl: {test}");
     init_axum().await;
 }
 

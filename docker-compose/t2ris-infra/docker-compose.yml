@@ -1,0 +1,57 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # - ${HOME}/t2ris-infra-docker-volume/nginx/nginx.conf:/etc/nginx/nginx.conf # default setting 사용, 만약쓴다면 파일매핑이라 미리 파일만들어놔야함
+      - ${HOME}/t2ris-infra-docker-volume/nginx/conf.d:/etc/nginx/conf.d
+      - ${HOME}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot
+      - ${HOME}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt
+    environment:
+      TZ: Asia/Seoul
+    networks:
+      - shared
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ${HOME}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot
+      - ${HOME}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt
+    entrypoint: /bin/sh # 대기
+    tty: true # 터미널
+    networks:
+      - shared
+
+  redis:
+    container_name: redis-stack
+    image: redis/redis-stack-server:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${HOME}/t2ris-infra-docker-volume/redis-data:/data
+    networks:
+      - shared
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: pg
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${HOME}/t2ris-infra-docker-volume/pg-data:/var/lib/postgresql/data
+    networks:
+      - shared
+
+networks:
+  shared:
+    name: t2ris-shared-net
+    external: true

@@ -5,10 +5,11 @@ mem: 0.5
 
 ```
 sudo timedatectl set-timezone Asia/Seoul
-
 sudo dnf install -y git
-sudo dnf install -y nginx
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+sudo dnf install -y docker
+sudo systemctl start docker
+sudo systemctl enable docker
 ```
 
 
@@ -23,8 +24,5 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 
 ```
-sudo yum install -y docker
-sudo systemctl start docker
-sudo systemctl enable docker
 ```
 

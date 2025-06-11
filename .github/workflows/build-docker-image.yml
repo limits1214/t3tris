@@ -1,0 +1,35 @@
+name: Build Docker Image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Image
+        run: |
+          chmod +x front/build_docker_front.bash
+          chmod +x back/build_docker_api.bash
+
+          cd front
+          ./build_docker_front
+          cd ..
+
+          cd back
+          ./build_docker_api

@@ -27,9 +27,6 @@ jobs:
           chmod +x front/build_docker_front.bash
           chmod +x back/build_docker_api.bash
 
-          cd front
-          ./build_docker_front
-          cd ..
+          ./front/build_docker_front
 
-          cd back
-          ./build_docker_api
+          ./back/build_docker_api

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build-docker-image:
     runs-on: ubuntu-latest
 
     permissions:
@@ -27,6 +27,9 @@ jobs:
           chmod +x front/build_docker_front.bash
           chmod +x back/build_docker_api.bash
 
-          ./front/build_docker_front
+          cd front
+          ./build_docker_front.bash
+          cd ..
 
-          ./back/build_docker_api
+          cd back
+          ./build_docker_api.bash

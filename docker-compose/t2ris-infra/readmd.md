@@ -2,7 +2,7 @@
 certbot tls 발급
 ```
 docker compose run --rm certbot certonly \
-  --webroot --webroot-path=/var/lib/letsencrypt \
+  --webroot --webroot-path=/var/www/certbot \
   -d t2ris.duckdns.org \
   --email lsy969999@gmail.com \
   --agree-tos \

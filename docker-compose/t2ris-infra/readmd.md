@@ -1,21 +1,32 @@
 
 certbot tls 발급
-```
-docker compose run --rm certbot certonly \
+```bash
+VOL_MOUNT_PATH=/home/ec2-user
+DOMAIN=t2ris.duckdns.org
+EMAIL=lsy969999@gmail.com
+
+sudo docker run --rm \
+  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot \
+  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt \
+  certbot/certbot certonly \
   --webroot --webroot-path=/var/www/certbot \
-  -d t2ris.duckdns.org \
-  --email lsy969999@gmail.com \
+  -d $DOMAIN \
+  --email $EMAIL \
   --agree-tos \
   --non-interactive
 ```
 
 certbot tls 갱신
 ```
-docker compose run --rm certbot renew --webroot-path=/var/lib/letsencrypt
-docker compose exec nginx nginx -s reload
+VOL_MOUNT_PATH=/home/ec2-user
+DOMAIN=t2ris.duckdns.org
+EMAIL=lsy969999@gmail.com
 
-
-nginx -T # 전체 적용된 설정파일 확인
+sudo docker run --rm \
+  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot \
+  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt \
+  certbot/certbot renew \
+  --webroot --webroot-path=/var/www/certbot
 ```
 
 certbot tls 갱신 cron

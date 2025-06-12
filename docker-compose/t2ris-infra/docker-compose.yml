@@ -15,17 +15,6 @@ services:
     networks:
       - shared
 
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot
-      - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt
-    # entrypoint: /bin/sh # 대기
-    # tty: true # 터미널
-    networks:
-      - shared
-
   redis:
     container_name: redis-stack
     image: redis/redis-stack-server:latest

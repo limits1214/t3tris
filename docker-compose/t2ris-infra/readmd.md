@@ -3,8 +3,8 @@ certbot tls 발급
 ```
 docker compose run --rm certbot certonly \
   --webroot --webroot-path=/var/lib/letsencrypt \
-  -d yourdomain.com \
-  --email you@example.com \
+  -d t2ris.duckdns.org \
+  --email lsy969999@gmail.com \
   --agree-tos \
   --non-interactive
 ```

@@ -21,8 +21,8 @@ services:
     volumes:
       - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot
       - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt
-    entrypoint: /bin/sh # 대기
-    tty: true # 터미널
+    # entrypoint: /bin/sh # 대기
+    # tty: true # 터미널
     networks:
       - shared
 

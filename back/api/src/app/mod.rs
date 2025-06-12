@@ -31,7 +31,10 @@ pub async fn app_start() {
 }
 
 fn init_tracing() -> WorkerGuard {
-    let file_appender = tracing_appender::rolling::daily("logs", "client.log");
+    // let unique_id = nanoid::nanoid!(4);
+    let unique_id = "";
+    let file_appender =
+        tracing_appender::rolling::daily("logs", format!("back-api#{unique_id}.log"));
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     tracing_subscriber::registry()
         .with(
@@ -123,8 +126,10 @@ async fn init_shutdown_signal() {
             .recv()
             .await;
     };
+
     #[cfg(not(unix))]
     let terminate = std::future::pending::<()>();
+
     tokio::select! {
         _ = ctrl_c => {
             println!("shoutdown ctrl_c")

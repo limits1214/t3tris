@@ -1,35 +1,15 @@
+aarch64-unknown-linux-gnu
+t4g.nano
+vcpu: 2
+mem: 0.5
 
-certbot tls 발급
-```bash
-VOL_MOUNT_PATH=/home/ec2-user
-DOMAIN=t2ris.duckdns.org
-EMAIL=lsy969999@gmail.com
-
-sudo docker run --rm \
-  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot \
-  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt \
-  certbot/certbot certonly \
-  --webroot --webroot-path=/var/www/certbot \
-  -d $DOMAIN \
-  --email $EMAIL \
-  --agree-tos \
-  --non-interactive
 ```
+sudo timedatectl set-timezone Asia/Seoul
+sudo dnf install -y git
 
-certbot tls 갱신
-```
-VOL_MOUNT_PATH=/home/ec2-user
-DOMAIN=t2ris.duckdns.org
-EMAIL=lsy969999@gmail.com
-
-sudo docker run --rm \
-  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot \
-  -v ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt \
-  certbot/certbot renew \
-  --webroot --webroot-path=/var/www/certbot
-```
-
-certbot tls 갱신 cron
-```
-
+sudo dnf install -y docker
+sudo systemctl start docker
+sudo systemctl enable docker
+# docker compose 설치
+# https://docs.docker.com/compose/install/linux/#install-the-plugin-manually
 ```

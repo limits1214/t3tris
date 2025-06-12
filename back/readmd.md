@@ -10,6 +10,8 @@ sudo dnf install -y git
 sudo dnf install -y docker
 sudo systemctl start docker
 sudo systemctl enable docker
+# docker compose 설치
+# https://docs.docker.com/compose/install/linux/#install-the-plugin-manually
 ```
 
 

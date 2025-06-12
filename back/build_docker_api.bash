@@ -2,6 +2,7 @@
 set -e
 
 docker buildx build \
+  -f api/Dockerfile \
   --platform linux/arm64 \
   -t ghcr.io/limits1214/t2ris-back-api:latest \
   --push \

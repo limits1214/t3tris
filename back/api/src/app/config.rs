@@ -1,58 +1,60 @@
-use std::sync::{Arc, OnceLock};
-
+use crate::app::jwt::JwtKeys;
 use serde::Deserialize;
-
-pub static APP_CONFIG: OnceLock<Arc<AppConfig>> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct AppConfig {
     pub settings: Settings,
-    pub aws_config: aws_config::SdkConfig,
-    // pub jwt_access_keys: JwtKeys,
-    // pub jwt_refresh_keys: JwtKeys,
+    pub jwt_access_keys: JwtKeys,
+    pub jwt_refresh_keys: JwtKeys,
 }
 impl AppConfig {
-    pub async fn init() {
-        let aws_config = Self::make_aws_config().await;
-        APP_CONFIG.get_or_init(|| {
-            let settings = Settings::new();
-            let app_config = Self::new(settings, aws_config);
-            Arc::new(app_config)
-        });
-    }
-    fn new(settings: Settings, aws_config: aws_config::SdkConfig) -> Self {
-        // let jwt_access_keys = JwtKeys::new(&settings.jwt.jwt_access_secret);
-        // let jwt_refresh_keys = JwtKeys::new(&settings.jwt.jwt_refresh_secret);
+    pub fn new(settings: Settings) -> Self {
+        let jwt_access_keys = JwtKeys::new(&settings.jwt.jwt_access_secret);
+        let jwt_refresh_keys = JwtKeys::new(&settings.jwt.jwt_refresh_secret);
         Self {
             settings,
-            aws_config,
-            // jwt_access_keys,
-            // jwt_refresh_keys,
+            jwt_access_keys,
+            jwt_refresh_keys,
         }
-    }
-
-    async fn make_aws_config() -> aws_config::SdkConfig {
-        let shared_config = aws_config::from_env()
-            .region(aws_config::Region::new("ap-northeast-2"))
-            .load()
-            .await;
-        shared_config
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct AppSettings {
+    pub front_url: String,
+    pub back_url: String,
+}
 #[derive(Debug, Deserialize)]
 pub struct RedisSettings {
     pub redis_url: String,
 }
 
 #[derive(Debug, Deserialize)]
+pub struct JwtSettings {
+    pub jwt_access_secret: String,
+    pub jwt_refresh_secret: String,
+    pub jwt_access_time: i64,
+    pub jwt_refresh_time: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DatabaseSettings {
+    pub database_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Oauth2Settings {
+    pub oauth2_google_client_id: String,
+    pub oauth2_google_client_secret: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Settings {
+    pub app: AppSettings,
+    pub database: DatabaseSettings,
     pub redis: RedisSettings,
-    // pub dynamo: DynamoSettings,
-    // pub jwt: JwtSettings,
-    // pub cookie: CookieSettings,
-    // pub sec: SecSettings,
-    // pub gw_ws: GwWsSettings,
+    pub jwt: JwtSettings,
+    pub oauth2: Oauth2Settings,
 }
 
 impl Settings {

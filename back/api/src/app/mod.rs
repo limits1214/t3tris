@@ -1,3 +1,7 @@
+use crate::{
+    app::state::ArcAppState, controller::init_controller_router,
+    controller_ws::init_controller_ws_router,
+};
 use axum::Router;
 use hyper::{header, Method};
 use listenfd::ListenFd;
@@ -7,26 +11,16 @@ use tower_http::{
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::{
-    app::{
-        config::{AppConfig, APP_CONFIG},
-        state::ArcAppState,
-    },
-    controller::init_controller_router,
-    controller_ws::init_controller_ws_router,
-};
-
 pub mod config;
+pub mod db;
+pub mod jwt;
 pub mod redis;
 pub mod state;
 
 pub async fn app_start() {
-    AppConfig::init().await;
-
-    let test = &APP_CONFIG.get().unwrap().settings.redis.redis_url;
+    crate::util::config::config_init();
 
     let _guard = init_tracing();
-    tracing::info!("redisurl: {test}");
     init_axum().await;
 }
 
@@ -39,7 +33,7 @@ fn init_tracing() -> WorkerGuard {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "t2ris_api=debug,tower_http=debug,axum::rejection=trace".into()
+                "t2ris_api=debug,tower_http=debug,axum::rejection=trace,sqlx=debug".into()
             }),
         )
         .with(tracing_subscriber::fmt::layer())
@@ -59,13 +53,13 @@ async fn init_axum() {
         .layer(TraceLayer::new_for_http())
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
         .layer(CompressionLayer::new())
+        // .layer(middleware::from_fn(error_wrap_middleware))
         .layer(
             CorsLayer::new()
                 .allow_origin([
                     "http://localhost:5173".parse().unwrap(),
+                    "http://192.168.25.28:5173".parse().unwrap(),
                     "http://localhost:4173".parse().unwrap(),
-                    "https://limits1214.github.io".parse().unwrap(),
-                    "https://www.google.com".parse().unwrap(),
                 ])
                 .allow_credentials(true)
                 .allow_methods([

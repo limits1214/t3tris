@@ -6,12 +6,13 @@ edition = "2021"
 [dependencies]
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2.3"
 
 anyhow = "1"
 thiserror = "2"
 
 rand = "0.9"
-time = "0.3"
+time = { version = "0.3", features = ["serde"] }
 chrono = "0.4"
 
 config = "0.15"
@@ -22,7 +23,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 
 listenfd = "1"
-axum = { version = "0.8", features = ["ws"] }
+axum = { version = "0.8", features = ["ws", "macros"] }
 axum-extra = { version = "0.10", features = ["cookie", "typed-header"] }
 tower = { version = "0.5", features = ["full"] }
 tower-http = { version = "0.6", features = ["full"] }
@@ -30,10 +31,17 @@ hyper = { version = "1", features = ["full"] }
 askama = "0.14.0"
 futures = "0.3"
 
-aws-config = { version = "1", features = ["behavior-version-latest"] }
-aws-sdk-dynamodb = "1.79.0"
+# aws-config = { version = "1", features = ["behavior-version-latest"] }
+# aws-sdk-dynamodb = "1.79.0"
 
-validator = "0.20"
+sqlx = { version = "0.8", features = [
+    "postgres",
+    "runtime-tokio-rustls",
+    "chrono",
+    "time",
+] }
+
+validator = { version = "0.20", features = ["derive"] }
 regex = "1"
 
 jsonwebtoken = "9.3.1"
@@ -42,10 +50,11 @@ argon2 = "0.5.3"
 base64 = "0.22"
 hex = "0.4.3"
 sha2 = "0.10.9"
-tracing-appender = "0.2.3"
-
+oauth2 = "5.0.0"
 
 bb8 = "0.9.0"
 bb8-redis = "0.23.0"
 redis = { version = "0.32.0", features = ["tokio-comp", "json"] }
 redis-macros = "0.5.4"
+
+reqwest = { version = "0.12", features = ["json"] }

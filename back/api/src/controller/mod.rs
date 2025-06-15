@@ -7,6 +7,7 @@ use crate::{
 
 pub mod auth;
 pub mod test;
+pub mod user;
 
 pub async fn init_controller_router(arc_app_state: ArcAppState) -> Router<ArcAppState> {
     Router::new()

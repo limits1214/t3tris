@@ -2,27 +2,28 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use bb8_redis::RedisConnectionManager;
+use sqlx::PgPool;
 
-use crate::{
-    app::redis::{init_redis_client, init_redis_pool},
-    util,
+use crate::app::{
+    db::init_db_pool,
+    redis::{init_redis_client, init_redis_pool},
 };
 
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub dynamo_client: aws_sdk_dynamodb::Client,
     pub redis_pool: bb8::Pool<RedisConnectionManager>,
     pub redis_client: redis::Client,
+    pub db_pool: PgPool,
 }
 impl AppState {
     pub async fn new() -> Self {
-        let dynamo_client = make_dynamo_client().await;
         let redis_pool = init_redis_pool().await;
         let redis_client = init_redis_client();
+        let db_pool = init_db_pool().await;
         Self {
-            dynamo_client,
             redis_pool,
             redis_client,
+            db_pool,
         }
     }
 }
@@ -48,8 +49,8 @@ impl FromRef<ArcAppState> for redis::Client {
         input.0.redis_client.clone()
     }
 }
-
-async fn make_dynamo_client() -> aws_sdk_dynamodb::Client {
-    let shared_config = util::config::get_aws_config();
-    aws_sdk_dynamodb::Client::new(shared_config)
+impl FromRef<ArcAppState> for PgPool {
+    fn from_ref(input: &ArcAppState) -> Self {
+        input.0.db_pool.clone()
+    }
 }

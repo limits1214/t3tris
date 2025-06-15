@@ -1,6 +1,5 @@
 use std::convert::Infallible;
 
-use anyhow::anyhow;
 use axum::{
     extract::{FromRef, FromRequestParts},
     http::request::Parts,

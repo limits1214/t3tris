@@ -8,7 +8,7 @@ use bb8::{Pool, PooledConnection};
 use bb8_redis::RedisConnectionManager;
 use hyper::StatusCode;
 
-pub type RedisConnection = PooledConnection<'static, RedisConnectionManager>;
+#[allow(dead_code)]
 pub struct RedisPoolConn(pub PooledConnection<'static, RedisConnectionManager>);
 
 // pub type RedisPool = Pool<RedisConnectionManager>;

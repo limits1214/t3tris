@@ -77,11 +77,11 @@ async fn init_axum() {
                     header::ACCEPT,
                 ]),
         )
-        .with_state(arc_app_state);
+        .with_state(arc_app_state.clone());
 
     let listener = init_listenfd(4000).await;
     axum::serve(listener, router)
-        .with_graceful_shutdown(init_shutdown_signal())
+        .with_graceful_shutdown(init_shutdown_signal(arc_app_state))
         .await
         .unwrap();
 }
@@ -107,7 +107,7 @@ async fn init_listenfd(server_port: u32) -> tokio::net::TcpListener {
 
 /// 그레이스풀 셧다운
 /// https://github.com/tokio-rs/axum/blob/main/examples/graceful-shutdown/src/main.rs
-async fn init_shutdown_signal() {
+async fn init_shutdown_signal(arc_app_state: ArcAppState) {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -126,10 +126,11 @@ async fn init_shutdown_signal() {
 
     tokio::select! {
         _ = ctrl_c => {
-            println!("shoutdown ctrl_c")
+            tracing::info!("shoutdown ctrl_c");
+            let _ = arc_app_state.0.ws_shut_down.shutdown_tx.send(());
         },
         _ = terminate => {
-            println!("shoutdown terminate")
+            tracing::info!("shoutdown terminate");
         },
     }
 }

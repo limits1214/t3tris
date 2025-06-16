@@ -9,7 +9,6 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_extra::extract::CookieJar;
 use futures::StreamExt;
 
 use crate::app::state::ArcAppState;
@@ -18,11 +17,7 @@ pub fn test_ws_router(_state: ArcAppState) -> Router<ArcAppState> {
     Router::new().route("/ws/test/{id}", get(test_ws_upgrade))
 }
 
-pub async fn test_ws_upgrade(
-    ws: WebSocketUpgrade,
-    jar: CookieJar,
-    Path(id): Path<i32>,
-) -> impl IntoResponse {
+pub async fn test_ws_upgrade(ws: WebSocketUpgrade, Path(id): Path<i32>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
         let res = test_ws(socket, id).await;
         if let Err(err) = res {
@@ -31,11 +26,11 @@ pub async fn test_ws_upgrade(
     })
 }
 
-pub async fn test_ws(socket: WebSocket, id: i32) -> anyhow::Result<()> {
+pub async fn test_ws(socket: WebSocket, _id: i32) -> anyhow::Result<()> {
     tracing::info!("test_ws context start");
 
     // ws
-    let (mut sender, mut receiver) = socket.split();
+    let (mut _sender, mut receiver) = socket.split();
 
     // Spawn a task that will push several messages to the client (does not matter what client does)
     // let mut send_task = tokio::spawn(async move {

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { useAuthStore } from "../store/useAuthStore";
-import useWebSocket, { ReadyState } from "react-use-websocket";
+// import { useAuthStore } from "../store/useAuthStore";
+import useWebSocket from "react-use-websocket";
 import { useWsStore } from "../store/useWsStore";
-import { isTokenExpired } from "../util/jwt";
-const apiUrl = import.meta.env.VITE_API_URL;
+import { tokenRefresh } from "../api/auth";
+const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
-  const {accessToken} = useAuthStore();
+  // const {accessToken} = useAuthStore();
   const [socketUrl, setSocketUrl] = useState<string|null>(null);
 
   const setSend = useWsStore(s=>s.setSend);
@@ -34,12 +34,20 @@ const WebSocketInitializer = () => {
     // 연결이 되면 액세스토큰 바뀌어도 재연결하지않게
     // 만약 연결이 안됬다면, 액세스토큰 바뀔때마다 재연결
   useEffect(() => {
-    if ((readyState === ReadyState.CLOSED || readyState === ReadyState.UNINSTANTIATED)
-        && accessToken && !isTokenExpired(accessToken)) {
-      setSocketUrl(`${apiUrl}/ws/hahaha?access_token=${accessToken}`);
+    // if ((readyState === ReadyState.CLOSED || readyState === ReadyState.UNINSTANTIATED)
+    //     && accessToken && !isTokenExpired(accessToken)) {
+    //   setSocketUrl(`${apiUrl}/ws/hahaha?access_token=${accessToken}`);
+    // }
+    const connect = async () => {
+      try {
+        const accessToken = await tokenRefresh();
+        setSocketUrl(`${apiUrl}/ws/hahaha?access_token=${accessToken}`);
+      } catch (e) {
+        console.error(e)
+      }
     }
-    
-  }, [accessToken, readyState])
+    connect();
+  }, [])
 
   useEffect(() => {
     setReadyState(readyState)
@@ -54,13 +62,16 @@ const WebSocketInitializer = () => {
       return;
     }
     const lastMessageData = lastMessage.data;
-    console.log(lastMessageData)
+    // console.log(lastMessageData)
     setLastMessage(lastMessageData)
     const {t, d} = JSON.parse(lastMessageData)
     
     switch (t) {
       case 'echo':
         console.log('echo message: ', d)
+        break;
+      case 'topicEcho':
+        console.log('topicEcho', d)
         break;
       default:
         console.log('ws t not match, t: ', t)

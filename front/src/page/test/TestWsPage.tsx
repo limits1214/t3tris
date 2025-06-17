@@ -18,6 +18,8 @@ const TestWsPage = () => {
       <p>access_token: {accessToken}</p>
       <hr />
       <Topic/>
+      <hr />
+      <Rooms/>
     </div>
   )
 }
@@ -74,6 +76,40 @@ const Topic = () => {
       <div>
         <input type="text" onChange={e=>setEcho(e.target.value)}/>
         <button onClick={topicEcho}>topic echo</button>
+      </div>
+    </div>
+  )
+}
+
+const Rooms = () => {
+  const [roomName, setRoomName] = useState('');
+  const send = useWsStore(s=>s.send);
+  const createRoom = () => {
+    const obj = {
+      t: 'createRoom',
+      d: {
+
+      }
+    }
+  }
+  const fetchRoom = () => {
+    const obj = {
+      t: 'createRoom',
+      d: {
+
+      }
+    }
+    
+  }
+  return (
+    <div>
+      <div>
+        <label htmlFor="">roomName</label>
+        <input type="text" onChange={e=>setRoomName(e.target.value)} />
+        <button>create</button>
+      </div>
+      <div>
+        <button>fetchRoom</button>
       </div>
     </div>
   )

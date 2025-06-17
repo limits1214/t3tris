@@ -3,7 +3,7 @@ use axum_extra::extract::cookie::Cookie;
 use crate::constant::REFRESH_TOKEN;
 
 pub fn gen_refresh_token_cookie(refresh_token: String) -> Cookie<'static> {
-    let refresh_time = super::config::get_config_settings_jwt().jwt_refresh_time;
+    let refresh_time = common::util::config::get_config_settings_jwt().jwt_refresh_time;
     Cookie::build((REFRESH_TOKEN, refresh_token))
         .path("/")
         .http_only(true)

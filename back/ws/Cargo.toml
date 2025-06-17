@@ -1,0 +1,48 @@
+[package]
+name = "t2ris_ws"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../common" }
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2.3"
+
+anyhow = "1"
+thiserror = "2"
+
+rand = "0.9"
+time = { version = "0.3", features = ["serde"] }
+chrono = "0.4"
+
+config = "0.15"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+tokio = { version = "1", features = ["full"] }
+
+axum = { version = "0.8", features = ["ws", "macros"] }
+axum-extra = { version = "0.10", features = ["cookie", "typed-header"] }
+tower = { version = "0.5", features = ["full"] }
+tower-http = { version = "0.6", features = ["full"] }
+hyper = { version = "1", features = ["full"] }
+askama = "0.14.0"
+futures = "0.3"
+
+
+bb8 = "0.9.0"
+bb8-redis = "0.23.0"
+redis = { version = "0.32.0", features = ["tokio-comp"] }
+redis-macros = "0.5.4"
+
+sqlx = { version = "0.8", features = [
+    "postgres",
+    "runtime-tokio-rustls",
+    "chrono",
+    "time",
+] }
+
+nanoid = "0.4"

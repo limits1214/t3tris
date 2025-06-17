@@ -1,15 +1,4 @@
-use crate::{
-    app::state::ArcAppState,
-    constant::REFRESH_TOKEN,
-    dto::{
-        request::auth::{EmailLoginRequest, EmailSignupRequest, GuestLoginRequest, OAuthCallback},
-        response::{auth::AccessTokenResponse, ApiResponse},
-    },
-    entity::user::Provider,
-    error::{AppResult, AuthError},
-    extractor::{db::DbConn, x_forwarded_for::XForwardedFor},
-    service, util,
-};
+use crate::{app::state::ArcApiAppState, constant::REFRESH_TOKEN, service, util};
 use anyhow::anyhow;
 use axum::{
     extract::Query,
@@ -18,11 +7,20 @@ use axum::{
     Json, Router,
 };
 use axum_extra::{extract::CookieJar, headers::UserAgent, TypedHeader};
+use common::{
+    dto::{
+        request::auth::{EmailLoginRequest, EmailSignupRequest, GuestLoginRequest, OAuthCallback},
+        response::{auth::AccessTokenResponse, ApiResponse},
+    },
+    error::{AppResult, AuthError},
+    extractor::db::DbConn,
+};
+use common::{entity::user::Provider, extractor::x_forwarded_for::XForwardedFor};
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use serde_json::json;
 use validator::Validate;
 
-pub fn auth_router(_state: ArcAppState) -> Router<ArcAppState> {
+pub fn auth_router(_state: ArcApiAppState) -> Router<ArcApiAppState> {
     Router::new()
         .route("/api/auth/logout", post(refresh_token_logout))
         .route("/api/auth/token/refresh", post(access_token_refresh))
@@ -45,7 +43,7 @@ pub async fn guest_login(
 ) -> AppResult<(CookieJar, Json<ApiResponse<AccessTokenResponse>>)> {
     j.validate()?;
 
-    let mut tx = util::dbtx::begin(&mut conn).await?;
+    let mut tx = common::util::dbtx::begin(&mut conn).await?;
 
     // 게스트 유저 생성 및 세션 등록, 토큰 발급
     let (access_token, refresh_token) = service::auth::create_guest_user_with_session(
@@ -56,7 +54,7 @@ pub async fn guest_login(
     )
     .await?;
 
-    util::dbtx::commit(tx).await?;
+    common::util::dbtx::commit(tx).await?;
 
     // refresh_token 쿠키 세팅 + 응답 반환
     let refresh_token_cookie = util::cookie::gen_refresh_token_cookie(refresh_token);
@@ -184,7 +182,7 @@ pub async fn google_login_callback(
     // 코드 를 액세스토큰으로 교환
     let token_result = client
         .exchange_code(AuthorizationCode::new(query.code.clone()))
-        .request_async(util::http_client::get_http_clinet())
+        .request_async(common::util::http_client::get_http_clinet())
         .await
         .map_err(|err| anyhow!(err))?;
     let google_access_token = token_result.access_token().secret().to_string();

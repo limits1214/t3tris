@@ -7,19 +7,18 @@ use axum::{
 };
 use axum_extra::extract::{cookie::Cookie, CookieJar};
 
-use nanoid::nanoid;
-use serde_json::json;
-use time::Duration;
-
-use crate::{
-    app::state::ArcAppState,
+use crate::app::state::ArcApiAppState;
+use common::{
     entity::user::{Provider, UserRole, UserStatus},
     error::AppError,
     extractor::{check_access_token::CheckAccessToken, db::DbConn},
     repository::{self, user::InsertUserArg},
 };
+use nanoid::nanoid;
+use serde_json::json;
+use time::Duration;
 
-pub fn test_router(_state: ArcAppState) -> Router<ArcAppState> {
+pub fn test_router(_state: ArcApiAppState) -> Router<ArcApiAppState> {
     Router::new()
         .route("/api/test/greet", get(greet))
         .route("/api/auth/testcookie", get(test_http_only_cookie))

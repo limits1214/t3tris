@@ -1,87 +1,50 @@
-use std::sync::{atomic::AtomicUsize, Arc};
+use std::sync::Arc;
 
 use axum::extract::FromRef;
-use bb8_redis::RedisConnectionManager;
+use common::app_state::CommonAppState;
 use sqlx::PgPool;
-use tokio::sync::watch;
-
-use crate::app::{
-    db::init_db_pool,
-    redis::{init_redis_client, init_redis_pool},
-};
 
 #[derive(Debug, Clone)]
-pub struct AppState {
-    pub redis_pool: bb8::Pool<RedisConnectionManager>,
-    pub redis_client: redis::Client,
-    pub db_pool: PgPool,
-    pub ws_shut_down: WsShutDown,
+pub struct ApiAppState {
+    pub common: CommonAppState,
 }
-impl AppState {
+impl ApiAppState {
     pub async fn new() -> Self {
-        let redis_pool = init_redis_pool().await;
-        let redis_client = init_redis_client();
-        let db_pool = init_db_pool().await;
-        let ws_shut_down = WsShutDown::new();
-        Self {
-            redis_pool,
-            redis_client,
-            db_pool,
-            ws_shut_down,
-        }
+        let common = CommonAppState::new().await;
+        Self { common }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct WsShutDown {
-    /// 현재 연결 중인 WebSocket 클라이언트 수
-    pub connection_count: Arc<AtomicUsize>,
+pub struct ArcApiAppState(pub Arc<ApiAppState>);
 
-    /// graceful shutdown 시그널 (tx는 루트에서만 보유)
-    pub shutdown_tx: watch::Sender<()>,
-
-    /// 클론 가능한 shutdown 수신 채널
-    pub shutdown_rx: watch::Receiver<()>,
-}
-impl WsShutDown {
-    pub fn new() -> Self {
-        let (shutdown_tx, shutdown_rx) = watch::channel(());
-        Self {
-            connection_count: Arc::new(AtomicUsize::new(0)),
-            shutdown_tx,
-            shutdown_rx,
-        }
-    }
-}
-
-pub struct ArcAppState(pub Arc<AppState>);
-impl ArcAppState {
+impl ArcApiAppState {
     pub async fn new() -> Self {
-        Self(Arc::new(AppState::new().await))
+        Self(Arc::new(ApiAppState::new().await))
     }
 }
-impl Clone for ArcAppState {
+impl Clone for ArcApiAppState {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
-impl FromRef<ArcAppState> for bb8::Pool<bb8_redis::RedisConnectionManager> {
-    fn from_ref(input: &ArcAppState) -> Self {
-        input.0.redis_pool.clone()
+impl FromRef<ArcApiAppState> for CommonAppState {
+    fn from_ref(input: &ArcApiAppState) -> Self {
+        input.0.common.clone()
     }
 }
-impl FromRef<ArcAppState> for redis::Client {
-    fn from_ref(input: &ArcAppState) -> Self {
-        input.0.redis_client.clone()
+impl FromRef<ArcApiAppState> for PgPool {
+    fn from_ref(input: &ArcApiAppState) -> Self {
+        input.0.common.db_pool.clone()
     }
 }
-impl FromRef<ArcAppState> for PgPool {
-    fn from_ref(input: &ArcAppState) -> Self {
-        input.0.db_pool.clone()
+
+impl FromRef<ArcApiAppState> for bb8::Pool<bb8_redis::RedisConnectionManager> {
+    fn from_ref(input: &ArcApiAppState) -> Self {
+        input.0.common.redis_pool.clone()
     }
 }
-impl FromRef<ArcAppState> for WsShutDown {
-    fn from_ref(input: &ArcAppState) -> Self {
-        input.0.ws_shut_down.clone()
+impl FromRef<ArcApiAppState> for redis::Client {
+    fn from_ref(input: &ArcApiAppState) -> Self {
+        input.0.common.redis_client.clone()
     }
 }

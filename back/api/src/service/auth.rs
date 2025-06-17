@@ -1,12 +1,13 @@
+use common::repository;
+use common::repository::session::InsertSessionArg;
+use common::repository::user::InsertUserArg;
 use nanoid::nanoid;
 use sqlx::PgConnection;
 
-use crate::{
-    entity::user::{Provider, User, UserRole, UserStatus},
-    error::{AppResult, AuthError},
-    repository::{self, session::InsertSessionArg, user::InsertUserArg},
-    util,
-};
+use common::entity::user::UserRole;
+use common::entity::user::UserStatus;
+use common::{entity::user::Provider, error::AppResult};
+use common::{entity::user::User, error::AuthError};
 
 /// 게스트 유저 생성 및 세션 등록 후 토큰 반환
 ///
@@ -22,8 +23,8 @@ pub async fn create_guest_user_with_session(
     let new_user_id = nanoid!();
 
     // JWT 발급
-    let (_, access_token) = util::jwt::gen_access_token(&new_user_id)?;
-    let (refresh_token_claim, refresh_token) = util::jwt::gen_refresh_token(&new_user_id)?;
+    let (_, access_token) = common::util::jwt::gen_access_token(&new_user_id)?;
+    let (refresh_token_claim, refresh_token) = common::util::jwt::gen_refresh_token(&new_user_id)?;
 
     // 유저 생성
     repository::user::insert_user(
@@ -50,7 +51,9 @@ pub async fn create_guest_user_with_session(
             user_id: &new_user_id,
             ip,
             user_agent,
-            expires_at: &util::time::time_from_unix_timestamp(refresh_token_claim.exp as i64)?,
+            expires_at: &common::util::time::time_from_unix_timestamp(
+                refresh_token_claim.exp as i64,
+            )?,
         },
     )
     .await?;
@@ -75,7 +78,7 @@ pub async fn create_email_user(
 
     let new_user_id = nanoid!();
 
-    let password_hash = util::hash::hash_argon2(pw)?;
+    let password_hash = common::util::hash::hash_argon2(pw)?;
     let _ = repository::user::insert_user(
         conn,
         InsertUserArg {
@@ -92,8 +95,8 @@ pub async fn create_email_user(
     )
     .await?;
 
-    let (_, access_token) = util::jwt::gen_access_token(&new_user_id)?;
-    let (refresh_token_claim, refresh_token) = util::jwt::gen_refresh_token(&new_user_id)?;
+    let (_, access_token) = common::util::jwt::gen_access_token(&new_user_id)?;
+    let (refresh_token_claim, refresh_token) = common::util::jwt::gen_refresh_token(&new_user_id)?;
 
     let _ = repository::session::insert_session(
         conn,
@@ -102,7 +105,9 @@ pub async fn create_email_user(
             user_id: &new_user_id,
             ip,
             user_agent,
-            expires_at: &util::time::time_from_unix_timestamp(refresh_token_claim.exp as i64)?,
+            expires_at: &common::util::time::time_from_unix_timestamp(
+                refresh_token_claim.exp as i64,
+            )?,
         },
     )
     .await;
@@ -135,13 +140,13 @@ pub async fn create_email_session(
 
     // check 3
     let password: String = password.ok_or(AuthError::PasswordNotExists)?;
-    let result = util::hash::verify_argon2(pw, &password)?;
+    let result = common::util::hash::verify_argon2(pw, &password)?;
     if !result {
         Err(AuthError::UserPasswordNotMatch)?;
     }
 
-    let (_, access_token) = util::jwt::gen_access_token(&id)?;
-    let (refresh_token_claim, refresh_token) = util::jwt::gen_refresh_token(&id)?;
+    let (_, access_token) = common::util::jwt::gen_access_token(&id)?;
+    let (refresh_token_claim, refresh_token) = common::util::jwt::gen_refresh_token(&id)?;
 
     let _ = repository::session::insert_session(
         conn,
@@ -150,7 +155,9 @@ pub async fn create_email_session(
             user_id: &id,
             ip,
             user_agent,
-            expires_at: &util::time::time_from_unix_timestamp(refresh_token_claim.exp as i64)?,
+            expires_at: &common::util::time::time_from_unix_timestamp(
+                refresh_token_claim.exp as i64,
+            )?,
         },
     )
     .await;
@@ -162,13 +169,13 @@ pub async fn refrsh_access_token(
     conn: &mut PgConnection,
     refresh_token: &str,
 ) -> AppResult<String> {
-    let refresh_token_claim = util::jwt::decode_refresh_token(refresh_token)?;
+    let refresh_token_claim = common::util::jwt::decode_refresh_token(refresh_token)?;
 
     repository::session::select_session_by_id(conn, &refresh_token_claim.jti)
         .await?
         .ok_or(AuthError::RefreshTokenNotExists)?;
 
-    let (_, access_token) = util::jwt::gen_access_token(&refresh_token_claim.sub)?;
+    let (_, access_token) = common::util::jwt::gen_access_token(&refresh_token_claim.sub)?;
     Ok(access_token)
 }
 
@@ -189,8 +196,8 @@ pub async fn create_social_user_with_session(
         repository::user::select_user_by_provider_id(conn, provider, provider_user_id).await?;
 
     let (access_token, refresh_token, is_first) = if let Some(user) = user {
-        let (_, access_token) = util::jwt::gen_access_token(&user.id)?;
-        let (refresh_token_claim, refresh_token) = util::jwt::gen_refresh_token(&user.id)?;
+        let (_, access_token) = common::util::jwt::gen_access_token(&user.id)?;
+        let (refresh_token_claim, refresh_token) = common::util::jwt::gen_refresh_token(&user.id)?;
         let _ = repository::session::insert_session(
             conn,
             InsertSessionArg {
@@ -198,7 +205,9 @@ pub async fn create_social_user_with_session(
                 user_id: &user.id,
                 ip,
                 user_agent,
-                expires_at: &util::time::time_from_unix_timestamp(refresh_token_claim.exp as i64)?,
+                expires_at: &common::util::time::time_from_unix_timestamp(
+                    refresh_token_claim.exp as i64,
+                )?,
             },
         )
         .await;
@@ -221,8 +230,9 @@ pub async fn create_social_user_with_session(
         )
         .await?;
 
-        let (_, access_token) = util::jwt::gen_access_token(&new_user_id)?;
-        let (refresh_token_claim, refresh_token) = util::jwt::gen_refresh_token(&new_user_id)?;
+        let (_, access_token) = common::util::jwt::gen_access_token(&new_user_id)?;
+        let (refresh_token_claim, refresh_token) =
+            common::util::jwt::gen_refresh_token(&new_user_id)?;
         let _ = repository::session::insert_session(
             conn,
             InsertSessionArg {
@@ -230,7 +240,9 @@ pub async fn create_social_user_with_session(
                 user_id: &new_user_id,
                 ip,
                 user_agent,
-                expires_at: &util::time::time_from_unix_timestamp(refresh_token_claim.exp as i64)?,
+                expires_at: &common::util::time::time_from_unix_timestamp(
+                    refresh_token_claim.exp as i64,
+                )?,
             },
         )
         .await;

@@ -1,21 +1,12 @@
-use crate::app::jwt::JwtKeys;
 use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct AppConfig {
     pub settings: Settings,
-    pub jwt_access_keys: JwtKeys,
-    pub jwt_refresh_keys: JwtKeys,
 }
 impl AppConfig {
     pub fn new(settings: Settings) -> Self {
-        let jwt_access_keys = JwtKeys::new(&settings.jwt.jwt_access_secret);
-        let jwt_refresh_keys = JwtKeys::new(&settings.jwt.jwt_refresh_secret);
-        Self {
-            settings,
-            jwt_access_keys,
-            jwt_refresh_keys,
-        }
+        Self { settings }
     }
 }
 
@@ -25,24 +16,6 @@ pub struct AppSettings {
     pub back_url: String,
 }
 #[derive(Debug, Deserialize)]
-pub struct RedisSettings {
-    pub redis_url: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct JwtSettings {
-    pub jwt_access_secret: String,
-    pub jwt_refresh_secret: String,
-    pub jwt_access_time: i64,
-    pub jwt_refresh_time: i64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DatabaseSettings {
-    pub database_url: String,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct Oauth2Settings {
     pub oauth2_google_client_id: String,
     pub oauth2_google_client_secret: String,
@@ -51,9 +24,6 @@ pub struct Oauth2Settings {
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     pub app: AppSettings,
-    pub database: DatabaseSettings,
-    pub redis: RedisSettings,
-    pub jwt: JwtSettings,
     pub oauth2: Oauth2Settings,
 }
 

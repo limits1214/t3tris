@@ -21,11 +21,15 @@ pub enum ClientToServerWsMsg {
     #[serde(rename_all = "camelCase")]
     RoomCreate { room_name: String },
     #[serde(rename_all = "camelCase")]
-    RoomListFetch,
-    #[serde(rename_all = "camelCase")]
     RoomEnter { room_id: String },
     #[serde(rename_all = "camelCase")]
     RoomLeave { room_id: String },
     #[serde(rename_all = "camelCase")]
     RoomChat { room_id: String, msg: String },
+    #[serde(rename_all = "camelCase")]
+    RoomListFetch,
+    #[serde(rename_all = "camelCase")]
+    RoomListUpdateSubscribe,
+    #[serde(rename_all = "camelCase")]
+    RoomListUpdateUnSubscribe,
 }

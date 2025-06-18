@@ -146,8 +146,15 @@ pub async fn topic_echo(ctx: &mut WsRecvCtx<'_>, topic: &str, msg: String) -> an
 }
 
 pub async fn subscribe_topic(ctx: &mut WsRecvCtx<'_>, topic: &str) -> anyhow::Result<()> {
-    ctx.ws_topic.subscribe(topic);
-    crate::service::ws::ws_conn_ws_id_topic_add(ctx, &topic).await?;
+    let ws_conn_ws_id = get_ws_conn_ws_id(ctx).await?;
+    if let Some(ws_conn_ws_id) = ws_conn_ws_id {
+        let has_topic = ws_conn_ws_id.topics.iter().find(|t| *t == topic);
+        if has_topic.is_none() {
+            ctx.ws_topic.subscribe(topic);
+            crate::service::ws::ws_conn_ws_id_topic_add(ctx, &topic).await?;
+        }
+    }
+
     Ok(())
 }
 

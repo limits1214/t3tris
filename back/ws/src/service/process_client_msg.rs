@@ -39,29 +39,39 @@ pub async fn process_clinet_msg(
                         .with_context(|| format!("UnSubscribeTopic, topic: {topic}"))?;
                 }
                 RoomCreate { room_name } => {
-                    crate::service::room::room_create(ctx, &room_name)
+                    crate::service::room::process_room_create(ctx, &room_name)
                         .await
                         .with_context(|| "RoomCreate")?;
                 }
                 RoomChat { room_id, msg } => {
-                    crate::service::room::room_chat(ctx, &room_id, &msg)
+                    crate::service::room::proess_room_chat(ctx, &room_id, &msg)
                         .await
                         .with_context(|| "RoomChat")?;
                 }
                 RoomEnter { room_id } => {
-                    crate::service::room::room_enter(ctx, &room_id)
+                    crate::service::room::process_room_enter(ctx, &room_id)
                         .await
                         .with_context(|| format!("RoomEnter, room_id: {room_id}"))?;
                 }
                 RoomLeave { room_id } => {
-                    crate::service::room::room_leave(ctx, &room_id)
+                    crate::service::room::process_room_leave(ctx, &room_id)
                         .await
                         .with_context(|| format!("RoomLeave, room_id: {room_id}"))?;
                 }
                 RoomListFetch => {
-                    crate::service::room::room_list_fetch(ctx)
+                    crate::service::room::process_room_list_fetch(ctx)
                         .await
                         .with_context(|| "RoomListFetch")?;
+                }
+                RoomListUpdateSubscribe => {
+                    crate::service::room::process_room_list_update_subscribe(ctx)
+                        .await
+                        .with_context(|| "RoomListUpdateSubscribe")?;
+                }
+                RoomListUpdateUnSubscribe => {
+                    crate::service::room::process_room_list_update_unsubscribe(ctx)
+                        .await
+                        .with_context(|| "RoomListUpdateUnSubscribe")?;
                 }
             }
         }

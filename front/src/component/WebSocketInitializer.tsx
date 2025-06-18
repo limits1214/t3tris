@@ -91,8 +91,11 @@ const WebSocketInitializer = () => {
       case 'roomListFetch':
         roomListUpdate(data.rooms)
         break;
-      case 'roomUpdate':
+      case 'roomUpdated':
         roomUpdate(data.roomInfo)
+        break;
+      case 'roomListUpdated':
+        roomListUpdate(data.rooms)
         break;
       default:
         console.log('ws t not match, t: ', type)

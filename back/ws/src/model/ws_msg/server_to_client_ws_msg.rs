@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::model::room::RoomInfo;
+use crate::model::room::{RoomChat, RoomInfo};
 
 /// server -> client
 #[derive(Debug, Serialize, Deserialize)]
@@ -18,7 +18,10 @@ pub enum ServerToClientWsMsg {
 
     // === 룸관련 ===
     #[serde(rename_all = "camelCase")]
-    RoomEnter { room_info: RoomInfo },
+    RoomEnter {
+        room_info: RoomInfo,
+        chats: Vec<RoomChat>,
+    },
     #[serde(rename_all = "camelCase")]
     RoomChat {
         #[serde(with = "time::serde::rfc3339")]
@@ -31,5 +34,7 @@ pub enum ServerToClientWsMsg {
     #[serde(rename_all = "camelCase")]
     RoomListFetch { rooms: Vec<RoomInfo> },
     #[serde(rename_all = "camelCase")]
-    RoomUpdate { room_info: RoomInfo },
+    RoomUpdated { room_info: RoomInfo },
+    #[serde(rename_all = "camelCase")]
+    RoomListUpdated { rooms: Vec<RoomInfo> },
 }

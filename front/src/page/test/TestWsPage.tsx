@@ -106,6 +106,20 @@ const Rooms = () => {
     send(JSON.stringify(obj));
   }
 
+  const subscribeRoomList = () => {
+    const obj = {
+      type: 'roomListUpdateSubscribe',
+    }
+    send(JSON.stringify(obj));
+  }
+
+  const unsubscribeRoomList = () => {
+    const obj = {
+      type: 'roomListUpdateUnSubscribe',
+    }
+    send(JSON.stringify(obj));
+  }
+
   const enterRoom = (roomId: string) => {
      const obj = {
       type: 'roomEnter',
@@ -123,13 +137,15 @@ const Rooms = () => {
         <button onClick={createRoom}>create</button>
       </div>
       <div>
-        <button onClick={fetchRoom}>fetchRoom</button>
+        {/* <button onClick={fetchRoom}>fetchRoom</button> */}
+        <button onClick={subscribeRoomList}>  subscribeRoomList</button>
+        <button onClick={unsubscribeRoomList}>unsubscribeRoomList</button>
       </div>
       
       <div>
         {rooms.map(room=>(
           <div key={room.roomId}>
-            <span>{room.roomName}</span>
+            <span>{room.roomName}</span>, <span>{room.users.length}</span>
             <button onClick={()=>enterRoom(room.roomId)}>enter</button>
           </div>
         ))}
@@ -193,7 +209,7 @@ const Room = () => {
       <br />
       {chats.map(v=>(
         <div key={v.timestamp}>
-          {v.msg}
+          [{v.timestamp}][{v.nickName}]: {v.msg}
         </div>
       ))}
     </div>

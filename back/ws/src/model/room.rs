@@ -21,7 +21,7 @@ pub struct RoomUser {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RoomChats {
+pub struct RoomChat {
     #[serde(with = "time::serde::rfc3339")]
     pub timestamp: OffsetDateTime,
     pub nick_name: String,

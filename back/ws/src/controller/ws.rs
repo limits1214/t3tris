@@ -130,9 +130,6 @@ pub async fn ws(
 
             let ws_topic = format!("ws_id:{ws_id}");
             let _ = crate::service::ws::subscribe_topic(&mut ctx, &ws_topic).await;
-
-            let room_list_topic = format!("room_list_update");
-            let _ = crate::service::ws::subscribe_topic(&mut ctx, &room_list_topic).await;
         }
 
         // recv 처리
@@ -164,6 +161,23 @@ pub async fn ws(
 
         // 이제 ws 종료전에 정리할 로직은 여기에
         {
+            let ws_conn_ws_id = crate::service::ws::get_ws_conn_ws_id(&mut ctx)
+                .await
+                .ok()
+                .flatten();
+            if let Some(ws_conn_ws_id) = ws_conn_ws_id {
+                for topic in ws_conn_ws_id.topics.iter() {
+                    let split = topic.split(":").collect::<Vec<_>>();
+                    if split.len() == 2 && split[0].starts_with("room_id") {
+                        let room_id = split[1];
+                        let err = crate::service::room::process_room_leave(&mut ctx, room_id).await;
+                        if let Err(err) = err {
+                            tracing::warn!("clean up err: {err:?}");
+                        }
+                    };
+                }
+            }
+
             ctx.ws_topic.unsubscribe_all();
             let _ = crate::service::ws::delete_ws_conn_user(&mut ctx).await;
         }
@@ -179,7 +193,7 @@ pub async fn ws(
                 Some(msg) => {
                     if let Err(err) = sender.send(Message::Text(msg.into())).await {
                         tracing::warn!("sender task error: {err}");
-                        break;
+                        // break;
                     }
                 }
                 None => {

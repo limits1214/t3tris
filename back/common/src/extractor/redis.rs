@@ -1,30 +1,25 @@
-use std::convert::Infallible;
-
 use axum::{
     extract::{FromRef, FromRequestParts},
     http::request::Parts,
 };
-use bb8::{Pool, PooledConnection};
-use bb8_redis::RedisConnectionManager;
 use hyper::StatusCode;
-pub type RedisPool = bb8::Pool<RedisConnectionManager>;
-pub type PooledRedisConnection = PooledConnection<'static, RedisConnectionManager>;
+use std::convert::Infallible;
 
 #[allow(dead_code)]
-pub struct RedisPoolConn(pub PooledRedisConnection);
+pub struct RedisConn(pub deadpool_redis::Connection);
 
-impl<S> FromRequestParts<S> for RedisPoolConn
+impl<S> FromRequestParts<S> for RedisConn
 where
-    Pool<RedisConnectionManager>: FromRef<S>,
+    deadpool_redis::Pool: FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = (StatusCode, String);
 
     async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let pool = Pool::<RedisConnectionManager>::from_ref(state);
+        let pool = deadpool_redis::Pool::from_ref(state);
 
         let conn = pool
-            .get_owned()
+            .get()
             .await
             .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 

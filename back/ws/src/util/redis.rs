@@ -1,9 +1,12 @@
-use bb8_redis::redis::AsyncCommands;
-use common::extractor::redis::RedisPool;
+use redis::AsyncCommands;
 
-pub async fn publish(rpool: &mut RedisPool, topic: &str, message: &str) -> anyhow::Result<()> {
-    let mut publish_conn = rpool.get_owned().await?;
-    publish_conn
+pub async fn publish(
+    rpool: &mut deadpool_redis::Pool,
+    topic: &str,
+    message: &str,
+) -> anyhow::Result<()> {
+    let mut rconn = rpool.get().await?;
+    rconn
         .publish::<String, String, ()>(topic.to_string(), message.to_string())
         .await?;
     Ok(())

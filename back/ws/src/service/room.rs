@@ -3,8 +3,8 @@ use crate::model::{
     msg::ServerWsMsg,
     room::{RoomChats, RoomEvents, RoomInfo, RoomUser},
 };
-use bb8_redis::redis::AsyncCommands;
 use nanoid::nanoid;
+use redis::AsyncCommands;
 use time::OffsetDateTime;
 
 /// 방생성
@@ -68,7 +68,7 @@ pub async fn room_create(ctx: &mut WsRecvCtx<'_>, room_name: &str) -> anyhow::Re
 }
 
 pub async fn room_chat(ctx: &mut WsRecvCtx<'_>, room_id: &str, msg: &str) -> anyhow::Result<()> {
-    let mut prconn = ctx.rpool.get_owned().await?;
+    let mut prconn = ctx.rpool.get().await?;
 
     let room_event_chat = RoomEvents::UserChat {
         timestamp: OffsetDateTime::now_utc(),
@@ -78,6 +78,7 @@ pub async fn room_chat(ctx: &mut WsRecvCtx<'_>, room_id: &str, msg: &str) -> any
         msg: msg.to_string(),
     };
     let room_event_chat_str = serde_json::to_string(&room_event_chat)?;
+
     prconn
         .rpush::<String, String, ()>(format!("room:{room_id}:events"), room_event_chat_str)
         .await?;
@@ -119,7 +120,7 @@ pub async fn room_enter(ctx: &mut WsRecvCtx<'_>, room_id: &str) -> anyhow::Resul
     crate::service::ws::subscribe_topic(ctx, &format!("room:{room_id}:ws_id:{}", ctx.ws_id))
         .await?;
 
-    let mut prconn = ctx.rpool.get_owned().await?;
+    let mut prconn = ctx.rpool.get().await?;
 
     // 새유저
     let new_user = RoomUser {
@@ -177,7 +178,7 @@ pub async fn room_leave(ctx: &mut WsRecvCtx<'_>, room_id: &str) -> anyhow::Resul
     crate::service::ws::unsubscribe_topic(ctx, &format!("room:{room_id}:ws_id:{}", ctx.ws_id))
         .await?;
 
-    let mut prconn = ctx.rpool.get_owned().await?;
+    let mut prconn = ctx.rpool.get().await?;
     let room_info_str = prconn
         .get::<String, String>(format!("room:{room_id}:info"))
         .await?;
@@ -328,7 +329,7 @@ pub async fn room_leave(ctx: &mut WsRecvCtx<'_>, room_id: &str) -> anyhow::Resul
 }
 
 pub async fn room_list_fetch(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> {
-    let mut prconn = ctx.rpool.get_owned().await?;
+    let mut prconn = ctx.rpool.get().await?;
     let mut keys = vec![];
     {
         let mut iter = prconn

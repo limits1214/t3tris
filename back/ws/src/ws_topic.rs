@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use bb8_redis::{RedisConnectionManager, redis::AsyncCommands};
 use futures::StreamExt;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -8,20 +7,14 @@ pub struct WsTopic {
     topics: HashMap<String, tokio::task::JoinHandle<()>>,
     sender_tx: UnboundedSender<String>,
     redis_client: redis::Client,
-    redis_pool: bb8::Pool<RedisConnectionManager>,
 }
 
 impl WsTopic {
-    pub fn new(
-        sender_tx: UnboundedSender<String>,
-        redis_client: redis::Client,
-        redis_pool: bb8::Pool<RedisConnectionManager>,
-    ) -> Self {
+    pub fn new(sender_tx: UnboundedSender<String>, redis_client: redis::Client) -> Self {
         Self {
             topics: HashMap::new(),
             sender_tx,
             redis_client,
-            redis_pool,
         }
     }
 

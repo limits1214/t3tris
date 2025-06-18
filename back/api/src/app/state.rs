@@ -38,7 +38,7 @@ impl FromRef<ArcApiAppState> for PgPool {
     }
 }
 
-impl FromRef<ArcApiAppState> for bb8::Pool<bb8_redis::RedisConnectionManager> {
+impl FromRef<ArcApiAppState> for deadpool_redis::Pool {
     fn from_ref(input: &ArcApiAppState) -> Self {
         input.0.common.redis_pool.clone()
     }

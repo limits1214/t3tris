@@ -70,7 +70,7 @@ impl FromRef<ArcWsAppState> for WsShutDown {
     }
 }
 
-impl FromRef<ArcWsAppState> for bb8::Pool<bb8_redis::RedisConnectionManager> {
+impl FromRef<ArcWsAppState> for deadpool_redis::Pool {
     fn from_ref(input: &ArcWsAppState) -> Self {
         input.0.common.redis_pool.clone()
     }

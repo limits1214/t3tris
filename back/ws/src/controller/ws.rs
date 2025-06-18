@@ -13,7 +13,6 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use bb8_redis::RedisConnectionManager;
 use common::{
     entity::user::User,
     error::{AppResult, AuthError},
@@ -42,7 +41,7 @@ pub async fn ws_upgrade(
     State(ws_shut_down): State<WsShutDown>,
     Query(WsQuery { access_token }): Query<WsQuery>,
     RedisClient(redis_client): RedisClient,
-    State(redis_pool): State<bb8::Pool<RedisConnectionManager>>,
+    State(redis_pool): State<deadpool_redis::Pool>,
 ) -> AppResult<impl IntoResponse> {
     let access_token_claim = common::util::jwt::decode_access_token(&access_token)?;
     let user = common::repository::user::select_user_by_id(&mut conn, &access_token_claim.sub)
@@ -84,7 +83,7 @@ pub async fn ws(
     ws_id: &str,
     user: &User,
     mut redis_clinet: redis::Client,
-    mut redis_pool: bb8::Pool<RedisConnectionManager>,
+    mut redis_pool: deadpool_redis::Pool,
 ) {
     let ws_id = ws_id.to_string();
     let user_id = user.id.to_string();
@@ -97,7 +96,7 @@ pub async fn ws(
     let (topic_msg_tx, mut topic_msg_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
 
     // ws_topic 생성
-    let mut ws_topic = WsTopic::new(topic_msg_tx, redis_clinet.clone(), redis_pool.clone());
+    let mut ws_topic = WsTopic::new(topic_msg_tx, redis_clinet.clone());
 
     // 만약 sender_task가 종료되면 recv_task에게 정리하고 종료 하라고 신호를 보내는용
     let (ws_sender_dead_tx, mut ws_sender_dead_rx) = tokio::sync::watch::channel(());

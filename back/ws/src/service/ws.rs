@@ -1,18 +1,20 @@
 use std::collections::HashSet;
 
-use bb8_redis::redis::AsyncCommands;
+use redis::AsyncCommands;
 
 use crate::model::{WsConnUserId, WsConnWsId, WsRecvCtx, msg::ServerWsMsg};
 
 pub async fn create_ws_conn_user(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> {
-    let mut rconn = ctx.rpool.get_owned().await?;
+    let mut rconn = ctx.rpool.get().await?;
 
     // 해당 user_id가 존재하는데
     // user_id가 있으면 ws_id에 ws_id push 하고 전송
     // user_id가 없으면 새로만들어서 전송
+
     let ws_conn_user_id_str = rconn
         .get::<String, Option<String>>(format!("ws_conn:user_id:{}", ctx.user_id))
         .await?;
+
     if let Some(ws_conn_user_id_str) = ws_conn_user_id_str {
         let mut ws_conn_user_id = serde_json::from_str::<WsConnUserId>(&ws_conn_user_id_str)?;
         ws_conn_user_id.ws_ids.insert(ctx.ws_id.to_string());
@@ -51,7 +53,8 @@ pub async fn create_ws_conn_user(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> 
 }
 
 pub async fn get_ws_conn_ws_id(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<Option<WsConnWsId>> {
-    let mut rconn = ctx.rpool.get_owned().await?;
+    let mut rconn = ctx.rpool.get().await?;
+
     let key = format!("ws_conn:ws_id:{}", ctx.ws_id);
     let ws_conn_ws_id_str = rconn.get::<&str, Option<String>>(&key).await?;
     if let Some(ws_conn_ws_id_str) = ws_conn_ws_id_str {
@@ -63,7 +66,7 @@ pub async fn get_ws_conn_ws_id(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<Option
 }
 
 pub async fn ws_conn_ws_id_topic_add(ctx: &mut WsRecvCtx<'_>, topic: &str) -> anyhow::Result<()> {
-    let mut rconn = ctx.rpool.get_owned().await?;
+    let mut rconn = ctx.rpool.get().await?;
     let key = format!("ws_conn:ws_id:{}", ctx.ws_id);
     let ws_conn_ws_id_str = rconn.get::<&str, Option<String>>(&key).await?;
     if let Some(ws_conn_ws_id_str) = ws_conn_ws_id_str {
@@ -78,7 +81,7 @@ pub async fn ws_conn_ws_id_topic_add(ctx: &mut WsRecvCtx<'_>, topic: &str) -> an
 }
 
 pub async fn ws_conn_ws_id_topic_del(ctx: &mut WsRecvCtx<'_>, topic: &str) -> anyhow::Result<()> {
-    let mut rconn = ctx.rpool.get_owned().await?;
+    let mut rconn = ctx.rpool.get().await?;
     let key = format!("ws_conn:ws_id:{}", ctx.ws_id);
     let ws_conn_ws_id_str = rconn.get::<&str, Option<String>>(&key).await?;
     if let Some(ws_conn_ws_id_str) = ws_conn_ws_id_str {
@@ -95,7 +98,7 @@ pub async fn ws_conn_ws_id_topic_del(ctx: &mut WsRecvCtx<'_>, topic: &str) -> an
 pub async fn delete_ws_conn_user(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> {
     // user_id 에 ws_id 에 해당하는거 있으면 지워줌
     // 만약 마지막 ws_id라면 user_id 제거
-    let mut rconn = ctx.rpool.get_owned().await?;
+    let mut rconn = ctx.rpool.get().await?;
     let ws_id_key = format!("ws_conn:ws_id:{}", ctx.ws_id);
     rconn.del::<&str, ()>(&ws_id_key).await?;
 

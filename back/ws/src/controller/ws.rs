@@ -1,5 +1,6 @@
 use crate::{
     app::state::{ArcWsAppState, WsShutDown},
+    model::WsRecvCtx,
     service::process_client_msg::process_clinet_msg,
     ws_topic::WsTopic,
 };
@@ -21,7 +22,7 @@ use common::{
 use futures::{SinkExt, StreamExt};
 use nanoid::nanoid;
 use serde::Deserialize;
-use std::sync::atomic::Ordering;
+use std::{ops::ControlFlow, sync::atomic::Ordering};
 
 pub fn ws_router(_state: ArcWsAppState) -> Router<ArcWsAppState> {
     Router::new().route("/ws/hahaha", get(ws_upgrade))
@@ -50,7 +51,7 @@ pub async fn ws_upgrade(
 
     let response = ws_upgrade.on_upgrade(move |socket| async move {
         let ws_id = nanoid!();
-        let res = ws(
+        ws(
             socket,
             ws_shut_down,
             &ws_id,
@@ -59,9 +60,6 @@ pub async fn ws_upgrade(
             redis_pool,
         )
         .await;
-        if let Err(err) = res {
-            tracing::warn!("ws err: {err:?}, user: {user:?}, ws_id: {ws_id:?}");
-        }
     });
     Ok(response)
 }
@@ -85,20 +83,12 @@ pub async fn ws(
     mut shutdown: WsShutDown,
     ws_id: &str,
     user: &User,
-    redis_clinet: redis::Client,
+    mut redis_clinet: redis::Client,
     mut redis_pool: bb8::Pool<RedisConnectionManager>,
-) -> anyhow::Result<()> {
+) {
     let ws_id = ws_id.to_string();
     let user_id = user.id.to_string();
-
-    let _ = crate::service::ws::create_ws_conn_user(&mut redis_pool, &ws_id, &user_id).await;
-
-    tracing::info!(
-        "ws start, ws_id: {}, user: {:?}, connection_count: {:?}",
-        ws_id,
-        user,
-        shutdown.connection_count
-    );
+    let user_nick_name = user.nick_name.to_string();
 
     // ws 통신 소켓 생성
     let (mut sender, mut receiver) = socket.split();
@@ -107,10 +97,7 @@ pub async fn ws(
     let (topic_msg_tx, mut topic_msg_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
 
     // ws_topic 생성
-    let mut ws_topic = WsTopic::new(topic_msg_tx, redis_clinet, redis_pool.clone());
-
-    // 기본적으로 사용자와 소통할 토픽 자동 생성
-    ws_topic.subscribe(&format!("user:{ws_id}"));
+    let mut ws_topic = WsTopic::new(topic_msg_tx, redis_clinet.clone(), redis_pool.clone());
 
     // 만약 sender_task가 종료되면 recv_task에게 정리하고 종료 하라고 신호를 보내는용
     let (ws_sender_dead_tx, mut ws_sender_dead_rx) = tokio::sync::watch::channel(());
@@ -121,19 +108,42 @@ pub async fn ws(
     // recv task 종료전에 최종 ws 정리 로직을 수행해야한다.
     let mut ws_recv_task = tokio::spawn(async move {
         shutdown.connection_count.fetch_add(1, Ordering::SeqCst);
+        tracing::debug!(
+            "ws start, ws_id: {}, connection_count: {:?}",
+            ws_id,
+            shutdown.connection_count
+        );
+
+        // recv task 수행중 사용되는 요소들 집합 생성
+        let mut ctx = WsRecvCtx {
+            rclient: &mut redis_clinet,
+            rpool: &mut redis_pool,
+            ws_topic: &mut ws_topic,
+            ws_id: &ws_id,
+            user_id: &user_id,
+            nick_name: &user_nick_name,
+        };
+
+        // ws 시작시 해야할것들
+        // 기본적으로 사용자와 소통할 토픽 자동 생성
+        {
+            let _ = crate::service::ws::create_ws_conn_user(&mut ctx).await;
+
+            let ws_topic = format!("ws_id:{ws_id}");
+            let _ = crate::service::ws::subscribe_topic(&mut ctx, &ws_topic).await;
+
+            let room_list_topic = format!("room_list_update");
+            let _ = crate::service::ws::subscribe_topic(&mut ctx, &room_list_topic).await;
+        }
 
         // recv 처리
         loop {
             tokio::select! {
                 // client 메시지처리
                 msg = receiver.next() => {
-                    let is_break_loop = process_clinet_msg(msg, &mut redis_pool, &ws_id, &mut ws_topic).await;
-                    match is_break_loop {
-                        Ok(is_break_loop) => {
-                            if is_break_loop {
-                                break;
-                            }
-                        },
+                    match process_clinet_msg(msg, &mut ctx).await {
+                        Ok(ControlFlow::Continue(_)) => continue,
+                        Ok(ControlFlow::Break(_)) => break,
                         Err(err) => {
                             tracing::warn!("procss_client_msg err: {err:?}");
                             break;
@@ -147,17 +157,20 @@ pub async fn ws(
                 }
                 // sendertask abort
                 _ = ws_sender_dead_rx.changed() => {
+                    tracing::warn!("ws_sender_dead_rx");
                     break;
                 }
             }
         }
 
         // 이제 ws 종료전에 정리할 로직은 여기에
-        ws_topic.unsubscribe(&format!("user:{ws_id}"));
-        let _ = crate::service::ws::delete_ws_conn_user(&mut redis_pool, &ws_id, &user_id).await;
+        {
+            ctx.ws_topic.unsubscribe_all();
+            let _ = crate::service::ws::delete_ws_conn_user(&mut ctx).await;
+        }
 
         shutdown.connection_count.fetch_sub(1, Ordering::SeqCst);
-        tracing::info!("ws end,  ws_id: {}", ws_id);
+        tracing::debug!("ws end,  ws_id: {}", ws_id);
     });
 
     // ws_topic 들로부터 오는 메시지를 ws 클라에게 단순 전달한다.
@@ -185,7 +198,6 @@ pub async fn ws(
         }
         _ = &mut ws_send_task => {
             // send_task가 종료될일은 거의 없을거다.
-            tracing::warn!("send_task 종료??? 확인 필요");
 
             // recv_task를 abort 할수는 없다.
             // recv_task를 abort 해버리면 정리 로직이 수행되지 않을수 있다.
@@ -195,6 +207,4 @@ pub async fn ws(
             }
         }
     };
-
-    Ok(())
 }

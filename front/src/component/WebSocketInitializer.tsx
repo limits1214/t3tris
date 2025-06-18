@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import useWebSocket from "react-use-websocket";
 import { useWsStore } from "../store/useWsStore";
 import { tokenRefresh } from "../api/auth";
+import { useRoomStore } from "../store/useRoomStore";
+import { useRoomListStore } from "../store/useRoomListStore";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
@@ -12,6 +14,13 @@ const WebSocketInitializer = () => {
   const setSend = useWsStore(s=>s.setSend);
   const setLastMessage = useWsStore(s=>s.setLastMessage);
   const setReadyState = useWsStore(s=>s.setReadyState);
+
+  const roomEnter = useRoomStore(s=>s.enter);
+  const roomAddChat = useRoomStore(s=>s.addChat);
+  const roomUpdate = useRoomStore(s=>s.update);
+  
+
+  const roomListUpdate = useRoomListStore(s=>s.updateRoomList);
 
   const {sendMessage, lastMessage, readyState} = useWebSocket(socketUrl, {
     onOpen: () => {
@@ -62,7 +71,7 @@ const WebSocketInitializer = () => {
       return;
     }
     const lastMessageData = lastMessage.data;
-    // console.log(lastMessageData)
+    console.log('lm',lastMessageData)
     setLastMessage(lastMessageData)
     const {t, d} = JSON.parse(lastMessageData)
     
@@ -72,6 +81,18 @@ const WebSocketInitializer = () => {
         break;
       case 'topicEcho':
         console.log('topicEcho', d)
+        break;
+      case 'roomEnter':
+        roomEnter(d.roomInfo);
+        break;
+      case 'roomChat':
+        roomAddChat(d);
+        break;
+      case 'roomListFetch':
+        roomListUpdate(d.rooms)
+        break;
+      case 'roomUpdate':
+        roomUpdate(d.roomInfo)
         break;
       default:
         console.log('ws t not match, t: ', t)

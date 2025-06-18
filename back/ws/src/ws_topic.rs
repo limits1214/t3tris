@@ -75,17 +75,20 @@ impl WsTopic {
         );
     }
 
-    pub async fn publish(&self, topic: &str, message: &str) -> anyhow::Result<()> {
-        let mut publish_conn = self.redis_pool.get_owned().await?;
-        publish_conn
-            .publish::<String, String, ()>(topic.to_string(), message.to_string())
-            .await?;
-        Ok(())
-    }
+    // pub async fn publish(&mut self, topic: &str, message: &str) -> anyhow::Result<()> {
+    //     crate::util::redis::publish(&mut self.redis_pool, topic, message).await?;
+    //     Ok(())
+    // }
 
     pub fn unsubscribe(&mut self, topic: &str) {
         if let Some(handle) = self.topics.remove(topic) {
             handle.abort();
+        }
+    }
+
+    pub fn unsubscribe_all(&mut self) {
+        for (_k, v) in &self.topics {
+            v.abort();
         }
     }
 }

@@ -1,69 +1,74 @@
+use crate::model::{WsRecvCtx, msg::ClientWsMsg};
+use anyhow::Context;
 use axum::extract::ws::Message;
-use bb8_redis::{RedisConnectionManager, redis::AsyncCommands};
-
-use crate::{
-    model::ws::{ClientWsMsg, ServerWsMsg},
-    ws_topic::WsTopic,
-};
+use std::ops::ControlFlow;
 
 pub async fn process_clinet_msg(
     msg: Option<Result<Message, axum::Error>>,
-    redis_pool: &mut bb8::Pool<RedisConnectionManager>,
-    ws_id: &str,
-    ws_topic: &mut WsTopic,
-) -> anyhow::Result<bool> {
+    ctx: &mut WsRecvCtx<'_>,
+) -> anyhow::Result<ControlFlow<()>> {
     match msg {
         Some(Ok(Message::Text(text))) => {
             tracing::debug!("ws_in_text: {text:?}");
 
             match serde_json::from_str::<ClientWsMsg>(&text)? {
                 ClientWsMsg::Ping => {
-                    let server_msg = ServerWsMsg::Pong;
-                    let server_msg_str = serde_json::to_string(&server_msg)?;
-
-                    let mut publish_conn = redis_pool.get_owned().await?;
-                    publish_conn
-                        .publish::<String, String, ()>(format!("user:{ws_id}"), server_msg_str)
-                        .await?;
+                    crate::service::ws::ping(ctx)
+                        .await
+                        .with_context(|| "Ping")?;
                 }
                 ClientWsMsg::Echo { msg } => {
-                    let server_msg = ServerWsMsg::Echo { msg: msg };
-                    let server_msg_str = serde_json::to_string(&server_msg)?;
-
-                    let mut publish_conn = redis_pool.get_owned().await?;
-                    publish_conn
-                        .publish::<String, String, ()>(format!("user:{ws_id}"), server_msg_str)
-                        .await?;
-                }
-                ClientWsMsg::SubscribeTopic { topic } => {
-                    ws_topic.subscribe(&topic);
-                }
-                ClientWsMsg::UnSubscribeTopic { topic } => {
-                    ws_topic.unsubscribe(&topic);
+                    crate::service::ws::echo(ctx, msg)
+                        .await
+                        .with_context(|| "Echo")?;
                 }
                 ClientWsMsg::TopicEcho { topic, msg } => {
-                    let server_msg = ServerWsMsg::TopicEcho {
-                        topic: topic.clone(),
-                        msg,
-                    };
-                    let server_msg_str = serde_json::to_string(&server_msg)?;
-                    ws_topic.publish(&topic, &server_msg_str).await?;
+                    crate::service::ws::topic_echo(ctx, &topic, msg)
+                        .await
+                        .with_context(|| format!("TopicEcho, topic: {topic}"))?;
                 }
-                ClientWsMsg::CreateRoom { room_name } => {
-                    //
-                    let _a = room_name;
-                    // let con = redis_pool.get_owned().await?;
+                ClientWsMsg::SubscribeTopic { topic } => {
+                    crate::service::ws::subscribe_topic(ctx, &topic)
+                        .await
+                        .with_context(|| format!("SubscribeTopic, topic: {topic}"))?;
                 }
-                ClientWsMsg::FetchRoom => {
-                    //
+                ClientWsMsg::UnSubscribeTopic { topic } => {
+                    crate::service::ws::unsubscribe_topic(ctx, &topic)
+                        .await
+                        .with_context(|| format!("UnSubscribeTopic, topic: {topic}"))?;
+                }
+                ClientWsMsg::RoomCreate { room_name } => {
+                    crate::service::room::room_create(ctx, &room_name)
+                        .await
+                        .with_context(|| "RoomCreate")?;
+                }
+                ClientWsMsg::RoomChat { room_id, msg } => {
+                    crate::service::room::room_chat(ctx, &room_id, &msg)
+                        .await
+                        .with_context(|| "RoomChat")?;
+                }
+                ClientWsMsg::RoomEnter { room_id } => {
+                    crate::service::room::room_enter(ctx, &room_id)
+                        .await
+                        .with_context(|| format!("RoomEnter, room_id: {room_id}"))?;
+                }
+                ClientWsMsg::RoomLeave { room_id } => {
+                    crate::service::room::room_leave(ctx, &room_id)
+                        .await
+                        .with_context(|| format!("RoomLeave, room_id: {room_id}"))?;
+                }
+                ClientWsMsg::RoomListFetch => {
+                    crate::service::room::room_list_fetch(ctx)
+                        .await
+                        .with_context(|| "RoomListFetch")?;
                 }
             }
         }
         None => {
-            return Ok(true);
+            tracing::warn!("msg is none, break!");
+            return Ok(ControlFlow::Break(()));
         }
         _ => {}
     }
-
-    Ok(false)
+    Ok(ControlFlow::Continue(()))
 }

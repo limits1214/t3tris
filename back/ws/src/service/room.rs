@@ -1,7 +1,7 @@
 use crate::model::{
     WsRecvCtx,
-    msg::ServerWsMsg,
     room::{RoomChats, RoomEvents, RoomInfo, RoomUser},
+    ws_msg::ServerToClientWsMsg,
 };
 use nanoid::nanoid;
 use redis::AsyncCommands;
@@ -59,7 +59,7 @@ pub async fn room_create(ctx: &mut WsRecvCtx<'_>, room_name: &str) -> anyhow::Re
     // ctx.ws_topic
     // .subscribe(&format!("room:{room_id}:ws_id:{}", ctx.ws_id));
 
-    let pubmsg = ServerWsMsg::RoomEnter {
+    let pubmsg = ServerToClientWsMsg::RoomEnter {
         room_info: room_info,
     };
     let pubmsg_str = serde_json::to_string(&pubmsg)?;
@@ -95,7 +95,7 @@ pub async fn room_chat(ctx: &mut WsRecvCtx<'_>, room_id: &str, msg: &str) -> any
         .rpush::<String, String, ()>(format!("room:{room_id}:chats"), room_chats_str.clone())
         .await?;
 
-    let server_msg_room_chat = ServerWsMsg::RoomChat {
+    let server_msg_room_chat = ServerToClientWsMsg::RoomChat {
         timestamp: room_chats.timestamp,
         nick_name: room_chats.nick_name,
         user_id: room_chats.user_id,
@@ -141,7 +141,7 @@ pub async fn room_enter(ctx: &mut WsRecvCtx<'_>, room_id: &str) -> anyhow::Resul
         .await?;
 
     // 방 update publish
-    let server_ws_room_update = ServerWsMsg::RoomUpdate {
+    let server_ws_room_update = ServerToClientWsMsg::RoomUpdate {
         room_info: room_info,
     };
     let server_ws_room_update_str = serde_json::to_string(&server_ws_room_update)?;
@@ -220,7 +220,7 @@ pub async fn room_leave(ctx: &mut WsRecvCtx<'_>, room_id: &str) -> anyhow::Resul
             .await?;
 
         // room update ws publish
-        let server_ws_room_update = ServerWsMsg::RoomUpdate {
+        let server_ws_room_update = ServerToClientWsMsg::RoomUpdate {
             room_info: room_info,
         };
         let server_ws_room_update_str = serde_json::to_string(&server_ws_room_update)?;
@@ -277,7 +277,7 @@ pub async fn room_leave(ctx: &mut WsRecvCtx<'_>, room_id: &str) -> anyhow::Resul
                 .await?;
 
             // room update ws publish
-            let server_ws_room_update = ServerWsMsg::RoomUpdate {
+            let server_ws_room_update = ServerToClientWsMsg::RoomUpdate {
                 room_info: room_info,
             };
             let server_ws_room_update_str = serde_json::to_string(&server_ws_room_update)?;
@@ -313,7 +313,7 @@ pub async fn room_leave(ctx: &mut WsRecvCtx<'_>, room_id: &str) -> anyhow::Resul
                 .await?;
 
             // room update ws publish
-            let server_ws_room_update = ServerWsMsg::RoomUpdate {
+            let server_ws_room_update = ServerToClientWsMsg::RoomUpdate {
                 room_info: room_info,
             };
             let server_ws_room_update_str = serde_json::to_string(&server_ws_room_update)?;
@@ -349,7 +349,7 @@ pub async fn room_list_fetch(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> {
         }
     }
 
-    let server_msg_rooms = ServerWsMsg::RoomListFetch { rooms };
+    let server_msg_rooms = ServerToClientWsMsg::RoomListFetch { rooms };
     let server_msg_rooms_str = serde_json::to_string(&server_msg_rooms)?;
     crate::util::redis::publish(
         ctx.rpool,

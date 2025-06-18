@@ -38,8 +38,8 @@ const Topic = () => {
   const subscribe = () => {
     console.log('subscribe click! topic: ', topic);
     const obj = {
-      t: 'subscribeTopic',
-      d: {
+      type: 'subscribeTopic',
+      data: {
         topic
       }
     };
@@ -49,8 +49,8 @@ const Topic = () => {
   const unsubscribe = () => {
     console.log('unsubscribe click! topic: ', topic)
     const obj = {
-      t: 'unSubscribeTopic',
-      d: {
+      type: 'unSubscribeTopic',
+      data: {
         topic
       }
     };
@@ -60,8 +60,8 @@ const Topic = () => {
   const topicEcho = () => {
     console.log('topicEcho click! topic: ', topic)
     const obj = {
-      t: 'topicEcho',
-      d: {
+      type: 'topicEcho',
+      data: {
         topic,
         msg: echo
       }
@@ -92,8 +92,8 @@ const Rooms = () => {
   const send = useWsStore(s=>s.send);
   const createRoom = () => {
     const obj = {
-      t: 'roomCreate',
-      d: {
+      type: 'roomCreate',
+      data: {
         roomName
       }
     }
@@ -101,15 +101,15 @@ const Rooms = () => {
   }
   const fetchRoom = () => {
     const obj = {
-      t: 'roomListFetch',
+      type: 'roomListFetch',
     }
     send(JSON.stringify(obj));
   }
 
   const enterRoom = (roomId: string) => {
      const obj = {
-      t: 'roomEnter',
-      d: {
+      type: 'roomEnter',
+      data: {
         roomId
       }
     }
@@ -155,8 +155,8 @@ const Room = () => {
       return;
     }
     const obj = {
-      t: 'roomChat',
-      d: {
+      type: 'roomChat',
+      data: {
         roomId,
         msg: chat
       }
@@ -169,8 +169,8 @@ const Room = () => {
       return;
     }
     const obj = {
-      t: 'roomLeave',
-      d: {
+      type: 'roomLeave',
+      data: {
         roomId
       }
     };

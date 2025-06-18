@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use crate::ws_topic::WsTopic;
 use serde::{Deserialize, Serialize};
 
-pub mod msg;
 pub mod room;
+pub mod ws_msg;
 
 pub struct WsRecvCtx<'a> {
     pub rclient: &'a mut redis::Client,

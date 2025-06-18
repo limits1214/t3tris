@@ -34,8 +34,8 @@ const WebSocketInitializer = () => {
     // },
     heartbeat: {
       interval: 1000 * 30,
-      message: JSON.stringify({t: 'ping'}),
-      returnMessage: JSON.stringify({t: 'pong'}),
+      message: JSON.stringify({type: 'ping'}),
+      returnMessage: JSON.stringify({type: 'pong'}),
     }
   });
 
@@ -73,29 +73,29 @@ const WebSocketInitializer = () => {
     const lastMessageData = lastMessage.data;
     console.log('lm',lastMessageData)
     setLastMessage(lastMessageData)
-    const {t, d} = JSON.parse(lastMessageData)
+    const {type, data} = JSON.parse(lastMessageData)
     
-    switch (t) {
+    switch (type) {
       case 'echo':
-        console.log('echo message: ', d)
+        console.log('echo message: ', data)
         break;
       case 'topicEcho':
-        console.log('topicEcho', d)
+        console.log('topicEcho', data)
         break;
       case 'roomEnter':
-        roomEnter(d.roomInfo);
+        roomEnter(data.roomInfo);
         break;
       case 'roomChat':
-        roomAddChat(d);
+        roomAddChat(data);
         break;
       case 'roomListFetch':
-        roomListUpdate(d.rooms)
+        roomListUpdate(data.rooms)
         break;
       case 'roomUpdate':
-        roomUpdate(d.roomInfo)
+        roomUpdate(data.roomInfo)
         break;
       default:
-        console.log('ws t not match, t: ', t)
+        console.log('ws t not match, t: ', type)
     }
     
   }, [lastMessage])

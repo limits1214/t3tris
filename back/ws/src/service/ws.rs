@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use redis::AsyncCommands;
 
-use crate::model::{WsConnUserId, WsConnWsId, WsRecvCtx, msg::ServerWsMsg};
+use crate::model::{WsConnUserId, WsConnWsId, WsRecvCtx, ws_msg::ServerToClientWsMsg};
 
 pub async fn create_ws_conn_user(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> {
     let mut rconn = ctx.rpool.get().await?;
@@ -120,7 +120,7 @@ pub async fn delete_ws_conn_user(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> 
 }
 
 pub async fn ping(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> {
-    let server_msg = ServerWsMsg::Pong;
+    let server_msg = ServerToClientWsMsg::Pong;
     let server_msg_str = serde_json::to_string(&server_msg)?;
     crate::util::redis::publish(ctx.rpool, &format!("ws_id:{}", ctx.ws_id), &server_msg_str)
         .await?;
@@ -128,7 +128,7 @@ pub async fn ping(ctx: &mut WsRecvCtx<'_>) -> anyhow::Result<()> {
 }
 
 pub async fn echo(ctx: &mut WsRecvCtx<'_>, msg: String) -> anyhow::Result<()> {
-    let server_msg = ServerWsMsg::Echo { msg: msg };
+    let server_msg = ServerToClientWsMsg::Echo { msg: msg };
     let server_msg_str = serde_json::to_string(&server_msg)?;
     crate::util::redis::publish(ctx.rpool, &format!("ws_id:{}", ctx.ws_id), &server_msg_str)
         .await?;
@@ -136,7 +136,7 @@ pub async fn echo(ctx: &mut WsRecvCtx<'_>, msg: String) -> anyhow::Result<()> {
 }
 
 pub async fn topic_echo(ctx: &mut WsRecvCtx<'_>, topic: &str, msg: String) -> anyhow::Result<()> {
-    let server_msg = ServerWsMsg::TopicEcho {
+    let server_msg = ServerToClientWsMsg::TopicEcho {
         topic: topic.to_owned(),
         msg,
     };

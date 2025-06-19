@@ -1,11 +1,8 @@
 use crate::{
     app::state::{ArcWsAppState, WsShutDown},
-    colon,
-    constant::TOPIC_WS_ID,
-    inmemory_pubsub::InMemPubsubCommand,
-    model::ws_world::{WsRecvCtx, WsWorldUser, ws_topic::WsTopic},
+    model::WsRecvCtx,
     service::process_client_msg::process_clinet_msg,
-    ws_world::{Pubsub, Ws, WsWorldCommand},
+    ws_topic::WsTopic,
 };
 use axum::{
     Router,
@@ -19,15 +16,15 @@ use axum::{
 use common::{
     entity::user::User,
     error::{AppResult, AuthError},
-    extractor::db::DbConn,
+    extractor::{db::DbConn, redis::RedisClient},
 };
 use futures::{SinkExt, StreamExt};
 use nanoid::nanoid;
 use serde::Deserialize;
 use std::{ops::ControlFlow, sync::atomic::Ordering};
 
-pub fn ws_router(_state: ArcWsAppState) -> Router<ArcWsAppState> {
-    Router::new().route("/ws/haha", get(ws_upgrade))
+pub fn redisws_router(_state: ArcWsAppState) -> Router<ArcWsAppState> {
+    Router::new().route("/ws/hahaha", get(ws_upgrade))
 }
 
 #[derive(Deserialize, Debug)]
@@ -43,9 +40,8 @@ pub async fn ws_upgrade(
     ws_upgrade: WebSocketUpgrade,
     State(ws_shut_down): State<WsShutDown>,
     Query(WsQuery { access_token }): Query<WsQuery>,
-    State(state): State<ArcWsAppState>, //
-                                        // RedisClient(redis_client): RedisClient,
-                                        // State(redis_pool): State<deadpool_redis::Pool>,
+    RedisClient(redis_client): RedisClient,
+    State(redis_pool): State<deadpool_redis::Pool>,
 ) -> AppResult<impl IntoResponse> {
     let access_token_claim = common::util::jwt::decode_access_token(&access_token)?;
     let user = common::repository::user::select_user_by_id(&mut conn, &access_token_claim.sub)
@@ -59,7 +55,8 @@ pub async fn ws_upgrade(
             ws_shut_down,
             &ws_id,
             &user,
-            state.0.ws_world_command_tx.clone(),
+            redis_client,
+            redis_pool,
         )
         .await;
     });
@@ -85,7 +82,8 @@ pub async fn ws(
     mut shutdown: WsShutDown,
     ws_id: &str,
     user: &User,
-    mut ws_world_command_tx: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
+    mut redis_clinet: redis::Client,
+    mut redis_pool: deadpool_redis::Pool,
 ) {
     let ws_id = ws_id.to_string();
     let user_id = user.id.to_string();
@@ -97,7 +95,8 @@ pub async fn ws(
     // ws_topic <-> sender 에서 통신할 채널 생성
     let (topic_msg_tx, mut topic_msg_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
 
-    // let mut ws_topic = WsTopic::new(topic_msg_tx, ws_world_command_tx.clone());
+    // ws_topic 생성
+    let mut ws_topic = WsTopic::new(topic_msg_tx, redis_clinet.clone());
 
     // 만약 sender_task가 종료되면 recv_task에게 정리하고 종료 하라고 신호를 보내는용
     let (ws_sender_dead_tx, mut ws_sender_dead_rx) = tokio::sync::watch::channel(());
@@ -116,33 +115,21 @@ pub async fn ws(
 
         // recv task 수행중 사용되는 요소들 집합 생성
         let mut ctx = WsRecvCtx {
+            rclient: &mut redis_clinet,
+            rpool: &mut redis_pool,
+            ws_topic: &mut ws_topic,
             ws_id: &ws_id,
             user_id: &user_id,
             nick_name: &user_nick_name,
-            // ws_topic: &mut ws_topic,
-            ws_world_command_tx: &mut ws_world_command_tx,
         };
 
         // ws 시작시 해야할것들
         // 기본적으로 사용자와 소통할 토픽 자동 생성
         {
-            // create user
-            // ctx.create_ws_user();
-            let user = WsWorldUser {
-                user_id: user_id.clone(),
-                ws_id: ws_id.clone(),
-                nick_name: user_nick_name.clone(),
-            };
-            ctx.ws_world_command_tx
-                .send(WsWorldCommand::Ws(Ws::CreateUser {
-                    user,
-                    ws_sender_tx: topic_msg_tx,
-                }));
-            ctx.ws_world_command_tx
-                .send(WsWorldCommand::Pubsub(Pubsub::Subscribe {
-                    ws_id: ws_id.to_string(),
-                    topic: colon!(TOPIC_WS_ID, ws_id),
-                }));
+            let _ = crate::service::ws::create_ws_conn_user(&mut ctx).await;
+
+            let ws_topic = format!("ws_id:{ws_id}");
+            let _ = crate::service::ws::subscribe_topic(&mut ctx, &ws_topic).await;
         }
 
         // recv 처리
@@ -174,12 +161,25 @@ pub async fn ws(
 
         // 이제 ws 종료전에 정리할 로직은 여기에
         {
-            //
-            // ctx.delete_ws_user();
-            ctx.ws_world_command_tx
-                .send(WsWorldCommand::Ws(Ws::DeleteUser {
-                    ws_id: ws_id.to_string(),
-                }));
+            let ws_conn_ws_id = crate::service::ws::get_ws_conn_ws_id(&mut ctx)
+                .await
+                .ok()
+                .flatten();
+            if let Some(ws_conn_ws_id) = ws_conn_ws_id {
+                for topic in ws_conn_ws_id.topics.iter() {
+                    let split = topic.split(":").collect::<Vec<_>>();
+                    if split.len() == 2 && split[0].starts_with("room_id") {
+                        let room_id = split[1];
+                        let err = crate::service::room::process_room_leave(&mut ctx, room_id).await;
+                        if let Err(err) = err {
+                            tracing::warn!("clean up err: {err:?}");
+                        }
+                    };
+                }
+            }
+
+            ctx.ws_topic.unsubscribe_all();
+            let _ = crate::service::ws::delete_ws_conn_user(&mut ctx).await;
         }
 
         shutdown.connection_count.fetch_sub(1, Ordering::SeqCst);

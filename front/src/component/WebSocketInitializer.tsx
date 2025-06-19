@@ -50,7 +50,7 @@ const WebSocketInitializer = () => {
     const connect = async () => {
       try {
         const accessToken = await tokenRefresh();
-        setSocketUrl(`${apiUrl}/ws/hahaha?access_token=${accessToken}`);
+        setSocketUrl(`${apiUrl}/ws/haha?access_token=${accessToken}`);
       } catch (e) {
         console.error(e)
       }

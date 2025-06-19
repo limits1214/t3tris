@@ -33,7 +33,7 @@ export default TestWsPage
 const Topic = () => {
   const send = useWsStore(s=>s.send);
   const [topic, setTopic] = useState('');
-  const [echo, setEcho] = useState('');
+  const [topicEcho, setTopicEcho] = useState('');
 
   const subscribe = () => {
     console.log('subscribe click! topic: ', topic);
@@ -57,29 +57,47 @@ const Topic = () => {
     send(JSON.stringify(obj));
   }
 
-  const topicEcho = () => {
-    console.log('topicEcho click! topic: ', topic)
+  const hanleTopicEcho = () => {
+    console.log('topicEcho click! topic: ', topicEcho)
     const obj = {
       type: 'topicEcho',
       data: {
         topic,
-        msg: echo
+        msg: topicEcho
       }
     };
     send(JSON.stringify(obj));
   }
 
+  const [echo, setEcho] = useState('');
+  const handleEcho = () => {
+    const obj = {
+      type: 'echo',
+      data: {
+        msg: echo
+      }
+    };
+    send(JSON.stringify(obj));
+  }
   return (
     <div>
       <h4>Topic</h4>
       <div>
+        <p>echo</p>
+        <input type="text" onChange={e=>setEcho(e.target.value)}/>
+        <button onClick={handleEcho}>echo</button>
+      </div>
+      <hr />
+      <div>
+        <p>subscribe/unsubscribe topic</p>
         <input type="text" onChange={e=>setTopic(e.target.value)}/>
         <button onClick={subscribe}>subscribe</button>
         <button onClick={unsubscribe}>unsubscribe</button>
       </div>
       <div>
-        <input type="text" onChange={e=>setEcho(e.target.value)}/>
-        <button onClick={topicEcho}>topic echo</button>
+        <p>topicEhco</p>
+        <input type="text" onChange={e=>setTopicEcho(e.target.value)}/>
+        <button onClick={hanleTopicEcho}>topic echo</button>
       </div>
     </div>
   )
@@ -99,12 +117,12 @@ const Rooms = () => {
     }
     send(JSON.stringify(obj));
   }
-  const fetchRoom = () => {
-    const obj = {
-      type: 'roomListFetch',
-    }
-    send(JSON.stringify(obj));
-  }
+  // const fetchRoom = () => {
+  //   const obj = {
+  //     type: 'roomListFetch',
+  //   }
+  //   send(JSON.stringify(obj));
+  // }
 
   const subscribeRoomList = () => {
     const obj = {

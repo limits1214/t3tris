@@ -4,7 +4,7 @@ use axum::extract::FromRef;
 use common::app_state::CommonAppState;
 use sqlx::PgPool;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ApiAppState {
     pub common: CommonAppState,
 }
@@ -25,11 +25,6 @@ impl ArcApiAppState {
 impl Clone for ArcApiAppState {
     fn clone(&self) -> Self {
         Self(self.0.clone())
-    }
-}
-impl FromRef<ArcApiAppState> for CommonAppState {
-    fn from_ref(input: &ArcApiAppState) -> Self {
-        input.0.common.clone()
     }
 }
 impl FromRef<ArcApiAppState> for PgPool {

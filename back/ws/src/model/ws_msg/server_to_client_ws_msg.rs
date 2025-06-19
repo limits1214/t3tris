@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::model::room::{RoomChat, RoomInfo};
+use crate::model::ws_world::{WsWorldRoom, WsWorldRoomChat};
 
 /// server -> client
 #[derive(Debug, Serialize, Deserialize)]
@@ -15,12 +15,11 @@ pub enum ServerToClientWsMsg {
     Echo { msg: String },
     #[serde(rename_all = "camelCase")]
     TopicEcho { topic: String, msg: String },
-
     // === 룸관련 ===
     #[serde(rename_all = "camelCase")]
     RoomEnter {
-        room_info: RoomInfo,
-        chats: Vec<RoomChat>,
+        room: WsWorldRoom,
+        chats: Vec<WsWorldRoomChat>,
     },
     #[serde(rename_all = "camelCase")]
     RoomChat {
@@ -32,9 +31,9 @@ pub enum ServerToClientWsMsg {
         msg: String,
     },
     #[serde(rename_all = "camelCase")]
-    RoomListFetch { rooms: Vec<RoomInfo> },
+    RoomListFetch { rooms: Vec<WsWorldRoom> },
     #[serde(rename_all = "camelCase")]
-    RoomUpdated { room_info: RoomInfo },
+    RoomUpdated { room: WsWorldRoom },
     #[serde(rename_all = "camelCase")]
-    RoomListUpdated { rooms: Vec<RoomInfo> },
+    RoomListUpdated { rooms: Vec<WsWorldRoom> },
 }

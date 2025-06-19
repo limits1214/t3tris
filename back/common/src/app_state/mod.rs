@@ -2,7 +2,7 @@ use sqlx::PgPool;
 mod init;
 use crate::app_state::init::{init_db_pool, init_dead_pool_redis, init_redis_client};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct CommonAppState {
     pub redis_pool: deadpool_redis::Pool,
     pub redis_client: redis::Client,

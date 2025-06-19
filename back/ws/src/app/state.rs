@@ -4,18 +4,25 @@ use sqlx::PgPool;
 use std::sync::{Arc, atomic::AtomicUsize};
 use tokio::sync::watch;
 
-#[derive(Debug, Clone)]
+use crate::ws_world::WsWorldCommand;
+
+#[derive(Debug)]
 pub struct WsAppState {
     pub common: CommonAppState,
     pub ws_shut_down: WsShutDown,
+    pub ws_world_command_tx: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
 }
 impl WsAppState {
-    pub async fn new() -> Self {
+    pub async fn new(
+        ws_world_command_tx: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
+    ) -> Self {
         let common = CommonAppState::new().await;
         let ws_shut_down = WsShutDown::new();
+
         Self {
             common,
             ws_shut_down,
+            ws_world_command_tx,
         }
     }
 }
@@ -31,6 +38,7 @@ pub struct WsShutDown {
     /// 클론 가능한 shutdown 수신 채널
     pub shutdown_rx: watch::Receiver<()>,
 }
+
 impl WsShutDown {
     pub fn new() -> Self {
         let (shutdown_tx, shutdown_rx) = watch::channel(());
@@ -45,18 +53,15 @@ impl WsShutDown {
 pub struct ArcWsAppState(pub Arc<WsAppState>);
 
 impl ArcWsAppState {
-    pub async fn new() -> Self {
-        Self(Arc::new(WsAppState::new().await))
+    pub async fn new(
+        ws_world_command_tx: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
+    ) -> Self {
+        Self(Arc::new(WsAppState::new(ws_world_command_tx).await))
     }
 }
 impl Clone for ArcWsAppState {
     fn clone(&self) -> Self {
         Self(self.0.clone())
-    }
-}
-impl FromRef<ArcWsAppState> for CommonAppState {
-    fn from_ref(input: &ArcWsAppState) -> Self {
-        input.0.common.clone()
     }
 }
 impl FromRef<ArcWsAppState> for PgPool {
@@ -69,7 +74,6 @@ impl FromRef<ArcWsAppState> for WsShutDown {
         input.0.ws_shut_down.clone()
     }
 }
-
 impl FromRef<ArcWsAppState> for deadpool_redis::Pool {
     fn from_ref(input: &ArcWsAppState) -> Self {
         input.0.common.redis_pool.clone()

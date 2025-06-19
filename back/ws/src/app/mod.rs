@@ -6,7 +6,7 @@ use tower_http::{
     compression::CompressionLayer, cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer,
 };
 
-use crate::{app::state::ArcWsAppState, controller::init_controller_ws_router};
+use crate::{app::state::ArcWsAppState, controller::init_controller_ws_router, ws_world::WsWorld};
 
 pub mod state;
 
@@ -19,7 +19,8 @@ pub async fn app_start() {
 }
 
 async fn init_axum() {
-    let arc_app_state = ArcWsAppState::new().await;
+    let (ws_world_command_tx, ws_wolrd_handle) = WsWorld::init();
+    let arc_app_state = ArcWsAppState::new(ws_world_command_tx).await;
     let router_controller = init_controller_ws_router(arc_app_state.clone()).await;
 
     let router = Router::new()
@@ -57,6 +58,7 @@ async fn init_axum() {
         .with_graceful_shutdown(init_shutdown_signal(arc_app_state))
         .await
         .unwrap();
+    ws_wolrd_handle.abort();
 }
 
 async fn init_listener(server_port: u32) -> tokio::net::TcpListener {

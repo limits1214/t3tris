@@ -2,24 +2,18 @@ use nanoid::nanoid;
 
 use crate::{
     constant::TOPIC_ROOM_LIST_UPDATE,
-    model::{
-        ws_msg::ServerToClientWsMsg,
-        ws_world::{WsRecvCtx, WsWorldRoom, WsWorldRoomUser, WsWorldUser},
-    },
+    model::ws_world::{WsRecvCtx, WsWorldRoom, WsWorldRoomUser},
     ws_world::{Room, WsWorldCommand},
 };
 
 impl WsRecvCtx<'_> {
-    pub async fn room_list_update_subscribe(&mut self) -> anyhow::Result<()> {
-        self.topic_subscribe(TOPIC_ROOM_LIST_UPDATE).await?;
-        Ok(())
+    pub fn room_list_update_subscribe(&mut self) {
+        self.topic_subscribe(TOPIC_ROOM_LIST_UPDATE);
     }
-    pub async fn room_list_update_unsubscribe(&mut self) -> anyhow::Result<()> {
-        self.topic_subscribe(TOPIC_ROOM_LIST_UPDATE).await?;
-        Ok(())
+    pub fn room_list_update_unsubscribe(&mut self) {
+        self.topic_unsubscribe(TOPIC_ROOM_LIST_UPDATE);
     }
-    pub async fn room_create(&mut self, room_name: &str) -> anyhow::Result<()> {
-        //
+    pub fn room_create(&mut self, room_name: &str) {
         let room_user = WsWorldRoomUser {
             user_id: self.user_id.to_owned(),
             ws_id: self.ws_id.to_owned(),
@@ -34,20 +28,8 @@ impl WsRecvCtx<'_> {
             room_users: vec![room_user],
             room_event: vec![],
         };
-        self.ws_world_command_tx
-            .send(WsWorldCommand::Room(Room::CreateRoom {
-                room: room.clone(),
-            }))?;
-
-        // get room list and publish
-        let (tx, rx) = tokio::sync::oneshot::channel::<Vec<WsWorldRoom>>();
-        self.ws_world_command_tx
-            .send(WsWorldCommand::Room(Room::GetRoomList { tx }))?;
-        let rooms = rx.await?;
-        let server_msg = ServerToClientWsMsg::RoomListUpdated { rooms };
-        let server_msg_str = serde_json::to_string(&server_msg)?;
-        // self.ws_topic
-        //     .publish(TOPIC_ROOM_LIST_UPDATE, &server_msg_str);
-        Ok(())
+        let _ = self
+            .ws_world_command_tx
+            .send(WsWorldCommand::Room(Room::Create { room: room.clone() }));
     }
 }

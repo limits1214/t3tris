@@ -37,3 +37,14 @@ pub enum ServerToClientWsMsg {
     #[serde(rename_all = "camelCase")]
     RoomListUpdated { rooms: Vec<WsWorldRoom> },
 }
+impl ServerToClientWsMsg {
+    pub fn to_json(&self) -> String {
+        match serde_json::to_string(&self) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to serialize ServerToClientWsMsg: {e:?}");
+                "{}".to_string()
+            }
+        }
+    }
+}

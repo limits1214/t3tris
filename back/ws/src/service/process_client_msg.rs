@@ -1,5 +1,4 @@
 use crate::model::{ws_msg::ClientToServerWsMsg, ws_world::WsRecvCtx};
-use anyhow::Context;
 use axum::extract::ws::Message;
 use std::ops::ControlFlow;
 
@@ -14,19 +13,16 @@ pub async fn process_clinet_msg(
 
             match serde_json::from_str::<ClientToServerWsMsg>(&text)? {
                 Ping => {
-                    ctx.ping().with_context(|| "Ping")?;
+                    ctx.ping();
                 }
                 Echo { msg } => {
-                    ctx.echo(&msg).with_context(|| "Echo")?;
+                    ctx.echo(&msg);
                 }
                 TopicEcho { topic, msg } => {
-                    ctx.topic_echo(&topic, &msg)
-                        .with_context(|| format!("TopicEcho topic: {topic}, msg: {msg}"))?;
+                    ctx.topic_echo(&topic, &msg);
                 }
                 SubscribeTopic { topic } => {
-                    ctx.topic_subscribe(&topic)
-                        .await
-                        .with_context(|| format!("SubscribeTopic, topic: {topic}"))?;
+                    ctx.topic_subscribe(&topic);
                 }
                 UnSubscribeTopic { topic } => {
                     ctx.topic_unsubscribe(&topic);
@@ -57,14 +53,10 @@ pub async fn process_clinet_msg(
                     //     .with_context(|| "RoomListFetch")?;
                 }
                 RoomListUpdateSubscribe => {
-                    // crate::service::room::process_room_list_update_subscribe(ctx)
-                    //     .await
-                    //     .with_context(|| "RoomListUpdateSubscribe")?;
+                    ctx.room_list_update_subscribe();
                 }
                 RoomListUpdateUnSubscribe => {
-                    // crate::service::room::process_room_list_update_unsubscribe(ctx)
-                    //     .await
-                    //     .with_context(|| "RoomListUpdateUnSubscribe")?;
+                    ctx.room_list_update_unsubscribe();
                 }
             }
         }

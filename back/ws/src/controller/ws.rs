@@ -1,14 +1,11 @@
 use crate::{
     app::state::{ArcWsAppState, WsShutDown},
-    colon,
-    constant::TOPIC_WS_ID,
-    inmemory_pubsub::InMemPubsubCommand,
-    model::ws_world::{WsRecvCtx, WsWorldUser, ws_topic::WsTopic},
+    model::ws_world::WsRecvCtx,
     service::process_client_msg::process_clinet_msg,
-    ws_world::{Pubsub, Ws, WsWorldCommand},
+    ws_world::{Ws, WsWorldCommand},
 };
 use axum::{
-    Router,
+    Json, Router,
     extract::{
         Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
@@ -27,7 +24,16 @@ use serde::Deserialize;
 use std::{ops::ControlFlow, sync::atomic::Ordering};
 
 pub fn ws_router(_state: ArcWsAppState) -> Router<ArcWsAppState> {
-    Router::new().route("/ws/haha", get(ws_upgrade))
+    Router::new().route("/ws/haha", get(ws_upgrade)).route(
+        "/ws/haha/info",
+        get(async |State(s): State<ArcWsAppState>| {
+            let (tx, rx) = tokio::sync::oneshot::channel::<serde_json::Value>();
+            let _ =
+                s.0.ws_world_command_tx
+                    .send(WsWorldCommand::Ws(Ws::GetWsWorldInfo { tx }));
+            Json(rx.await.unwrap())
+        }),
+    )
 }
 
 #[derive(Deserialize, Debug)]
@@ -43,9 +49,7 @@ pub async fn ws_upgrade(
     ws_upgrade: WebSocketUpgrade,
     State(ws_shut_down): State<WsShutDown>,
     Query(WsQuery { access_token }): Query<WsQuery>,
-    State(state): State<ArcWsAppState>, //
-                                        // RedisClient(redis_client): RedisClient,
-                                        // State(redis_pool): State<deadpool_redis::Pool>,
+    State(state): State<ArcWsAppState>,
 ) -> AppResult<impl IntoResponse> {
     let access_token_claim = common::util::jwt::decode_access_token(&access_token)?;
     let user = common::repository::user::select_user_by_id(&mut conn, &access_token_claim.sub)
@@ -69,17 +73,10 @@ pub async fn ws_upgrade(
 /// Ws Client
 ///             ---> Ws Server recv_task
 ///                                     receiver 에서 클라메시지를 받고
-///                                     *비지니스 로직* 을 처리한다.
+///                                     비지니스 로직 을 처리한다.
 ///                                     처리후 sender 를통해 메시지를 보낸다.
 ///             <--- Ws Server send_task
 ///                                     단순히 클라이언트로 메시지를 전달한다.
-///
-/// topic 기준으로 subscribe, publish 하도록 한다.
-/// 기본적으로 사용자에게 전달할 user topic은 자동으로 만들어진다.
-///
-/// ws_topic은 redis pubsub을 사용
-/// redis_client는 pubsub 사용을위한 커넥션을 ws 연결동안 온전히 소유해야 한다.
-/// redis_pool은 application 에 풀링하고있는 레디스 커넥션을 꺼내쓰고 반납한다. 캐시 처리나 publish에서 사용한다.
 pub async fn ws(
     socket: WebSocket,
     mut shutdown: WsShutDown,
@@ -96,8 +93,6 @@ pub async fn ws(
 
     // ws_topic <-> sender 에서 통신할 채널 생성
     let (topic_msg_tx, mut topic_msg_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
-
-    // let mut ws_topic = WsTopic::new(topic_msg_tx, ws_world_command_tx.clone());
 
     // 만약 sender_task가 종료되면 recv_task에게 정리하고 종료 하라고 신호를 보내는용
     let (ws_sender_dead_tx, mut ws_sender_dead_rx) = tokio::sync::watch::channel(());
@@ -124,25 +119,8 @@ pub async fn ws(
         };
 
         // ws 시작시 해야할것들
-        // 기본적으로 사용자와 소통할 토픽 자동 생성
         {
-            // create user
-            // ctx.create_ws_user();
-            let user = WsWorldUser {
-                user_id: user_id.clone(),
-                ws_id: ws_id.clone(),
-                nick_name: user_nick_name.clone(),
-            };
-            ctx.ws_world_command_tx
-                .send(WsWorldCommand::Ws(Ws::CreateUser {
-                    user,
-                    ws_sender_tx: topic_msg_tx,
-                }));
-            ctx.ws_world_command_tx
-                .send(WsWorldCommand::Pubsub(Pubsub::Subscribe {
-                    ws_id: ws_id.to_string(),
-                    topic: colon!(TOPIC_WS_ID, ws_id),
-                }));
+            ctx.create_ws_user(topic_msg_tx);
         }
 
         // recv 처리
@@ -172,14 +150,9 @@ pub async fn ws(
             }
         }
 
-        // 이제 ws 종료전에 정리할 로직은 여기에
+        // ws 종료전에 정리할 로직은 여기에
         {
-            //
-            // ctx.delete_ws_user();
-            ctx.ws_world_command_tx
-                .send(WsWorldCommand::Ws(Ws::DeleteUser {
-                    ws_id: ws_id.to_string(),
-                }));
+            ctx.delete_ws_user();
         }
 
         shutdown.connection_count.fetch_sub(1, Ordering::SeqCst);

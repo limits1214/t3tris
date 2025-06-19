@@ -1,14 +1,10 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use tokio::task::JoinHandle;
 
-use crate::{model::ws_world::ws_topic::WsTopic, ws_world::WsWorldCommand};
-
-pub mod ws_topic;
+use crate::ws_world::WsWorldCommand;
 
 pub struct WsRecvCtx<'a> {
     pub ws_world_command_tx: &'a mut tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
-    // pub ws_topic: &'a mut WsTopic,
     pub ws_id: &'a str,
     pub user_id: &'a str,
     pub nick_name: &'a str,
@@ -18,7 +14,6 @@ pub struct WsWorldUser {
     pub user_id: String,
     pub ws_id: String,
     pub nick_name: String,
-    // pub topics: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

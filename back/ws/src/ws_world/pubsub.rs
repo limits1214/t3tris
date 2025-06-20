@@ -1,12 +1,17 @@
 use std::collections::HashMap;
 
-use crate::ws_world::{Topic, WsId, WsWorldUserTopicHandle};
+use crate::ws_world::{Topic, WsId};
 
 #[derive(Debug)]
 pub struct WsPubSub {
     pub pubsub: HashMap<Topic, tokio::sync::broadcast::Sender<String>>,
     // topic broadcast 채널을 각 유저 ws sender와 연결시켜놓은 태스크 핸들
     pub user_topic_handle: HashMap<WsId, WsWorldUserTopicHandle>,
+}
+#[derive(Debug)]
+pub struct WsWorldUserTopicHandle {
+    pub sender: tokio::sync::mpsc::UnboundedSender<String>,
+    pub topics: HashMap<Topic, tokio::task::JoinHandle<()>>,
 }
 
 impl WsPubSub {

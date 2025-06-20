@@ -3,7 +3,11 @@ use std::collections::HashMap;
 use crate::{
     colon,
     constant::TOPIC_WS_ID,
-    ws_world::{WsData, WsWorldUserTopicHandle, model::WsWorldUser, pubsub::WsPubSub},
+    ws_world::{
+        WsData,
+        model::WsWorldUser,
+        pubsub::{WsPubSub, WsWorldUserTopicHandle},
+    },
 };
 
 pub fn get_ws_world_info(data: &mut WsData, pubsub: &mut WsPubSub) -> serde_json::Value {

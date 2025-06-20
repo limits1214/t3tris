@@ -17,12 +17,6 @@ mod ws;
 
 type OneShot<T> = tokio::sync::oneshot::Sender<T>;
 
-#[derive(Debug)]
-pub struct WsWorldUserTopicHandle {
-    sender: tokio::sync::mpsc::UnboundedSender<String>,
-    topics: HashMap<Topic, tokio::task::JoinHandle<()>>,
-}
-
 type WsId = String;
 type Topic = String;
 

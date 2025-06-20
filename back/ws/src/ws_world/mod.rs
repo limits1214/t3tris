@@ -2,51 +2,21 @@ use std::collections::HashMap;
 
 use tokio::task::JoinHandle;
 
-use crate::model::ws_world::{WsWorldRoom, WsWorldUser};
+use crate::ws_world::{
+    command::{Pubsub, Room, Ws, WsWorldCommand},
+    model::{WsWorldRoom, WsWorldUser},
+};
 
 pub mod command;
+pub mod model;
 mod pubsub;
+mod room;
+mod util;
+mod ws;
 
 type OneShot<T> = tokio::sync::oneshot::Sender<T>;
 
-pub enum WsWorldCommand {
-    Pubsub(Pubsub),
-    Room(Room),
-    Ws(Ws),
-}
-
-pub enum Ws {
-    GetWsWorldInfo {
-        tx: OneShot<serde_json::Value>,
-    },
-    CreateUser {
-        // user 정보
-        ws_id: String,
-        user_id: String,
-        nick_name: String,
-        // user 가가지고 있는 ws_sender_tx
-        ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
-    },
-    DeleteUser {
-        ws_id: String,
-    },
-}
-
-pub enum Pubsub {
-    Subscribe { ws_id: String, topic: String },
-    UnSubscribe { ws_id: String, topic: String },
-    Publish { topic: String, msg: String },
-}
-
-// TODO: Kick, Ban, Invite,
-pub enum Room {
-    Create { room: WsWorldRoom },
-    // 마지막 인원은 방 제거
-    Leave {},
-    Enter {},
-    Chat {},
-}
-
+#[derive(Debug)]
 pub struct WsWorldUserTopicHandle {
     sender: tokio::sync::mpsc::UnboundedSender<String>,
     topics: HashMap<Topic, tokio::task::JoinHandle<()>>,
@@ -55,6 +25,7 @@ pub struct WsWorldUserTopicHandle {
 type WsId = String;
 type Topic = String;
 
+#[derive(Debug)]
 pub struct WsWorld {
     users: Vec<WsWorldUser>,
     rooms: Vec<WsWorldRoom>,
@@ -124,12 +95,28 @@ impl WsWorld {
                 }
             },
             WsWorldCommand::Room(room) => match room {
-                Room::Create { room } => {
-                    self.rooms.push(room);
+                Room::Create { room_name, ws_id } => {
+                    room::create(self, ws_id, room_name);
                 }
-                Room::Leave {} => todo!(),
-                Room::Enter {} => todo!(),
-                Room::Chat {} => todo!(),
+                Room::Leave { ws_id, room_id } => {
+                    room::leave(self, ws_id, room_id);
+                }
+                Room::Enter { ws_id, room_id } => {
+                    room::enter(self, ws_id, room_id);
+                }
+                Room::Chat {
+                    ws_id,
+                    room_id,
+                    msg,
+                } => {
+                    room::chat(self, ws_id, room_id, msg);
+                }
+                Room::RoomListSubscribe { ws_id } => {
+                    room::room_list_subscribe(self, ws_id);
+                }
+                Room::RoomListUnSubscribe { ws_id } => {
+                    room::room_list_unsubscribe(self, ws_id);
+                }
             },
             WsWorldCommand::Pubsub(pubsub) => match pubsub {
                 Pubsub::Subscribe { ws_id, topic } => pubsub::subscribe(self, &ws_id, &topic),
@@ -139,91 +126,5 @@ impl WsWorld {
         }
 
         Ok(())
-    }
-}
-
-impl WsWorld {}
-
-mod room {
-    use crate::{
-        constant::TOPIC_ROOM_LIST_UPDATE,
-        model::ws_msg::ServerToClientWsMsg,
-        ws_world::{WsWorld, pubsub},
-    };
-
-    fn create(world: &mut WsWorld) {
-        let rooms = world.rooms.clone();
-
-        pubsub::publish(
-            world,
-            TOPIC_ROOM_LIST_UPDATE,
-            &ServerToClientWsMsg::RoomListUpdated { rooms }.to_json(),
-        );
-    }
-}
-
-mod ws {
-    use std::collections::HashMap;
-
-    use crate::{
-        colon,
-        constant::TOPIC_WS_ID,
-        model::ws_world::WsWorldUser,
-        ws_world::{WsWorld, WsWorldUserTopicHandle, pubsub},
-    };
-
-    pub fn get_ws_world_info(world: &mut WsWorld) -> serde_json::Value {
-        let pubsub_info = world
-            .pubsub
-            .iter()
-            .map(|(topic, sender)| (topic, sender.receiver_count()))
-            .collect::<Vec<_>>();
-
-        let user_topic = world
-            .user_topic_handle
-            .iter()
-            .map(|(ws_id, h)| (ws_id, h.topics.keys().collect::<Vec<_>>()))
-            .collect::<Vec<_>>();
-        let j = serde_json::json!({
-            "users" : world.users.clone(),
-            "rooms" : world.rooms.clone(),
-            "pubsub": pubsub_info,
-            "user_topic": user_topic
-        });
-        j
-    }
-
-    pub fn create_user(
-        world: &mut WsWorld,
-        user: WsWorldUser,
-        ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
-    ) {
-        world.users.push(user.clone());
-        world.user_topic_handle.insert(
-            user.ws_id.clone(),
-            WsWorldUserTopicHandle {
-                sender: ws_sender_tx,
-                topics: HashMap::new(),
-            },
-        );
-
-        pubsub::subscribe(world, &user.ws_id, &colon!(TOPIC_WS_ID, user.ws_id));
-    }
-
-    pub fn delete_user(world: &mut WsWorld, ws_id: &str) {
-        if let Some(idx) = world.users.iter().position(|u| u.ws_id == ws_id) {
-            world.users.remove(idx);
-        } else {
-            tracing::warn!("User Delete fail, not find idx");
-        };
-
-        // 중요!, 핸들 지우기
-        if let Some(user_topic_handle) = world.user_topic_handle.get(ws_id) {
-            let topics = user_topic_handle.topics.keys().cloned().collect::<Vec<_>>();
-            for topic in topics {
-                pubsub::unsubscribe(world, &ws_id, &topic);
-            }
-        }
-        world.user_topic_handle.remove(ws_id);
     }
 }

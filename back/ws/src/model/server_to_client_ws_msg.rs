@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::model::ws_world::{WsWorldRoom, WsWorldRoomChat};
-
 /// server -> client
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,25 +15,16 @@ pub enum ServerToClientWsMsg {
     TopicEcho { topic: String, msg: String },
     // === 룸관련 ===
     #[serde(rename_all = "camelCase")]
-    RoomEnter {
-        room: WsWorldRoom,
-        chats: Vec<WsWorldRoomChat>,
-    },
-    #[serde(rename_all = "camelCase")]
     RoomChat {
         #[serde(with = "time::serde::rfc3339")]
         timestamp: OffsetDateTime,
-        nick_name: String,
-        user_id: String,
-        ws_id: String,
+        user: User,
         msg: String,
     },
     #[serde(rename_all = "camelCase")]
-    RoomListFetch { rooms: Vec<WsWorldRoom> },
+    RoomUpdated { room: Room },
     #[serde(rename_all = "camelCase")]
-    RoomUpdated { room: WsWorldRoom },
-    #[serde(rename_all = "camelCase")]
-    RoomListUpdated { rooms: Vec<WsWorldRoom> },
+    RoomListUpdated { rooms: Vec<Room> },
 }
 impl ServerToClientWsMsg {
     pub fn to_json(&self) -> String {
@@ -47,4 +36,20 @@ impl ServerToClientWsMsg {
             }
         }
     }
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct User {
+    pub user_id: String,
+    pub ws_id: String,
+    pub nick_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Room {
+    pub room_id: String,
+    pub room_name: String,
+    pub room_host_user: Option<User>,
+    pub room_users: Vec<User>,
 }

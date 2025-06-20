@@ -163,7 +163,7 @@ const Rooms = () => {
       <div>
         {rooms.map(room=>(
           <div key={room.roomId}>
-            <span>{room.roomName}</span>, <span>{room.users.length}</span>
+            <span>{room.roomName}</span>, <span>{room.roomUsers.length}</span>
             <button onClick={()=>enterRoom(room.roomId)}>enter</button>
           </div>
         ))}
@@ -227,7 +227,7 @@ const Room = () => {
       <br />
       {chats.map(v=>(
         <div key={v.timestamp}>
-          [{v.timestamp}][{v.nickName}]: {v.msg}
+          [{v.timestamp}][{v.user.nickName}]: {v.msg}
         </div>
       ))}
     </div>

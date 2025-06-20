@@ -90,7 +90,7 @@ pub fn unsubscribe(world: &mut WsWorld, ws_id: &str, topic: &str) {
 }
 
 /// 해당 pubsub 토픽에 메시지를 퍼블리시 한다.
-pub fn publish(world: &mut WsWorld, topic: &str, msg: &str) {
+pub fn publish(world: &WsWorld, topic: &str, msg: &str) {
     if let Some(broad_sender) = world.pubsub.get(topic) {
         if let Err(err) = broad_sender.send(msg.to_owned()) {
             tracing::warn!("topic_publish {err:?}");

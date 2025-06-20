@@ -15,7 +15,7 @@ const WebSocketInitializer = () => {
   const setLastMessage = useWsStore(s=>s.setLastMessage);
   const setReadyState = useWsStore(s=>s.setReadyState);
 
-  const roomEnter = useRoomStore(s=>s.enter);
+  // const roomEnter = useRoomStore(s=>s.enter);
   const roomAddChat = useRoomStore(s=>s.addChat);
   const roomUpdate = useRoomStore(s=>s.update);
   
@@ -83,7 +83,7 @@ const WebSocketInitializer = () => {
         console.log('topicEcho', data)
         break;
       case 'roomEnter':
-        roomEnter(data.roomInfo);
+        // roomEnter(data.room);
         break;
       case 'roomChat':
         roomAddChat(data);
@@ -92,7 +92,7 @@ const WebSocketInitializer = () => {
         roomListUpdate(data.rooms)
         break;
       case 'roomUpdated':
-        roomUpdate(data.roomInfo)
+        roomUpdate(data.room)
         break;
       case 'roomListUpdated':
         roomListUpdate(data.rooms)

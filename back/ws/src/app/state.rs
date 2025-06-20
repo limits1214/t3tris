@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use std::sync::{Arc, atomic::AtomicUsize};
 use tokio::sync::watch;
 
-use crate::ws_world::WsWorldCommand;
+use crate::ws_world::command::WsWorldCommand;
 
 #[derive(Debug)]
 pub struct WsAppState {

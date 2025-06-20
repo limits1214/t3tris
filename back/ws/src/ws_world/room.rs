@@ -4,15 +4,15 @@ use time::OffsetDateTime;
 use crate::{
     colon,
     constant::{TOPIC_ROOM_ID, TOPIC_ROOM_LIST_UPDATE, TOPIC_WS_ID},
-    model::server_to_client_ws_msg::{self, Room, ServerToClientWsMsg},
+    model::server_to_client_ws_msg::{self, ServerToClientWsMsg},
     ws_world::{
-        WsWorld,
+        WsData,
         model::{WsWorldRoom, WsWorldRoomEvent},
-        pubsub,
+        pubsub::WsPubSub,
     },
 };
 
-pub fn create(world: &mut WsWorld, ws_id: String, room_name: String) {
+pub fn create(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_name: String) {
     // 방생생하면
     // rooms에 추가
     // enter
@@ -28,21 +28,21 @@ pub fn create(world: &mut WsWorld, ws_id: String, room_name: String) {
         }],
         is_deleted: false,
     };
-    world.rooms.push(room.clone());
+    data.rooms.push(room.clone());
 
-    enter(world, ws_id, room.room_id);
+    enter(data, pubsub, ws_id, room.room_id);
 }
 
-pub fn enter(world: &mut WsWorld, ws_id: String, room_id: String) {
-    let Some(user) = world.users.iter().find(|u| u.ws_id == ws_id).cloned() else {
+pub fn enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: String) {
+    let Some(user) = data.users.iter().find(|u| u.ws_id == ws_id).cloned() else {
         dbg!();
         return;
     };
-    let Some(room_idx) = world.rooms.iter().position(|u| u.room_id == room_id) else {
+    let Some(room_idx) = data.rooms.iter().position(|u| u.room_id == room_id) else {
         dbg!();
         return;
     };
-    if let Some(room) = world.rooms.get_mut(room_idx) {
+    if let Some(room) = data.rooms.get_mut(room_idx) {
         //만약 이미 존재하는 ws_id면 취소
         let exists = room.room_ws_ids.iter().find(|r_ws_id| *r_ws_id == &ws_id);
         if exists.is_some() {
@@ -68,26 +68,20 @@ pub fn enter(world: &mut WsWorld, ws_id: String, room_id: String) {
     }
 
     // 방, 방개인 토픽 구독
-    pubsub::subscribe(world, &ws_id, &colon!(TOPIC_ROOM_ID, room_id));
-    pubsub::subscribe(
-        world,
-        &ws_id,
-        &colon!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id),
-    );
+    pubsub.subscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id));
+    pubsub.subscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id));
     // 개인 토픽에 현재 방 퍼블리시
-    let Some(stc_room) = crate::ws_world::util::gen_json_room(world, &room_id) else {
+    let Some(stc_room) = crate::ws_world::util::gen_json_room(data, &room_id) else {
         dbg!();
         return;
     };
-    pubsub::publish(
-        world,
+    pubsub.publish(
         &colon!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::RoomUpdated { room: stc_room }.to_json(),
     );
 
     // 방에 방입장 시스템챗 퍼블리시
-    pubsub::publish(
-        world,
+    pubsub.publish(
         &colon!(TOPIC_ROOM_ID, room_id),
         &ServerToClientWsMsg::RoomChat {
             timestamp: OffsetDateTime::now_utc(),
@@ -102,9 +96,8 @@ pub fn enter(world: &mut WsWorld, ws_id: String, room_id: String) {
     );
 
     // 방목록 토픽에게 방목록 퍼블리시
-    let stc_room_list = crate::ws_world::util::gen_json_room_list(world);
-    pubsub::publish(
-        world,
+    let stc_room_list = crate::ws_world::util::gen_json_room_list(data);
+    pubsub.publish(
         TOPIC_ROOM_LIST_UPDATE,
         &ServerToClientWsMsg::RoomListUpdated {
             rooms: stc_room_list,
@@ -118,13 +111,13 @@ pub fn enter(world: &mut WsWorld, ws_id: String, room_id: String) {
 // 마지막 사람은 아니면서
 //  호스트이다 => ws_id에 첫번째 호스트로 올림
 //  호스트가 아니다 => 걍 나가셈
-pub fn leave(world: &mut WsWorld, ws_id: String, room_id: String) {
-    let Some(user) = world.users.iter().find(|u| u.ws_id == ws_id).cloned() else {
+pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: String) {
+    let Some(user) = data.users.iter().find(|u| u.ws_id == ws_id).cloned() else {
         dbg!();
         return;
     };
 
-    let Some(room) = world.rooms.iter_mut().find(|u| u.room_id == room_id) else {
+    let Some(room) = data.rooms.iter_mut().find(|u| u.room_id == room_id) else {
         dbg!();
         return;
     };
@@ -147,6 +140,20 @@ pub fn leave(world: &mut WsWorld, ws_id: String, room_id: String) {
         timestamp: OffsetDateTime::now_utc(),
         msg: format!("{} 방 퇴장", user.nick_name),
     });
+    // 방에 방퇴장 시스템챗 퍼블리시
+    pubsub.publish(
+        &colon!(TOPIC_ROOM_ID, room_id),
+        &ServerToClientWsMsg::RoomChat {
+            timestamp: OffsetDateTime::now_utc(),
+            user: server_to_client_ws_msg::User {
+                user_id: "System".to_owned(),
+                ws_id: "System".to_owned(),
+                nick_name: "System".to_owned(),
+            },
+            msg: format!("{} 방 퇴장", user.nick_name),
+        }
+        .to_json(),
+    );
 
     let mut new_host = None;
     if room.room_ws_ids.is_empty() {
@@ -176,44 +183,25 @@ pub fn leave(world: &mut WsWorld, ws_id: String, room_id: String) {
     }
 
     // 해당 방, 방개인 구독 해제
-    pubsub::unsubscribe(world, &ws_id, &colon!(TOPIC_ROOM_ID, room_id));
-    pubsub::unsubscribe(
-        world,
+    pubsub.unsubscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id));
+    pubsub.unsubscribe(
         &ws_id.clone(),
         &colon!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id),
     );
 
     // 방에 퍼블리시
-    let Some(stc_room) = crate::ws_world::util::gen_json_room(world, &room_id) else {
+    let Some(stc_room) = crate::ws_world::util::gen_json_room(data, &room_id) else {
         return;
     };
-    pubsub::publish(
-        world,
+    pubsub.publish(
         &colon!(TOPIC_ROOM_ID, room_id),
         &ServerToClientWsMsg::RoomUpdated { room: stc_room }.to_json(),
     );
 
-    // 방에 방퇴장 시스템챗 퍼블리시
-    pubsub::publish(
-        world,
-        &colon!(TOPIC_ROOM_ID, room_id),
-        &ServerToClientWsMsg::RoomChat {
-            timestamp: OffsetDateTime::now_utc(),
-            user: server_to_client_ws_msg::User {
-                user_id: "System".to_owned(),
-                ws_id: "System".to_owned(),
-                nick_name: "System".to_owned(),
-            },
-            msg: format!("{} 방 퇴장", user.nick_name),
-        }
-        .to_json(),
-    );
-
     // new host
     if let Some(new_host) = new_host {
-        if let Some(user) = world.users.iter().find(|u| u.ws_id == new_host) {
-            pubsub::publish(
-                world,
+        if let Some(user) = data.users.iter().find(|u| u.ws_id == new_host) {
+            pubsub.publish(
                 &colon!(TOPIC_ROOM_ID, room_id),
                 &ServerToClientWsMsg::RoomChat {
                     timestamp: OffsetDateTime::now_utc(),
@@ -230,9 +218,8 @@ pub fn leave(world: &mut WsWorld, ws_id: String, room_id: String) {
     }
 
     // 방목록 토픽에게 방목록 퍼블리시
-    let stc_room_list = crate::ws_world::util::gen_json_room_list(world);
-    pubsub::publish(
-        world,
+    let stc_room_list = crate::ws_world::util::gen_json_room_list(data);
+    pubsub.publish(
         TOPIC_ROOM_LIST_UPDATE,
         &ServerToClientWsMsg::RoomListUpdated {
             rooms: stc_room_list,
@@ -241,15 +228,14 @@ pub fn leave(world: &mut WsWorld, ws_id: String, room_id: String) {
     );
 }
 
-pub fn chat(world: &mut WsWorld, ws_id: String, room_id: String, msg: String) {
-    let Some(user) = world.users.iter().find(|u| u.ws_id == ws_id).cloned() else {
+pub fn chat(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: String, msg: String) {
+    let Some(user) = data.users.iter().find(|u| u.ws_id == ws_id).cloned() else {
         dbg!();
         return;
     };
 
     // 채팅
-    pubsub::publish(
-        world,
+    pubsub.publish(
         &colon!(TOPIC_ROOM_ID, room_id),
         &ServerToClientWsMsg::RoomChat {
             timestamp: OffsetDateTime::now_utc(),
@@ -264,13 +250,12 @@ pub fn chat(world: &mut WsWorld, ws_id: String, room_id: String, msg: String) {
     );
 }
 
-pub fn room_list_subscribe(world: &mut WsWorld, ws_id: String) {
-    pubsub::subscribe(world, &ws_id, TOPIC_ROOM_LIST_UPDATE);
+pub fn room_list_subscribe(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String) {
+    pubsub.subscribe(&ws_id, TOPIC_ROOM_LIST_UPDATE);
 
     // 방목록 토픽에게 방목록 퍼블리시
-    let stc_room_list = crate::ws_world::util::gen_json_room_list(world);
-    pubsub::publish(
-        world,
+    let stc_room_list = crate::ws_world::util::gen_json_room_list(data);
+    pubsub.publish(
         &colon!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::RoomListUpdated {
             rooms: stc_room_list,
@@ -279,6 +264,6 @@ pub fn room_list_subscribe(world: &mut WsWorld, ws_id: String) {
     );
 }
 
-pub fn room_list_unsubscribe(world: &mut WsWorld, ws_id: String) {
-    pubsub::unsubscribe(world, &ws_id, TOPIC_ROOM_LIST_UPDATE);
+pub fn room_list_unsubscribe(pubsub: &mut WsPubSub, ws_id: String) {
+    pubsub.unsubscribe(&ws_id, TOPIC_ROOM_LIST_UPDATE);
 }

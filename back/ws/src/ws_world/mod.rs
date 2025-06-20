@@ -5,6 +5,7 @@ use tokio::task::JoinHandle;
 use crate::model::ws_world::{WsWorldRoom, WsWorldUser};
 
 pub mod command;
+mod pubsub;
 
 type OneShot<T> = tokio::sync::oneshot::Sender<T>;
 
@@ -35,7 +36,6 @@ pub enum Pubsub {
     Subscribe { ws_id: String, topic: String },
     UnSubscribe { ws_id: String, topic: String },
     Publish { topic: String, msg: String },
-    Cleanup,
 }
 
 // TODO: Kick, Ban, Invite,
@@ -132,18 +132,9 @@ impl WsWorld {
                 Room::Chat {} => todo!(),
             },
             WsWorldCommand::Pubsub(pubsub) => match pubsub {
-                Pubsub::Subscribe { ws_id, topic } => {
-                    pubsub::topic_subscribe(self, &ws_id, &topic);
-                }
-                Pubsub::UnSubscribe { ws_id, topic } => {
-                    pubsub::topic_unsubscribe(self, &ws_id, &topic);
-                }
-                Pubsub::Publish { topic, msg } => {
-                    pubsub::topic_publish(self, &topic, &msg);
-                }
-                Pubsub::Cleanup => {
-                    pubsub::pubsub_cleanup(self);
-                }
+                Pubsub::Subscribe { ws_id, topic } => pubsub::subscribe(self, &ws_id, &topic),
+                Pubsub::UnSubscribe { ws_id, topic } => pubsub::unsubscribe(self, &ws_id, &topic),
+                Pubsub::Publish { topic, msg } => pubsub::publish(self, &topic, &msg),
             },
         }
 
@@ -163,114 +154,11 @@ mod room {
     fn create(world: &mut WsWorld) {
         let rooms = world.rooms.clone();
 
-        pubsub::topic_publish(
+        pubsub::publish(
             world,
             TOPIC_ROOM_LIST_UPDATE,
             &ServerToClientWsMsg::RoomListUpdated { rooms }.to_json(),
         );
-    }
-}
-
-mod pubsub {
-    use crate::ws_world::WsWorld;
-    pub fn pubsub_cleanup(world: &mut WsWorld) {
-        let mut cleanup_topics = vec![];
-        for (topic, s) in world.pubsub.iter() {
-            if s.receiver_count() == 0 {
-                cleanup_topics.push(topic.clone());
-            }
-        }
-        for topic in cleanup_topics {
-            world.pubsub.remove(&topic);
-        }
-    }
-
-    pub fn topic_subscribe(world: &mut WsWorld, ws_id: &str, topic: &str) {
-        let mut broad_receiver = if let Some(broad_sender) = world.pubsub.get(&topic.to_string()) {
-            let broad_receiver = broad_sender.subscribe();
-            broad_receiver
-        } else {
-            let (s, _) = tokio::sync::broadcast::channel::<String>(16);
-            let broad_receiver = s.subscribe();
-            world.pubsub.insert(topic.to_string(), s);
-            broad_receiver
-        };
-
-        match world.user_topic_handle.get_mut(ws_id) {
-            Some(user_topic_handle) => {
-                //
-                match user_topic_handle.topics.get(topic) {
-                    Some(_) => {
-                        tracing::info!(
-                            "pubsub_subscribe, ws_id: {ws_id}, topic: {topic} is exists, subscrie ignored"
-                        );
-                    }
-                    None => {
-                        let ws_sender_tx = user_topic_handle.sender.clone();
-                        user_topic_handle.topics.insert(
-                            topic.to_string(),
-                            tokio::spawn(async move {
-                                loop {
-                                    match broad_receiver.recv().await {
-                                        Ok(msg) => {
-                                            if let Err(err) = ws_sender_tx.send(msg) {
-                                                tracing::warn!("send err:{err:?}")
-                                                // break;
-                                            }
-                                        }
-                                        Err(err) => match err {
-                                            tokio::sync::broadcast::error::RecvError::Closed => {
-                                                tracing::warn!("err: closed: {err:?}");
-                                                break;
-                                            }
-                                            tokio::sync::broadcast::error::RecvError::Lagged(_) => {
-                                                tracing::warn!("err: lagged: {err:?}");
-                                            }
-                                        },
-                                    }
-                                }
-                            }),
-                        );
-                    }
-                }
-            }
-            None => {
-                tracing::info!(
-                    "pubsub_subscribe, user_topic_handle ws_id: {ws_id} is empty, ignored"
-                );
-            }
-        }
-    }
-
-    pub fn topic_unsubscribe(world: &mut WsWorld, ws_id: &str, topic: &str) {
-        match world.user_topic_handle.get_mut(ws_id) {
-            Some(user_topic_handle) => match user_topic_handle.topics.get(topic) {
-                Some(handle) => {
-                    handle.abort();
-                    user_topic_handle.topics.remove(topic);
-                }
-                None => {
-                    tracing::info!(
-                        "pubsub_unsubscribe, ws_id: {ws_id}, topic: {topic} is empty, unsubscribe ignored"
-                    );
-                }
-            },
-            None => {
-                tracing::info!(
-                    "pubsub_unsubscribe, user_topic_handle ws_id: {ws_id} is empty, ignored"
-                );
-            }
-        }
-    }
-
-    pub fn topic_publish(world: &mut WsWorld, topic: &str, msg: &str) {
-        if let Some(broad_sender) = world.pubsub.get(topic) {
-            if let Err(err) = broad_sender.send(msg.to_owned()) {
-                tracing::warn!("Publish {err:?}");
-            }
-        } else {
-            tracing::warn!("Publish tomic missing topoic:{topic}, msg: {msg:?}");
-        }
     }
 }
 
@@ -319,7 +207,7 @@ mod ws {
             },
         );
 
-        pubsub::topic_subscribe(world, &user.ws_id, &colon!(TOPIC_WS_ID, user.ws_id));
+        pubsub::subscribe(world, &user.ws_id, &colon!(TOPIC_WS_ID, user.ws_id));
     }
 
     pub fn delete_user(world: &mut WsWorld, ws_id: &str) {
@@ -333,7 +221,7 @@ mod ws {
         if let Some(user_topic_handle) = world.user_topic_handle.get(ws_id) {
             let topics = user_topic_handle.topics.keys().cloned().collect::<Vec<_>>();
             for topic in topics {
-                pubsub::topic_unsubscribe(world, &ws_id, &topic);
+                pubsub::unsubscribe(world, &ws_id, &topic);
             }
         }
         world.user_topic_handle.remove(ws_id);

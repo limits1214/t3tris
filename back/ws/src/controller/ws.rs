@@ -6,10 +6,7 @@ use crate::{
         client_to_server_ws_msg::ClientToServerWsMsg::{self, *},
         server_to_client_ws_msg::ServerToClientWsMsg,
     },
-    ws_world::{
-        command::{Pubsub, Room, Ws, WsWorldCommand},
-        model::WsWorldRoom,
-    },
+    ws_world::command::{Pubsub, Room, Ws, WsWorldCommand},
 };
 use axum::{
     Json, Router,

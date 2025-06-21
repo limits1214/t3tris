@@ -44,12 +44,19 @@ pub struct User {
     pub ws_id: String,
     pub nick_name: String,
 }
-
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoomUser {
+    pub user_id: String,
+    pub ws_id: String,
+    pub nick_name: String,
+    pub is_game_ready: bool,
+}
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Room {
     pub room_id: String,
     pub room_name: String,
     pub room_host_user: Option<User>,
-    pub room_users: Vec<User>,
+    pub room_users: Vec<RoomUser>,
 }

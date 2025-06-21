@@ -224,6 +224,33 @@ const Room = () => {
       <button onClick={sendChat}>chat</button>
       <br />
       <button onClick={sendRoomLeave}>roomLeave</button>
+      <button onClick={() => {
+        const obj = {
+          type: 'roomGameReady',
+          data: {
+            roomId
+          }
+        };
+        send(JSON.stringify(obj));
+      }}>game ready</button>
+      <button onClick={() => {
+        const obj = {
+          type: 'roomGameUnReady',
+          data: {
+            roomId
+          }
+        };
+        send(JSON.stringify(obj));
+      }}>game unready</button>
+      <button onClick={() => {
+        const obj = {
+          type: 'roomGameStart',
+          data: {
+            roomId
+          }
+        };
+        send(JSON.stringify(obj));
+      }}>game start</button>
       <br />
       {chats.map(v=>(
         <div key={v.timestamp}>
@@ -233,3 +260,4 @@ const Room = () => {
     </div>
   )
 }
+

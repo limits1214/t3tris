@@ -1,5 +1,18 @@
+use std::time::{Duration, Instant};
+
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+
+pub type OneShot<T> = tokio::sync::oneshot::Sender<T>;
+pub type WsId = String;
+pub type Topic = String;
+
+#[derive(Debug)]
+pub struct WsData {
+    pub users: Vec<WsWorldUser>,
+    pub rooms: Vec<WsWorldRoom>,
+    pub games: Vec<WsWorldGame>,
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WsWorldUser {
@@ -13,9 +26,21 @@ pub struct WsWorldRoom {
     pub room_id: String,
     pub room_name: String,
     pub room_host_ws_id: Option<String>,
-    pub room_ws_ids: Vec<String>,
+    pub room_users: Vec<WsWorldRoomUser>,
     pub room_events: Vec<WsWorldRoomEvent>,
     pub is_deleted: bool,
+    pub room_status: WsWorldRoomStatus,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WsWorldRoomUser {
+    pub ws_id: String,
+    pub is_game_ready: bool,
+}
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+pub enum WsWorldRoomStatus {
+    Waiting,
+    Gaming,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -65,4 +90,35 @@ pub enum WsWorldRoomEvent {
         before_ws_id: Option<String>,
         after_ws_id: Option<String>,
     },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+
+pub struct WsWorldGame {
+    pub game_id: String,
+    pub room_id: String,
+    //
+    pub started_at: OffsetDateTime,
+    #[serde(skip)]
+    #[serde(default = "std::time::Instant::now")]
+    pub started: Instant,
+    #[serde(skip)]
+    #[serde(default = "std::time::Instant::now")]
+    pub now: Instant,
+    pub elapsed: Duration,
+    pub delta: Duration,
+    //
+    pub status: WsWorldGameStatus,
+    //
+    pub is_deleted: bool,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+pub enum WsWorldGameStatus {
+    BeforeGameStartTimerThree,
+    BeforeGameStartTimerTwo,
+    BeforeGameStartTimerOne,
+    GameStart,
+
+    GameEnd,
 }

@@ -313,6 +313,30 @@ pub fn process_clinet_msg(
                         },
                     ));
                 }
+                RoomGameReady { room_id } => {
+                    let _ = ctx
+                        .ws_world_command_tx
+                        .send(WsWorldCommand::Room(Room::GameReady {
+                            ws_id: ctx.ws_id.to_string(),
+                            room_id,
+                        }));
+                }
+                RoomGameUnReady { room_id } => {
+                    let _ = ctx
+                        .ws_world_command_tx
+                        .send(WsWorldCommand::Room(Room::GameUnReady {
+                            ws_id: ctx.ws_id.to_string(),
+                            room_id,
+                        }));
+                }
+                RoomGameStart { room_id } => {
+                    let _ = ctx
+                        .ws_world_command_tx
+                        .send(WsWorldCommand::Room(Room::GameStart {
+                            ws_id: ctx.ws_id.to_string(),
+                            room_id,
+                        }));
+                }
             }
         }
         None => {

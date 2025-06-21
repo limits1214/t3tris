@@ -1,5 +1,7 @@
 use nanoid::nanoid;
 use redis::{AsyncCommands, RedisResult};
+
+#[allow(dead_code)]
 pub async fn publish(
     rpool: &mut deadpool_redis::Pool,
     topic: &str,
@@ -12,6 +14,7 @@ pub async fn publish(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn acquire_lock(
     conn: &mut redis::aio::MultiplexedConnection,
     lock_key: &str,
@@ -37,6 +40,7 @@ pub async fn acquire_lock(
     }
 }
 
+#[allow(dead_code)]
 pub async fn release_lock(
     conn: &mut redis::aio::MultiplexedConnection,
     lock_key: &str,

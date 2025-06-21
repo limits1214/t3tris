@@ -1,9 +1,14 @@
-use crate::ws_world::OneShot;
+use crate::ws_world::model::OneShot;
 
 pub enum WsWorldCommand {
     Pubsub(Pubsub),
     Room(Room),
     Ws(Ws),
+    Game(Game),
+}
+
+pub enum Game {
+    Tick,
 }
 
 pub enum Ws {
@@ -54,5 +59,17 @@ pub enum Room {
     },
     RoomListUnSubscribe {
         ws_id: String,
+    },
+    GameReady {
+        ws_id: String,
+        room_id: String,
+    },
+    GameUnReady {
+        ws_id: String,
+        room_id: String,
+    },
+    GameStart {
+        ws_id: String,
+        room_id: String,
     },
 }

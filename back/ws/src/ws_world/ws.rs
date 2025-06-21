@@ -25,6 +25,7 @@ pub fn get_ws_world_info(data: &mut WsData, pubsub: &mut WsPubSub) -> serde_json
     let j = serde_json::json!({
         "users" : data.users.clone(),
         "rooms" : data.rooms.clone(),
+        "games": data.games.clone(),
         "pubsub": pubsub_info,
         "user_topic": user_topic
     });
@@ -53,7 +54,7 @@ pub fn delete_user(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
     // room user delete
     let mut v = vec![];
     for r in data.rooms.iter_mut() {
-        if let Some(_) = r.room_ws_ids.iter().position(|ru| ru == ws_id) {
+        if let Some(_) = r.room_users.iter().position(|ru| ru.ws_id == ws_id) {
             v.push(r.room_id.clone());
         }
     }

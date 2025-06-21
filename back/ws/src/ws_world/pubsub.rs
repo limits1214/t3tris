@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ws_world::{Topic, WsId};
+use crate::ws_world::model::{Topic, WsId};
 
 #[derive(Debug)]
 pub struct WsPubSub {

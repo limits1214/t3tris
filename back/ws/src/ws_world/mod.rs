@@ -3,32 +3,23 @@ use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
 use crate::ws_world::{
-    command::{Pubsub, Room, Ws, WsWorldCommand},
-    model::{WsWorldRoom, WsWorldUser},
+    command::{Game, Pubsub, Room, Ws, WsWorldCommand},
+    model::{WsData, WsWorldUser},
     pubsub::WsPubSub,
 };
 
 pub mod command;
+mod game;
 pub mod model;
 mod pubsub;
 mod room;
 mod util;
 mod ws;
 
-type OneShot<T> = tokio::sync::oneshot::Sender<T>;
-
-type WsId = String;
-type Topic = String;
-
 #[derive(Debug)]
 pub struct WsWorld {
     data: WsData,
     pubsub: WsPubSub,
-}
-#[derive(Debug)]
-pub struct WsData {
-    users: Vec<WsWorldUser>,
-    rooms: Vec<WsWorldRoom>,
 }
 
 impl WsWorld {
@@ -37,18 +28,23 @@ impl WsWorld {
         JoinHandle<()>,
     ) {
         let (s, mut r) = tokio::sync::mpsc::unbounded_channel::<WsWorldCommand>();
+        let cloned_s = s.clone();
         let join_handle = tokio::spawn(async move {
             let mut cleanup_timer = tokio::time::interval(std::time::Duration::from_secs(10));
             let mut world = WsWorld {
                 data: WsData {
                     users: vec![],
                     rooms: vec![],
+                    games: vec![],
                 },
                 pubsub: WsPubSub {
                     pubsub: HashMap::new(),
                     user_topic_handle: HashMap::new(),
                 },
             };
+            let mut game_ticker_timer =
+                tokio::time::interval(std::time::Duration::from_millis(1000 / 60));
+
             loop {
                 tokio::select! {
                     msg = r.recv() => {
@@ -63,6 +59,9 @@ impl WsWorld {
                     }
                     _ = cleanup_timer.tick() => {
                         world.pubsub.pubsub_cleanup();
+                    }
+                    _ = game_ticker_timer.tick() => {
+                        let _ = cloned_s.send(WsWorldCommand::Game(Game::Tick));
                     }
                 }
             }
@@ -117,6 +116,18 @@ fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) -> any
             Room::RoomListUnSubscribe { ws_id } => {
                 room::room_list_unsubscribe(pubsub, ws_id);
             }
+            Room::GameReady { ws_id, room_id } => {
+                room::room_game_ready(data, pubsub, ws_id, room_id);
+            }
+            Room::GameUnReady { ws_id, room_id } => {
+                room::room_game_unready(data, pubsub, ws_id, room_id);
+            }
+            Room::GameStart { ws_id, room_id } => {
+                room::room_game_start(data, pubsub, ws_id, room_id);
+            }
+        },
+        WsWorldCommand::Game(cmd) => match cmd {
+            Game::Tick => game::tick(data, pubsub),
         },
         WsWorldCommand::Pubsub(cmd) => match cmd {
             Pubsub::Subscribe { ws_id, topic } => pubsub.subscribe(&ws_id, &topic),

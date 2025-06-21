@@ -30,4 +30,10 @@ pub enum ClientToServerWsMsg {
     RoomLeave { room_id: String },
     #[serde(rename_all = "camelCase")]
     RoomChat { room_id: String, msg: String },
+    #[serde(rename_all = "camelCase")]
+    RoomGameReady { room_id: String },
+    #[serde(rename_all = "camelCase")]
+    RoomGameUnReady { room_id: String },
+    #[serde(rename_all = "camelCase")]
+    RoomGameStart { room_id: String },
 }

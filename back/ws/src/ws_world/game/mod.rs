@@ -15,17 +15,17 @@ pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
     let mut available_game = data
         .games
         .iter_mut()
-        .filter(|g| !g.is_deleted)
+        .filter(|(_, game)| !game.is_deleted)
         .collect::<Vec<_>>();
 
-    available_game.iter_mut().for_each(|game| {
+    available_game.iter_mut().for_each(|(_, game)| {
         let before_now = game.now;
         game.now = Instant::now();
         game.elapsed = game.now - game.started;
         game.delta = game.now - before_now;
     });
 
-    available_game.iter_mut().for_each(|game| {
+    available_game.iter_mut().for_each(|(_, game)| {
         if game.status == WsWorldGameStatus::BeforeGameStartTimerThree {
             if game.elapsed > Duration::from_secs(1) {
                 game.status = WsWorldGameStatus::BeforeGameStartTimerTwo;
@@ -63,19 +63,21 @@ pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
             if game.elapsed > Duration::from_secs(5) {
                 game.status = WsWorldGameStatus::GameEnd;
 
-                if let Some(room) = data.rooms.iter_mut().find(|r| r.room_id == game.room_id) {
+                if let Some(room) = data.rooms.get_mut(&game.room_id) {
                     room.room_status = WsWorldRoomStatus::Waiting;
                     room.room_users
                         .iter_mut()
-                        .for_each(|u| u.is_game_ready = false);
+                        .for_each(|(_, user)| user.is_game_ready = false);
                 }
 
-                if let Some(stc_room) =
-                    crate::ws_world::util::gen_json_room_2(&data.users, &data.rooms, &game.room_id)
-                {
+                if let Some(pub_room) = crate::ws_world::util::gen_room_publish_msg(
+                    &data.users,
+                    &data.rooms,
+                    &game.room_id,
+                ) {
                     pubsub.publish(
                         &colon!(TOPIC_ROOM_ID, &game.room_id),
-                        &ServerToClientWsMsg::RoomUpdated { room: stc_room }.to_json(),
+                        &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
                     );
                 };
 

@@ -27,27 +27,29 @@ impl WsWorld {
         tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
         JoinHandle<()>,
     ) {
-        let (s, mut r) = tokio::sync::mpsc::unbounded_channel::<WsWorldCommand>();
-        let cloned_s = s.clone();
-        let join_handle = tokio::spawn(async move {
-            let mut cleanup_timer = tokio::time::interval(std::time::Duration::from_secs(10));
+        let (world_sender, mut world_receiver) =
+            tokio::sync::mpsc::unbounded_channel::<WsWorldCommand>();
+        let cloned_world_sender = world_sender.clone();
+        let word_receive_task_join_handle = tokio::spawn(async move {
             let mut world = WsWorld {
                 data: WsData {
-                    users: vec![],
-                    rooms: vec![],
-                    games: vec![],
+                    users: HashMap::new(),
+                    rooms: HashMap::new(),
+                    games: HashMap::new(),
                 },
                 pubsub: WsPubSub {
                     pubsub: HashMap::new(),
                     user_topic_handle: HashMap::new(),
                 },
             };
+
+            let mut cleanup_timer = tokio::time::interval(std::time::Duration::from_secs(10));
             let mut game_ticker_timer =
                 tokio::time::interval(std::time::Duration::from_millis(1000 / 60));
 
             loop {
                 tokio::select! {
-                    msg = r.recv() => {
+                    msg = world_receiver.recv() => {
                         if let Some(msg) = msg {
                             if let Err(err) =  process(&mut world.data, &mut world.pubsub, msg) {
                                 tracing::warn!("WsWorld process err: {err:?}");
@@ -61,14 +63,15 @@ impl WsWorld {
                         world.pubsub.pubsub_cleanup();
                     }
                     _ = game_ticker_timer.tick() => {
-                        let _ = cloned_s.send(WsWorldCommand::Game(Game::Tick));
+                        let _ = cloned_world_sender.send(WsWorldCommand::Game(Game::Tick));
                     }
                 }
             }
         });
-        (s, join_handle)
+        (world_sender, word_receive_task_join_handle)
     }
 }
+
 fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) -> anyhow::Result<()> {
     match msg {
         WsWorldCommand::Ws(cmd) => match cmd {

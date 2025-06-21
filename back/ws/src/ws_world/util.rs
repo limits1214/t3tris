@@ -1,88 +1,47 @@
+use std::collections::HashMap;
+
 use crate::{
     model::server_to_client_ws_msg,
-    ws_world::{
-        WsData,
-        model::{WsWorldRoom, WsWorldUser},
-    },
+    ws_world::model::{WsWorldRoom, WsWorldUser},
 };
 
-pub fn gen_json_room_2(
-    users: &Vec<WsWorldUser>,
-    rooms: &Vec<WsWorldRoom>,
+pub fn gen_room_publish_msg(
+    users: &HashMap<String, WsWorldUser>,
+    rooms: &HashMap<String, WsWorldRoom>,
     room_id: &str,
 ) -> Option<server_to_client_ws_msg::Room> {
-    let w_room = rooms.iter().find(|r| r.room_id == room_id).cloned();
-    let Some(w_room) = w_room else { return None };
-    let host_user = if let Some(room_host_ws_id) = w_room.room_host_ws_id {
-        let host_user = users.iter().find(|u| u.ws_id == room_host_ws_id).map(|u| {
-            server_to_client_ws_msg::User {
-                user_id: u.user_id.clone(),
-                ws_id: u.ws_id.clone(),
-                nick_name: u.nick_name.clone(),
-            }
-        });
-        host_user
-    } else {
-        None
+    let Some(room) = rooms.get(room_id) else {
+        dbg!();
+        return None;
     };
 
-    let users = w_room
-        .room_users
-        .iter()
-        .filter_map(|ru| {
-            let a = users.iter().find(|u| u.ws_id == *ru.ws_id);
-            if let Some(a) = a {
-                Some(server_to_client_ws_msg::RoomUser {
-                    user_id: a.user_id.clone(),
-                    ws_id: a.ws_id.clone(),
-                    nick_name: a.nick_name.clone(),
-                    is_game_ready: ru.is_game_ready,
-                })
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    Some(server_to_client_ws_msg::Room {
-        room_id: w_room.room_id,
-        room_name: w_room.room_name,
-        room_host_user: host_user,
-        room_users: users,
-    })
-}
-
-pub fn gen_json_room(data: &WsData, room_id: &str) -> Option<server_to_client_ws_msg::Room> {
-    let w_room = data.rooms.iter().find(|r| r.room_id == room_id).cloned();
-
-    let Some(w_room) = w_room else { return None };
-
-    let host_user = if let Some(room_host_ws_id) = w_room.room_host_ws_id {
-        let host_user = data
-            .users
+    let host_user = if let Some(room_host_ws_id) = &room.room_host_ws_id {
+        let host_user = users
             .iter()
-            .find(|u| u.ws_id == room_host_ws_id)
-            .map(|u| server_to_client_ws_msg::User {
-                user_id: u.user_id.clone(),
-                ws_id: u.ws_id.clone(),
-                nick_name: u.nick_name.clone(),
+            .find(|(_, user)| user.ws_id == *room_host_ws_id)
+            .map(|(_, user)| server_to_client_ws_msg::User {
+                user_id: user.user_id.clone(),
+                ws_id: user.ws_id.clone(),
+                nick_name: user.nick_name.clone(),
             });
         host_user
     } else {
         None
     };
 
-    let users = w_room
+    let room_users = room
         .room_users
         .iter()
-        .filter_map(|ru| {
-            let a = data.users.iter().find(|u| u.ws_id == *ru.ws_id);
-            if let Some(a) = a {
+        .filter_map(|(_, room_user)| {
+            if let Some((_, user)) = users
+                .iter()
+                .find(|(_, user)| user.ws_id == *room_user.ws_id)
+            {
                 Some(server_to_client_ws_msg::RoomUser {
-                    user_id: a.user_id.clone(),
-                    ws_id: a.ws_id.clone(),
-                    nick_name: a.nick_name.clone(),
-                    is_game_ready: ru.is_game_ready,
+                    user_id: user.user_id.clone(),
+                    ws_id: user.ws_id.clone(),
+                    nick_name: user.nick_name.clone(),
+                    is_game_ready: room_user.is_game_ready,
                 })
             } else {
                 None
@@ -91,18 +50,21 @@ pub fn gen_json_room(data: &WsData, room_id: &str) -> Option<server_to_client_ws
         .collect::<Vec<_>>();
 
     Some(server_to_client_ws_msg::Room {
-        room_id: w_room.room_id,
-        room_name: w_room.room_name,
+        room_id: room.room_id.clone(),
+        room_name: room.room_name.clone(),
         room_host_user: host_user,
-        room_users: users,
+        room_users: room_users,
     })
 }
 
-pub fn gen_json_room_list(data: &WsData) -> Vec<server_to_client_ws_msg::Room> {
-    data.rooms
+pub fn gen_room_list_publish_msg(
+    users: &HashMap<String, WsWorldUser>,
+    rooms: &HashMap<String, WsWorldRoom>,
+) -> Vec<server_to_client_ws_msg::Room> {
+    rooms
         .clone()
         .iter()
-        .filter(|f| !f.is_deleted)
-        .filter_map(|rs| gen_json_room(data, &rs.room_id))
+        .filter(|(_, room)| !room.is_deleted)
+        .filter_map(|(_, room)| gen_room_publish_msg(&users, &rooms, &room.room_id))
         .collect::<Vec<_>>()
 }

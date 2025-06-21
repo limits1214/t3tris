@@ -38,38 +38,43 @@ pub fn create_user(
     user: WsWorldUser,
     ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
 ) {
-    data.users.push(user.clone());
+    let user_ws_id = user.ws_id.clone();
+    data.users.insert(user.ws_id.clone(), user);
+
     pubsub.user_topic_handle.insert(
-        user.ws_id.clone(),
+        user_ws_id.clone(),
         WsWorldUserTopicHandle {
             sender: ws_sender_tx,
             topics: HashMap::new(),
         },
     );
 
-    pubsub.subscribe(&user.ws_id, &colon!(TOPIC_WS_ID, user.ws_id));
+    pubsub.subscribe(&user_ws_id, &colon!(TOPIC_WS_ID, user_ws_id));
 }
 
 pub fn delete_user(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
-    // room user delete
-    let mut v = vec![];
-    for r in data.rooms.iter_mut() {
-        if let Some(_) = r.room_users.iter().position(|ru| ru.ws_id == ws_id) {
-            v.push(r.room_id.clone());
+    let mut rooms_to_delete = vec![];
+
+    // 해당 ws_id가 참가중인 방을 추린다.
+    for (_, room) in data.rooms.iter_mut() {
+        if room
+            .room_users
+            .iter()
+            .any(|(_, room_user)| room_user.ws_id == ws_id)
+        {
+            rooms_to_delete.push(room.room_id.clone());
         }
     }
-    for room_id in v {
+
+    // 해당 사용자 방나가기 프로세스 진행
+    for room_id in rooms_to_delete {
         crate::ws_world::room::leave(data, pubsub, ws_id.to_owned(), room_id);
     }
 
-    //
-    if let Some(idx) = data.users.iter().position(|u| u.ws_id == ws_id) {
-        data.users.remove(idx);
-    } else {
-        tracing::warn!("User Delete fail, not find idx");
-    };
+    // 사용자를 지운다.
+    data.users.remove(ws_id);
 
-    // 중요!, 핸들 지우기
+    // 중요!, 사용자가 pubsub 사용중인 task handle 을 지워준다.
     if let Some(user_topic_handle) = pubsub.user_topic_handle.get(ws_id) {
         let topics = user_topic_handle.topics.keys().cloned().collect::<Vec<_>>();
         for topic in topics {

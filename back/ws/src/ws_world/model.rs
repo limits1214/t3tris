@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -6,12 +9,14 @@ use time::OffsetDateTime;
 pub type OneShot<T> = tokio::sync::oneshot::Sender<T>;
 pub type WsId = String;
 pub type Topic = String;
+pub type RoomId = String;
+pub type GameId = String;
 
 #[derive(Debug)]
 pub struct WsData {
-    pub users: Vec<WsWorldUser>,
-    pub rooms: Vec<WsWorldRoom>,
-    pub games: Vec<WsWorldGame>,
+    pub users: HashMap<WsId, WsWorldUser>,
+    pub rooms: HashMap<RoomId, WsWorldRoom>,
+    pub games: HashMap<GameId, WsWorldGame>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -26,7 +31,7 @@ pub struct WsWorldRoom {
     pub room_id: String,
     pub room_name: String,
     pub room_host_ws_id: Option<String>,
-    pub room_users: Vec<WsWorldRoomUser>,
+    pub room_users: HashMap<WsId, WsWorldRoomUser>,
     pub room_events: Vec<WsWorldRoomEvent>,
     pub is_deleted: bool,
     pub room_status: WsWorldRoomStatus,

@@ -2,6 +2,7 @@ use serde::Serialize;
 use time::OffsetDateTime;
 
 pub mod auth;
+pub mod user;
 
 #[derive(Serialize, Debug)]
 pub struct ApiResponse<T> {

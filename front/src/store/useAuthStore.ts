@@ -5,7 +5,7 @@ type AuthState = {
   isInitialRefreshDone: boolean,
   isAuthenticated: boolean,
   accessToken: string | null,
-  setAuth: (token: string | null) => void,
+  setAuth: (token: string ) => void,
   logout: () => void,
   setIsInitialRefeshDone: () => void,
 }
@@ -16,7 +16,7 @@ export const useAuthStore = create<AuthState>()(
       isInitialRefreshDone: false,
       isAuthenticated: false,
       accessToken: null,
-      setAuth: (token: string | null) => {
+      setAuth: (token: string) => {
         set({isAuthenticated: true, accessToken: token})
       },
       logout: () => {

@@ -1,4 +1,4 @@
-import 'normalize.css'
+
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import DefaultLayout from './layout/DefaultLayout.tsx'
 import HomePage from './page/HomePage.tsx'
@@ -9,6 +9,11 @@ import TestR3fPage from './page/test/TestR3fPage.tsx'
 import { useAuthStore } from './store/useAuthStore.ts'
 import { useEffect } from 'react'
 import { tokenRefresh } from './api/auth.ts'
+import SinglePlayPage from './page/SinglePlayPage.tsx'
+import MultiPlayRoomListPage from './page/MultiPlayRoomListPage.tsx'
+import MultiPlayRoomPage from './page/MultiPlayRoomPage.tsx'
+import MultiPlayLayout from './layout/MultiPlayLayout.tsx'
+import RoomPage from './page/RoomPage.tsx'
 
 function App() {
   const {isInitialRefreshDone, setIsInitialRefeshDone, setAuth} = useAuthStore();
@@ -34,6 +39,14 @@ function App() {
       <Routes>
         <Route path="" element={<DefaultLayout/>}>
           <Route index element={<HomePage/>}></Route>
+          <Route path="room">
+            <Route index element={<RoomPage/>}></Route>
+          </Route>
+          <Route path='singleplay' element={<SinglePlayPage/>}></Route>
+          <Route path='multiplay' element={<MultiPlayLayout/>}>
+            <Route index element={<MultiPlayRoomListPage/>}></Route>
+            <Route path='room' element={<MultiPlayRoomPage/>}></Route>
+          </Route>
         </Route>
         <Route path='test'>
           <Route index element={<TestPage/>}></Route>

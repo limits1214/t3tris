@@ -10,6 +10,7 @@ type RoomState = {
   leave: () => void,
   addChat: (chat: RoomChat) => void,
   update: (info: RoomInfo) => void,
+  clear: () => void,
 }
 
 type RoomUser = {
@@ -66,6 +67,15 @@ export const useRoomStore = create<RoomState>(
           roomName: info.roomName,
           hostUser: info.roomHostUser,
           users: info.roomUsers,
+        })
+      },
+      clear: () => {
+        set({
+          roomId: null,
+          roomName: null,
+          hostUser: null,
+          users: [],
+          chats: [],
         })
       }
     }),

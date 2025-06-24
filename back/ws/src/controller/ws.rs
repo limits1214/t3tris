@@ -6,7 +6,7 @@ use crate::{
         client_to_server_ws_msg::ClientToServerWsMsg::{self, *},
         server_to_client_ws_msg::ServerToClientWsMsg,
     },
-    ws_world::command::{Pubsub, Room, Ws, WsWorldCommand},
+    ws_world::command::{Lobby, Pubsub, Room, Ws, WsWorldCommand},
 };
 use axum::{
     Json, Router,
@@ -17,14 +17,11 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use common::{
-    entity::user::User,
-    error::{AppResult, AuthError},
-    extractor::db::DbConn,
-};
+use common::error::AppResult;
 use futures::{SinkExt, StreamExt};
 use nanoid::nanoid;
 use serde::Deserialize;
+use sqlx::PgPool;
 use std::{ops::ControlFlow, sync::atomic::Ordering};
 
 pub fn ws_router(_state: ArcWsAppState) -> Router<ArcWsAppState> {
@@ -42,23 +39,19 @@ pub fn ws_router(_state: ArcWsAppState) -> Router<ArcWsAppState> {
 
 #[derive(Deserialize, Debug)]
 pub struct WsQuery {
-    pub access_token: String,
+    pub ws_token: String,
 }
 
 /// ws 핸들러
-/// - client는 유효한 access_token을 쿼리스트링으로 보내야한다.
-/// - 해당 access_token으로 사용자를 조회한다.
+/// - client는 유효한 ws_token을 쿼리스트링으로 보내야한다.
 pub async fn ws_upgrade(
-    DbConn(mut conn): DbConn,
+    State(db_pool): State<PgPool>,
     ws_upgrade: WebSocketUpgrade,
     State(ws_shut_down): State<WsShutDown>,
-    Query(WsQuery { access_token }): Query<WsQuery>,
+    Query(WsQuery { ws_token }): Query<WsQuery>,
     State(state): State<ArcWsAppState>,
 ) -> AppResult<impl IntoResponse> {
-    let access_token_claim = common::util::jwt::decode_access_token(&access_token)?;
-    let user = common::repository::user::select_user_by_id(&mut conn, &access_token_claim.sub)
-        .await?
-        .ok_or(AuthError::UserNotExists)?;
+    common::util::jwt::decode_access_token(&ws_token)?;
 
     let response = ws_upgrade.on_upgrade(move |socket| async move {
         let ws_id = nanoid!();
@@ -66,20 +59,14 @@ pub async fn ws_upgrade(
             socket,
             ws_shut_down,
             &ws_id,
-            &user,
             state.0.ws_world_command_tx.clone(),
+            db_pool,
         )
         .await;
     });
     Ok(response)
 }
 
-pub struct WsRecvCtx<'a> {
-    pub ws_world_command_tx: &'a mut tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
-    pub ws_id: &'a str,
-    pub user_id: &'a str,
-    pub nick_name: &'a str,
-}
 /// Ws Client
 ///             ---> Ws Server recv_task
 ///                                     receiver 에서 클라메시지를 받고
@@ -91,12 +78,12 @@ pub async fn ws(
     socket: WebSocket,
     mut shutdown: WsShutDown,
     ws_id: &str,
-    user: &User,
     mut ws_world_command_tx: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
+    db_pool: PgPool,
 ) {
     let ws_id = ws_id.to_string();
-    let user_id = user.id.to_string();
-    let user_nick_name = user.nick_name.to_string();
+    // let user_id = user.id.to_string();
+    // let user_nick_name = user.nick_name.to_string();
 
     // ws 통신 소켓 생성
     let (mut sender, mut receiver) = socket.split();
@@ -120,23 +107,17 @@ pub async fn ws(
         );
 
         // recv task 수행중 사용되는 요소들 집합 생성
-        let mut ctx = WsRecvCtx {
-            ws_id: &ws_id,
-            user_id: &user_id,
-            nick_name: &user_nick_name,
-            ws_world_command_tx: &mut ws_world_command_tx,
-        };
+        // let mut ctx = WsRecvCtx {
+        //     ws_id: &ws_id,
+        //     ws_world_command_tx: &mut ws_world_command_tx,
+        // };
 
         // ws 시작시 해야할것들
         {
-            let _ = ctx
-                .ws_world_command_tx
-                .send(WsWorldCommand::Ws(Ws::CreateUser {
-                    ws_id: ctx.ws_id.to_string(),
-                    user_id: ctx.user_id.to_string(),
-                    nick_name: ctx.nick_name.to_string(),
-                    ws_sender_tx: topic_msg_tx,
-                }));
+            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::CreateUser {
+                ws_id: ws_id.to_string(),
+                ws_sender_tx: topic_msg_tx,
+            }));
         }
 
         // recv 처리
@@ -144,7 +125,7 @@ pub async fn ws(
             tokio::select! {
                 // client 메시지처리
                 msg = receiver.next() => {
-                    match process_clinet_msg(msg, &mut ctx) {
+                    match process_clinet_msg(msg, &mut ws_world_command_tx,&ws_id, &db_pool) {
                         ControlFlow::Continue(_) => continue,
                        ControlFlow::Break(_) => break,
                     }
@@ -164,11 +145,9 @@ pub async fn ws(
 
         // ws 종료전에 정리할 로직은 여기에
         {
-            let _ = ctx
-                .ws_world_command_tx
-                .send(WsWorldCommand::Ws(Ws::DeleteUser {
-                    ws_id: ctx.ws_id.to_string(),
-                }));
+            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::DeleteUser {
+                ws_id: ws_id.to_string(),
+            }));
         }
 
         shutdown.connection_count.fetch_sub(1, Ordering::SeqCst);
@@ -213,7 +192,9 @@ pub async fn ws(
 
 pub fn process_clinet_msg(
     msg: Option<Result<Message, axum::Error>>,
-    ctx: &mut WsRecvCtx<'_>,
+    ws_world_command_tx: &mut tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
+    ws_id: &str,
+    db_pool: &PgPool,
 ) -> ControlFlow<()> {
     match msg {
         Some(Ok(Message::Text(text))) => {
@@ -227,115 +208,112 @@ pub fn process_clinet_msg(
             };
             match msg {
                 Ping => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Pubsub(Pubsub::Publish {
-                            topic: colon!(TOPIC_WS_ID, ctx.ws_id),
-                            msg: ServerToClientWsMsg::Pong.to_json(),
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Pubsub(Pubsub::Publish {
+                        topic: colon!(TOPIC_WS_ID, ws_id),
+                        msg: ServerToClientWsMsg::Pong.to_json(),
+                    }));
                 }
                 Echo { msg } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Pubsub(Pubsub::Publish {
-                            topic: colon!(TOPIC_WS_ID, ctx.ws_id),
-                            msg: ServerToClientWsMsg::Echo { msg }.to_json(),
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Pubsub(Pubsub::Publish {
+                        topic: colon!(TOPIC_WS_ID, ws_id),
+                        msg: ServerToClientWsMsg::Echo { msg }.to_json(),
+                    }));
                 }
                 TopicEcho { topic, msg } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Pubsub(Pubsub::Publish {
-                            topic: topic.to_owned(),
-                            msg: ServerToClientWsMsg::TopicEcho { topic, msg }.to_json(),
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Pubsub(Pubsub::Publish {
+                        topic: topic.to_owned(),
+                        msg: ServerToClientWsMsg::TopicEcho { topic, msg }.to_json(),
+                    }));
                 }
                 SubscribeTopic { topic } => {
-                    let _ =
-                        ctx.ws_world_command_tx
-                            .send(WsWorldCommand::Pubsub(Pubsub::Subscribe {
-                                ws_id: ctx.ws_id.to_string(),
-                                topic,
-                            }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Pubsub(Pubsub::Subscribe {
+                        ws_id: ws_id.to_string(),
+                        topic,
+                    }));
                 }
                 UnSubscribeTopic { topic } => {
-                    let _ =
-                        ctx.ws_world_command_tx
-                            .send(WsWorldCommand::Pubsub(Pubsub::UnSubscribe {
-                                ws_id: ctx.ws_id.to_string(),
-                                topic,
-                            }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Pubsub(Pubsub::UnSubscribe {
+                        ws_id: ws_id.to_string(),
+                        topic,
+                    }));
                 }
+                UserLogin { access_token } => {
+                    let ws_id = ws_id.to_string();
+                    let ws_world_command_tx = ws_world_command_tx.clone();
+                    let db_pool = db_pool.clone();
+                    tokio::spawn(async move {
+                        let claim = common::util::jwt::decode_access_token(&access_token).unwrap();
+                        let mut conn = db_pool.acquire().await.unwrap();
+                        let user =
+                            common::repository::user::select_user_by_id(&mut conn, &claim.sub)
+                                .await
+                                .unwrap();
+                        if let Some(user) = user {
+                            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::LoginInUser {
+                                ws_id: ws_id.to_string(),
+                                user_id: user.id,
+                                nick_name: user.nick_name,
+                            }));
+                        }
+                    });
+                }
+                UserLogout => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::LogoutUser {
+                        ws_id: ws_id.to_string(),
+                    }));
+                }
+
+                // 로비 관련
+                LobbyChat { msg } => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Chat {
+                        ws_id: ws_id.to_string(),
+                        msg,
+                    }));
+                }
+
+                // 룸 관련
                 RoomCreate { room_name } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Room(Room::Create {
-                            ws_id: ctx.ws_id.to_string(),
-                            room_name,
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::Create {
+                        ws_id: ws_id.to_string(),
+                        room_name,
+                    }));
                 }
                 RoomChat { room_id, msg } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Room(Room::Chat {
-                            ws_id: ctx.ws_id.to_string(),
-                            room_id,
-                            msg,
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::Chat {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                        msg,
+                    }));
                 }
                 RoomEnter { room_id } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Room(Room::Enter {
-                            ws_id: ctx.ws_id.to_string(),
-                            room_id,
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::Enter {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                    }));
                 }
                 RoomLeave { room_id } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Room(Room::Leave {
-                            ws_id: ctx.ws_id.to_string(),
-                            room_id,
-                        }));
-                }
-                RoomListUpdateSubscribe => {
-                    let _ = ctx.ws_world_command_tx.send(WsWorldCommand::Room(
-                        Room::RoomListSubscribe {
-                            ws_id: ctx.ws_id.to_string(),
-                        },
-                    ));
-                }
-                RoomListUpdateUnSubscribe => {
-                    let _ = ctx.ws_world_command_tx.send(WsWorldCommand::Room(
-                        Room::RoomListUnSubscribe {
-                            ws_id: ctx.ws_id.to_string(),
-                        },
-                    ));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::Leave {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                    }));
                 }
                 RoomGameReady { room_id } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Room(Room::GameReady {
-                            ws_id: ctx.ws_id.to_string(),
-                            room_id,
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::GameReady {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                    }));
                 }
                 RoomGameUnReady { room_id } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Room(Room::GameUnReady {
-                            ws_id: ctx.ws_id.to_string(),
-                            room_id,
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::GameUnReady {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                    }));
                 }
                 RoomGameStart { room_id } => {
-                    let _ = ctx
-                        .ws_world_command_tx
-                        .send(WsWorldCommand::Room(Room::GameStart {
-                            ws_id: ctx.ws_id.to_string(),
-                            room_id,
-                        }));
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::GameStart {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                    }));
                 }
             }
         }

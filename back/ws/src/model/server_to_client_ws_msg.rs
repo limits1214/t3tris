@@ -13,7 +13,37 @@ pub enum ServerToClientWsMsg {
     Echo { msg: String },
     #[serde(rename_all = "camelCase")]
     TopicEcho { topic: String, msg: String },
+    #[serde(rename_all = "camelCase")]
+    UserLogined,
+    #[serde(rename_all = "camelCase")]
+    UserLogouted,
+
+    // === 로비관련 ===
+    #[serde(rename_all = "camelCase")]
+    LobbyEntered,
+    #[serde(rename_all = "camelCase")]
+    LobbyLeaved,
+    #[serde(rename_all = "camelCase")]
+    LobbyUpdated {
+        rooms: Vec<Room>,
+        users: Vec<LobbyUser>,
+        chats: Vec<LobbyChat>,
+    },
+    #[serde(rename_all = "camelCase")]
+    LobbyChat {
+        #[serde(with = "time::serde::rfc3339")]
+        timestamp: OffsetDateTime,
+        user: User,
+        msg: String,
+    },
+
     // === 룸관련 ===
+    #[serde(rename_all = "camelCase")]
+    RoomEntered,
+    #[serde(rename_all = "camelCase")]
+    RoomLeaved,
+    #[serde(rename_all = "camelCase")]
+    RoomUpdated { room: Room },
     #[serde(rename_all = "camelCase")]
     RoomChat {
         #[serde(with = "time::serde::rfc3339")]
@@ -21,10 +51,6 @@ pub enum ServerToClientWsMsg {
         user: User,
         msg: String,
     },
-    #[serde(rename_all = "camelCase")]
-    RoomUpdated { room: Room },
-    #[serde(rename_all = "camelCase")]
-    RoomListUpdated { rooms: Vec<Room> },
 }
 impl ServerToClientWsMsg {
     pub fn to_json(&self) -> String {
@@ -37,13 +63,30 @@ impl ServerToClientWsMsg {
         }
     }
 }
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    pub user_id: String,
     pub ws_id: String,
+    pub user_id: Option<String>,
+    pub nick_name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LobbyUser {
+    pub ws_id: String,
+    pub user_id: String,
     pub nick_name: String,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Lobby {
+    pub rooms: Vec<Room>,
+    pub users: Vec<LobbyUser>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoomUser {
@@ -52,6 +95,7 @@ pub struct RoomUser {
     pub nick_name: String,
     pub is_game_ready: bool,
 }
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Room {
@@ -59,4 +103,10 @@ pub struct Room {
     pub room_name: String,
     pub room_host_user: Option<User>,
     pub room_users: Vec<RoomUser>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LobbyChat {
+    //
 }

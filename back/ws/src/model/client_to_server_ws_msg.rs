@@ -16,12 +16,16 @@ pub enum ClientToServerWsMsg {
     SubscribeTopic { topic: String },
     #[serde(rename_all = "camelCase")]
     UnSubscribeTopic { topic: String },
+    #[serde(rename_all = "camelCase")]
+    UserLogin { access_token: String },
+    #[serde(rename_all = "camelCase")]
+    UserLogout,
+
+    // === 로비 관련 ===
+    #[serde(rename_all = "camelCase")]
+    LobbyChat { msg: String },
 
     // === 룸 관련 ===
-    #[serde(rename_all = "camelCase")]
-    RoomListUpdateSubscribe,
-    #[serde(rename_all = "camelCase")]
-    RoomListUpdateUnSubscribe,
     #[serde(rename_all = "camelCase")]
     RoomCreate { room_name: String },
     #[serde(rename_all = "camelCase")]

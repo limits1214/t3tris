@@ -15,15 +15,31 @@ pub type GameId = String;
 #[derive(Debug)]
 pub struct WsData {
     pub users: HashMap<WsId, WsWorldUser>,
+    pub lobby: WsWorldLobby,
     pub rooms: HashMap<RoomId, WsWorldRoom>,
     pub games: HashMap<GameId, WsWorldGame>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct WsWorldUser {
-    pub user_id: String,
+pub enum WsWorldUser {
+    Unauthenticated {
+        ws_id: String,
+    },
+    Authenticated {
+        ws_id: String,
+        user_id: String,
+        nick_name: String,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WsWorldLobby {
+    pub users: HashMap<WsId, WsWorldLobbyUser>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WsWorldLobbyUser {
     pub ws_id: String,
-    pub nick_name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

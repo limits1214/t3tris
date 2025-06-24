@@ -65,8 +65,10 @@ impl WsPubSub {
             loop {
                 match broad_receiver.recv().await {
                     Ok(msg) => {
-                        if let Err(err) = ws_sender_tx.send(msg) {
-                            tracing::warn!("topic_subscribe_recv_task send err:{err:?}")
+                        if !ws_sender_tx.is_closed() {
+                            if let Err(err) = ws_sender_tx.send(msg) {
+                                tracing::warn!("topic_subscribe_recv_task send err:{err:?}")
+                            }
                         }
                     }
                     Err(err) => match err {
@@ -109,11 +111,21 @@ impl WsPubSub {
     /// 해당 pubsub 토픽에 메시지를 퍼블리시 한다.
     pub fn publish(&self, topic: &str, msg: &str) {
         if let Some(broad_sender) = self.pubsub.get(topic) {
-            if let Err(err) = broad_sender.send(msg.to_owned()) {
-                tracing::warn!("topic_publish {err:?}");
+            if broad_sender.receiver_count() > 0 {
+                if let Err(err) = broad_sender.send(msg.to_owned()) {
+                    tracing::warn!("topic_publish {err:?}, topic: {topic}");
+                }
             }
         } else {
-            tracing::warn!("topic_publish missing topoic:{topic}, msg: {msg:?}");
+            // pubsub 에 없으면 publish 안한다.
+            // tracing::warn!("topic_publish missing topoic:{topic}, msg: {msg:?}");
+        }
+    }
+
+    /// topics 리스트 받아서 퍼블리시
+    pub fn publish_vec(&self, topics: &[&str], msg: &str) {
+        for topic in topics {
+            self.publish(topic, msg);
         }
     }
 

@@ -2,7 +2,7 @@ use crate::{app::state::ArcApiAppState, constant::REFRESH_TOKEN, service, util};
 use anyhow::anyhow;
 use axum::{
     extract::Query,
-    response::Redirect,
+    response::{IntoResponse, Redirect},
     routing::{get, post},
     Json, Router,
 };
@@ -29,6 +29,7 @@ pub fn auth_router(_state: ArcApiAppState) -> Router<ArcApiAppState> {
         .route("/api/auth/email/login", post(email_login))
         .route("/api/auth/google/login", get(google_login))
         .route("/api/auth/google/callback", get(google_login_callback))
+        .route("/api/auth/wstoken", get(get_ws_token))
 }
 
 /// 게스트 로그인 핸들러
@@ -231,4 +232,12 @@ pub async fn google_login_callback(
             appsettings.front_url
         )),
     ))
+}
+
+/// 단순 ws 연결 막기위한
+/// 검증 ws 토큰 발급
+/// TODO: access_token 생성 함수를 가지고 했지만, 전용 ws 토큰 생성 함수 만들기
+pub async fn get_ws_token() -> AppResult<impl IntoResponse> {
+    let (_, access_token) = common::util::jwt::gen_access_token("ws_token")?;
+    Ok(Json(ApiResponse::ok(json!({"accessToken": access_token}))))
 }

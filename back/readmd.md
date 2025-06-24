@@ -77,3 +77,23 @@ room even
 
 방채팅
     방 에 채팅 내용 퍼블리시
+
+
+ws 연결
+    lobby subscribe
+    만약 로그인되었다면
+        ws user login 시도
+            성공시 lobby enter 해줌
+            모든 기능 가능(로비채팅, 방 진입, 방 만들기)
+
+            로그아웃 하면
+                로비나가기,
+                user unauthenticated 변경
+
+
+    만약 로그인 안되었다면
+        그대로유지
+        로비 채팅이나 방만들기 이런거 못함
+
+ws 끈어지면
+    해당 ws_id 와관련된 room, lobby 다 나가기 처리

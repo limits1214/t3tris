@@ -2,6 +2,7 @@ use crate::ws_world::model::OneShot;
 
 pub enum WsWorldCommand {
     Pubsub(Pubsub),
+    Lobby(Lobby),
     Room(Room),
     Ws(Ws),
     Game(Game),
@@ -16,14 +17,19 @@ pub enum Ws {
         tx: OneShot<serde_json::Value>,
     },
     CreateUser {
-        // user 정보
         ws_id: String,
-        user_id: String,
-        nick_name: String,
         // user 가가지고 있는 ws_sender_tx
         ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
     },
     DeleteUser {
+        ws_id: String,
+    },
+    LoginInUser {
+        ws_id: String,
+        user_id: String,
+        nick_name: String,
+    },
+    LogoutUser {
         ws_id: String,
     },
 }
@@ -54,12 +60,6 @@ pub enum Room {
         room_id: String,
         msg: String,
     },
-    RoomListSubscribe {
-        ws_id: String,
-    },
-    RoomListUnSubscribe {
-        ws_id: String,
-    },
     GameReady {
         ws_id: String,
         room_id: String,
@@ -72,4 +72,15 @@ pub enum Room {
         ws_id: String,
         room_id: String,
     },
+}
+
+pub enum Lobby {
+    // ok not auth
+    // LobbyUpdateSubscribe { ws_id: String },
+    // LobbyUpdateUnSubscribe { ws_id: String },
+
+    // only auth
+    Enter { ws_id: String },
+    Leave { ws_id: String },
+    Chat { ws_id: String, msg: String },
 }

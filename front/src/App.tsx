@@ -10,10 +10,9 @@ import { useAuthStore } from './store/useAuthStore.ts'
 import { useEffect } from 'react'
 import { tokenRefresh } from './api/auth.ts'
 import SinglePlayPage from './page/SinglePlayPage.tsx'
-import MultiPlayRoomListPage from './page/MultiPlayRoomListPage.tsx'
-import MultiPlayRoomPage from './page/MultiPlayRoomPage.tsx'
 import MultiPlayLayout from './layout/MultiPlayLayout.tsx'
 import RoomPage from './page/RoomPage.tsx'
+import TestPixiPage from './page/test/TestPixiPage.tsx'
 
 function App() {
   const {isInitialRefreshDone, setIsInitialRefeshDone, setAuth} = useAuthStore();
@@ -43,16 +42,14 @@ function App() {
             <Route index element={<RoomPage/>}></Route>
           </Route>
           <Route path='singleplay' element={<SinglePlayPage/>}></Route>
-          <Route path='multiplay' element={<MultiPlayLayout/>}>
-            <Route index element={<MultiPlayRoomListPage/>}></Route>
-            <Route path='room' element={<MultiPlayRoomPage/>}></Route>
-          </Route>
+          
         </Route>
         <Route path='test'>
           <Route index element={<TestPage/>}></Route>
           <Route path='auth' element={<TestAuthPage/>}></Route>
           <Route path='ws' element={<TestWsPage/>}></Route>
           <Route path='r3f' element={<TestR3fPage/>}></Route>
+          <Route path='pixi' element={<TestPixiPage/>}></Route>
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,6 +1,7 @@
 import { create } from "zustand"
 
 type RoomState = {
+  isRoomEnterd: boolean,
   roomId: string | null,
   roomName: string | null,
   hostUser: RoomUser | null,
@@ -11,6 +12,7 @@ type RoomState = {
   addChat: (chat: RoomChat) => void,
   update: (info: RoomInfo) => void,
   clear: () => void,
+  updateIsRoomEntered: (isRoomEntered: boolean) => void
 }
 
 type RoomUser = {
@@ -35,6 +37,7 @@ type RoomChat = {
 
 export const useRoomStore = create<RoomState>(
     (set) => ({
+      isRoomEnterd: false,
       roomId: null,
       roomName: null,
       hostUser: null,
@@ -76,6 +79,11 @@ export const useRoomStore = create<RoomState>(
           hostUser: null,
           users: [],
           chats: [],
+        })
+      },
+      updateIsRoomEntered: (isRoomEnterd) => {
+        set({
+          isRoomEnterd
         })
       }
     }),

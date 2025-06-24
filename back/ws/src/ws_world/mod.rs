@@ -1,16 +1,16 @@
-use std::collections::HashMap;
-
-use tokio::task::JoinHandle;
-
 use crate::ws_world::{
-    command::{Game, Pubsub, Room, Ws, WsWorldCommand},
-    model::{WsData, WsWorldUser},
+    command::{Game, Lobby, Pubsub, Room, Ws, WsWorldCommand},
+    model::{WsData, WsWorldLobby},
     pubsub::WsPubSub,
 };
+use std::collections::HashMap;
+use tokio::task::JoinHandle;
 
 pub mod command;
-mod game;
 pub mod model;
+
+mod game;
+mod lobby;
 mod pubsub;
 mod room;
 mod util;
@@ -34,6 +34,9 @@ impl WsWorld {
             let mut world = WsWorld {
                 data: WsData {
                     users: HashMap::new(),
+                    lobby: WsWorldLobby {
+                        users: HashMap::new(),
+                    },
                     rooms: HashMap::new(),
                     games: HashMap::new(),
                 },
@@ -51,9 +54,7 @@ impl WsWorld {
                 tokio::select! {
                     msg = world_receiver.recv() => {
                         if let Some(msg) = msg {
-                            if let Err(err) =  process(&mut world.data, &mut world.pubsub, msg) {
-                                tracing::warn!("WsWorld process err: {err:?}");
-                            }
+                            process(&mut world.data, &mut world.pubsub, msg)
                         } else {
                             tracing::warn!("WsWorld received None msg, break!");
                             break;
@@ -72,21 +73,14 @@ impl WsWorld {
     }
 }
 
-fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) -> anyhow::Result<()> {
+fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) {
     match msg {
         WsWorldCommand::Ws(cmd) => match cmd {
             Ws::CreateUser {
                 ws_id,
-                user_id,
-                nick_name,
                 ws_sender_tx,
             } => {
-                let user = WsWorldUser {
-                    user_id,
-                    ws_id,
-                    nick_name,
-                };
-                ws::create_user(data, pubsub, user, ws_sender_tx);
+                ws::create_user(data, pubsub, &ws_id, ws_sender_tx);
             }
             Ws::DeleteUser { ws_id } => {
                 ws::delete_user(data, pubsub, &ws_id);
@@ -94,6 +88,27 @@ fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) -> any
             Ws::GetWsWorldInfo { tx } => {
                 let info_str = ws::get_ws_world_info(data, pubsub);
                 let _ = tx.send(info_str);
+            }
+            Ws::LoginInUser {
+                ws_id,
+                user_id,
+                nick_name,
+            } => {
+                ws::login_user(data, pubsub, &ws_id, &user_id, &nick_name);
+            }
+            Ws::LogoutUser { ws_id } => {
+                ws::logout_user(data, pubsub, &ws_id);
+            }
+        },
+        WsWorldCommand::Lobby(cmd) => match cmd {
+            Lobby::Enter { ws_id } => {
+                lobby::lobby_enter(data, pubsub, &ws_id);
+            }
+            Lobby::Leave { ws_id } => {
+                lobby::lobby_leave(data, pubsub, &ws_id);
+            }
+            Lobby::Chat { ws_id, msg } => {
+                lobby::lobby_chat(data, pubsub, &ws_id, &msg);
             }
         },
         WsWorldCommand::Room(cmd) => match cmd {
@@ -112,12 +127,6 @@ fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) -> any
                 msg,
             } => {
                 room::chat(data, pubsub, ws_id, room_id, msg);
-            }
-            Room::RoomListSubscribe { ws_id } => {
-                room::room_list_subscribe(data, pubsub, ws_id);
-            }
-            Room::RoomListUnSubscribe { ws_id } => {
-                room::room_list_unsubscribe(pubsub, ws_id);
             }
             Room::GameReady { ws_id, room_id } => {
                 room::room_game_ready(data, pubsub, ws_id, room_id);
@@ -138,6 +147,4 @@ fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) -> any
             Pubsub::Publish { topic, msg } => pubsub.publish(&topic, &msg),
         },
     }
-
-    Ok(())
 }

@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 // import { useAuthStore } from "../store/useAuthStore";
 import useWebSocket from "react-use-websocket";
 import { useWsStore } from "../store/useWsStore";
-import { tokenRefresh } from "../api/auth";
+import { getWsToken } from "../api/auth";
 import { useRoomStore } from "../store/useRoomStore";
-import { useRoomListStore } from "../store/useRoomListStore";
+import { useLobbyStore } from "../store/useLobbyStore";
+import { useUserStore } from "../store/useUserStore";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
@@ -15,12 +16,18 @@ const WebSocketInitializer = () => {
   const setLastMessage = useWsStore(s=>s.setLastMessage);
   const setReadyState = useWsStore(s=>s.setReadyState);
 
+  const userUpdatedIsLogined = useUserStore(s=>s.updatedIsLogined);
+
+  const lobbyUpdateIsEnterd = useLobbyStore(s=>s.updatedIsEnterd);
+  const lobbyUpdateUsers = useLobbyStore(s=>s.updateLobbyUsers);
+  const lobbyUpdateRooms = useLobbyStore(s=>s.updateRooms);
+  const lobbyUpdateChats = useLobbyStore(s=>s.updateLobbyChats);
+
   // const roomEnter = useRoomStore(s=>s.enter);
   const roomAddChat = useRoomStore(s=>s.addChat);
   const roomUpdate = useRoomStore(s=>s.update);
   
 
-  const roomListUpdate = useRoomListStore(s=>s.updateRoomList);
 
   const {sendMessage, lastMessage, readyState} = useWebSocket(socketUrl, {
     onOpen: () => {
@@ -49,8 +56,8 @@ const WebSocketInitializer = () => {
     // }
     const connect = async () => {
       try {
-        const accessToken = await tokenRefresh();
-        setSocketUrl(`${apiUrl}/ws/haha?access_token=${accessToken}`);
+        const ws_token = await getWsToken();
+        setSocketUrl(`${apiUrl}/ws/haha?ws_token=${ws_token}`);
       } catch (e) {
         console.error(e)
       }
@@ -77,26 +84,44 @@ const WebSocketInitializer = () => {
     
     switch (type) {
       case 'echo':
-        console.log('echo message: ', data)
         break;
       case 'topicEcho':
-        console.log('topicEcho', data)
         break;
-      case 'roomEnter':
-        // roomEnter(data.room);
+      case 'userLogined':
+        userUpdatedIsLogined(true);
         break;
-      case 'roomChat':
-        roomAddChat(data);
+      case 'userLogouted':
+        userUpdatedIsLogined(false);
         break;
-      case 'roomListFetch':
-        roomListUpdate(data.rooms)
+
+      case 'lobbyEntered':
+        lobbyUpdateIsEnterd(true);
+        break;
+      case 'lobbyLeaved':
+        lobbyUpdateIsEnterd(false);
+        break;
+      case 'lobbyUpdated':
+        // rooms, user
+        lobbyUpdateRooms(data.rooms);
+        lobbyUpdateUsers(data.users);
+        break;
+      case 'lobbyChat':
+        lobbyUpdateChats({
+          timestamp: data.timestamp,
+          user: data.user,
+          msg: data.msg
+        });
+        break;
+
+      case 'roomEntered':
+        break;
+      case 'roomLeaved':
         break;
       case 'roomUpdated':
-        roomUpdate(data.room)
         break;
-      case 'roomListUpdated':
-        roomListUpdate(data.rooms)
+      case 'roomChat':
         break;
+
       default:
         console.log('ws t not match, t: ', type)
     }

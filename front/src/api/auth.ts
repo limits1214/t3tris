@@ -65,3 +65,17 @@ export const beforeTokenCheckAndRefresh = async (): Promise<string | null> => {
     return accessToken;
   }
 }
+
+export const getWsToken = async (): Promise<string> => {
+  const url = `${apiUrl}/api/auth/wstoken`;
+  const res = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error("getWsToken")
+  }
+  const resJson = await res.json();
+  const token = resJson.data.accessToken;
+  return token;
+}

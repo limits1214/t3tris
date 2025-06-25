@@ -4,14 +4,63 @@ use crate::ws_world::model::{Topic, WsId};
 
 #[derive(Debug)]
 pub struct WsPubSub {
-    pub pubsub: HashMap<Topic, tokio::sync::broadcast::Sender<String>>,
+    pubsub: HashMap<Topic, tokio::sync::broadcast::Sender<String>>,
     // topic broadcast 채널을 각 유저 ws sender와 연결시켜놓은 태스크 핸들
-    pub user_topic_handle: HashMap<WsId, WsWorldUserTopicHandle>,
+    user_topic_handle: HashMap<WsId, WsWorldUserTopicHandle>,
 }
+impl WsPubSub {
+    pub fn new() -> Self {
+        Self {
+            pubsub: HashMap::new(),
+            user_topic_handle: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct WsWorldUserTopicHandle {
-    pub sender: tokio::sync::mpsc::UnboundedSender<String>,
-    pub topics: HashMap<Topic, tokio::task::JoinHandle<()>>,
+struct WsWorldUserTopicHandle {
+    ws_send_tx: tokio::sync::mpsc::UnboundedSender<String>,
+    topics: HashMap<Topic, tokio::task::JoinHandle<()>>,
+}
+
+impl WsPubSub {
+    pub fn get_pubsub_info(&self) -> Vec<(String, usize)> {
+        self.pubsub
+            .iter()
+            .map(|(topic, sender)| (topic.clone(), sender.receiver_count()))
+            .collect::<Vec<_>>()
+    }
+
+    pub fn get_user_topics(&self) -> Vec<(String, Vec<String>)> {
+        self.user_topic_handle
+            .iter()
+            .map(|(ws_id, h)| (ws_id.clone(), h.topics.keys().cloned().collect::<Vec<_>>()))
+            .collect::<Vec<_>>()
+    }
+}
+
+impl WsPubSub {
+    pub fn create_topic_handle(
+        &mut self,
+        ws_id: String,
+        ws_send_tx: tokio::sync::mpsc::UnboundedSender<String>,
+    ) {
+        self.user_topic_handle.insert(
+            ws_id,
+            WsWorldUserTopicHandle {
+                ws_send_tx: ws_send_tx,
+                topics: HashMap::new(),
+            },
+        );
+    }
+
+    pub fn delete_topic_handle(&mut self, ws_id: &str) {
+        if let Some(mut user_topic_handle) = self.user_topic_handle.remove(ws_id) {
+            for (_, handle) in user_topic_handle.topics.drain() {
+                handle.abort();
+            }
+        }
+    }
 }
 
 impl WsPubSub {
@@ -41,7 +90,10 @@ impl WsPubSub {
                 None => {
                     user_topic_handle.topics.insert(
                         topic.to_string(),
-                        Self::subscribe_recv_task(broad_receiver, user_topic_handle.sender.clone()),
+                        Self::subscribe_recv_task(
+                            broad_receiver,
+                            user_topic_handle.ws_send_tx.clone(),
+                        ),
                     );
                 }
             },
@@ -89,10 +141,9 @@ impl WsPubSub {
     /// 반드시 이때 핸들을 abort 시켜줘야한다.
     pub fn unsubscribe(&mut self, ws_id: &str, topic: &str) {
         match self.user_topic_handle.get_mut(ws_id) {
-            Some(user_topic_handle) => match user_topic_handle.topics.get(topic) {
+            Some(user_topic_handle) => match user_topic_handle.topics.remove(topic) {
                 Some(handle) => {
                     handle.abort();
-                    user_topic_handle.topics.remove(topic);
                 }
                 None => {
                     tracing::info!(
@@ -123,6 +174,7 @@ impl WsPubSub {
     }
 
     /// topics 리스트 받아서 퍼블리시
+    #[allow(dead_code)]
     pub fn publish_vec(&self, topics: &[&str], msg: &str) {
         for topic in topics {
             self.publish(topic, msg);

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     model::server_to_client_ws_msg::{self, LobbyUser},
-    ws_world::model::{AuthStatus, WsWorldLobby, WsWorldRoom, WsWorldUser},
+    ws_world::model::{WsWorldRoom, WsWorldUser},
 };
 
 pub fn gen_room_publish_msg(
@@ -11,44 +11,36 @@ pub fn gen_room_publish_msg(
     room_id: &str,
 ) -> Option<server_to_client_ws_msg::Room> {
     let Some(room) = rooms.get(room_id) else {
-        dbg!();
+        dbg!("gen_room_publish_msg no room");
         return None;
     };
 
-    let host_user = room.room_host_ws_id.clone().and_then(|room_host_ws_id| {
-        users.get(&room_host_ws_id).map(|user| match &user.auth {
-            AuthStatus::Authenticated { user_id, nick_name } => server_to_client_ws_msg::User {
-                ws_id: user.ws_id.clone(),
-                user_id: Some(user_id.clone()),
-                nick_name: Some(nick_name.clone()),
-            },
-            AuthStatus::Unauthenticated => server_to_client_ws_msg::User {
-                ws_id: user.ws_id.clone(),
-                user_id: None,
-                nick_name: None,
-            },
-        })
-    });
-
-    let room_users = room
-        .room_users
-        .iter()
-        .filter_map(|(_, room_user)| {
+    let host_user = room
+        .room_host_user_id
+        .clone()
+        .and_then(|room_host_user_id| {
             users
-                .get(&room_user.ws_id)
-                .and_then(|user| match &user.auth {
-                    AuthStatus::Authenticated { user_id, nick_name } => {
-                        Some(server_to_client_ws_msg::RoomUser {
-                            ws_id: user.ws_id.clone(),
-                            user_id: user_id.clone(),
-                            nick_name: nick_name.clone(),
-                            is_game_ready: room_user.is_game_ready,
-                        })
-                    }
-                    AuthStatus::Unauthenticated { .. } => None,
+                .get(&room_host_user_id)
+                .cloned()
+                .map(|user| server_to_client_ws_msg::User {
+                    user_id: user.user_id,
+                    nick_name: user.nick_name,
                 })
-        })
-        .collect::<Vec<_>>();
+        });
+
+    let room_users =
+        room.room_users
+            .iter()
+            .filter_map(|(_, room_user)| {
+                users.get(&room_user.user_id).cloned().map(|user| {
+                    server_to_client_ws_msg::RoomUser {
+                        user_id: user.user_id,
+                        nick_name: user.nick_name,
+                        is_game_ready: room_user.is_game_ready,
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
 
     Some(server_to_client_ws_msg::Room {
         room_id: room.room_id.clone(),
@@ -60,7 +52,6 @@ pub fn gen_room_publish_msg(
 
 pub fn gen_lobby_publish_msg(
     users: &HashMap<String, WsWorldUser>,
-    lobby: &WsWorldLobby,
     rooms: &HashMap<String, WsWorldRoom>,
 ) -> server_to_client_ws_msg::Lobby {
     let rooms = rooms
@@ -70,20 +61,13 @@ pub fn gen_lobby_publish_msg(
         .filter_map(|(_, room)| gen_room_publish_msg(&users, &rooms, &room.room_id))
         .collect::<Vec<_>>();
 
-    let lobby_users = lobby
-        .users
+    let lobby_users = users
         .iter()
-        .filter_map(|(_, lobby_user)| {
-            users
-                .get(&lobby_user.ws_id)
-                .and_then(|user| match &user.auth {
-                    AuthStatus::Authenticated { user_id, nick_name } => Some(LobbyUser {
-                        ws_id: user.ws_id.to_string(),
-                        user_id: user_id.to_string(),
-                        nick_name: nick_name.to_string(),
-                    }),
-                    AuthStatus::Unauthenticated { .. } => None,
-                })
+        .filter_map(|(_, user)| {
+            Some(LobbyUser {
+                user_id: user.user_id.clone(),
+                nick_name: user.nick_name.clone(),
+            })
         })
         .collect::<Vec<_>>();
 

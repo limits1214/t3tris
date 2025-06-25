@@ -69,15 +69,15 @@ impl ServerToClientWsMsg {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    pub ws_id: String,
-    pub user_id: Option<String>,
-    pub nick_name: Option<String>,
+    // pub ws_id: String,
+    pub user_id: String,
+    pub nick_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LobbyUser {
-    pub ws_id: String,
+    // pub ws_id: String,
     pub user_id: String,
     pub nick_name: String,
 }
@@ -93,7 +93,7 @@ pub struct Lobby {
 #[serde(rename_all = "camelCase")]
 pub struct RoomUser {
     pub user_id: String,
-    pub ws_id: String,
+    // pub ws_id: String,
     pub nick_name: String,
     pub is_game_ready: bool,
 }

@@ -1,74 +1,53 @@
-use std::collections::HashMap;
-
 use crate::{
     colon,
     constant::TOPIC_WS_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
     ws_world::{
-        WsData, lobby,
-        model::{UserState, WsWorldUser},
-        pubsub::{WsPubSub, WsWorldUserTopicHandle},
+        WsData,
+        connections::{WsConnAuthStatus, WsConnections, WsWorldConnection},
+        model::{WsWorldUser, WsWorldUserState},
+        pubsub::WsPubSub,
         room,
     },
 };
 
-pub fn get_ws_world_info(data: &mut WsData, pubsub: &mut WsPubSub) -> serde_json::Value {
-    let pubsub_info = pubsub
-        .pubsub
-        .iter()
-        .map(|(topic, sender)| (topic, sender.receiver_count()))
-        .collect::<Vec<_>>();
+pub fn get_ws_world_info(
+    connections: &WsConnections,
+    data: &mut WsData,
+    pubsub: &mut WsPubSub,
+) -> serde_json::Value {
+    let pubsub_info = pubsub.get_pubsub_info();
 
-    let user_topic = pubsub
-        .user_topic_handle
-        .iter()
-        .map(|(ws_id, h)| (ws_id, h.topics.keys().collect::<Vec<_>>()))
-        .collect::<Vec<_>>();
+    let user_topic = pubsub.get_user_topics();
+
     let j = serde_json::json!({
         "users" : data.users.clone(),
         "rooms" : data.rooms.clone(),
         "games": data.games.clone(),
         "pubsub": pubsub_info,
-        "lobby": data.lobby.clone(),
+        "connections": connections.clone(),
         "user_topic": user_topic
     });
     j
 }
 
 /// ws 연결시 한번만 수행
-pub fn create_user(
+pub fn create_connection(
+    connections: &mut WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: &str,
+    ws_id: String,
     ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
 ) {
-    let user_ws_id = ws_id.to_string();
-    data.users.insert(
-        user_ws_id.clone(),
-        WsWorldUser {
-            ws_id: user_ws_id.clone(),
-            auth: crate::ws_world::model::AuthStatus::Unauthenticated,
-            state: UserState::InLobby,
-        },
-    );
+    connections.create(ws_id.clone());
 
-    pubsub.user_topic_handle.insert(
-        user_ws_id.clone(),
-        WsWorldUserTopicHandle {
-            sender: ws_sender_tx,
-            topics: HashMap::new(),
-        },
-    );
+    pubsub.create_topic_handle(ws_id.clone(), ws_sender_tx);
 
     // 내 채널 구독
-    pubsub.subscribe(&user_ws_id, &colon!(TOPIC_WS_ID, user_ws_id));
-
-    // 로비 뷰어 구독
-    // pubsub.subscribe(&ws_id, TOPIC_LOBBY);
+    pubsub.subscribe(&ws_id, &colon!(TOPIC_WS_ID, ws_id));
 
     // 현재 로비 내용 받기
-    let pub_lobby =
-        crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.lobby, &data.rooms);
+    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
         &colon!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::LobbyUpdated {
@@ -81,86 +60,129 @@ pub fn create_user(
 }
 
 /// ws 해제시 한번만 수행
-pub fn delete_user(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
-    let mut rooms_to_delete = vec![];
+pub fn delete_connection(
+    connections: &mut WsConnections,
+    data: &mut WsData,
+    pubsub: &mut WsPubSub,
+    ws_id: String,
+) {
+    // ws_to_user_id
+    let user_id = connections
+        .get(&ws_id)
+        .and_then(|ws_id| match &ws_id.auth_status {
+            WsConnAuthStatus::Authenticated { user_id } => Some(user_id),
+            _ => None,
+        })
+        .cloned();
 
-    // 해당 ws_id가 참가중인 방을 추린다.
-    for (_, room) in data.rooms.iter_mut() {
-        if room
-            .room_users
-            .iter()
-            .any(|(_, room_user)| room_user.ws_id == ws_id)
-        {
-            rooms_to_delete.push(room.room_id.clone());
+    if let Some(user_id) = user_id {
+        let mut rooms_to_delete = vec![];
+        // 해당 ws_id가 참가중인 방을 추린다.
+        for (_, room) in data.rooms.iter_mut() {
+            if room
+                .room_users
+                .iter()
+                .any(|(_, room_user)| room_user.user_id == user_id)
+            {
+                rooms_to_delete.push(room.room_id.clone());
+            }
         }
+        // 해당 사용자 방나가기 프로세스 진행
+        for room_id in rooms_to_delete {
+            room::leave(&connections, data, pubsub, user_id.clone(), room_id);
+        }
+
+        // data 에서 유저 제거
+        data.users.remove(&user_id);
     }
 
-    // 해당 사용자 방나가기 프로세스 진행
-    for room_id in rooms_to_delete {
-        room::leave(data, pubsub, ws_id.to_owned(), room_id);
-    }
-
-    // 로비 나가기
-    if data.lobby.users.get(ws_id).is_some() {
-        lobby::lobby_leave(data, pubsub, ws_id);
-    }
-
-    // pubsub.unsubscribe(&ws_id, TOPIC_LOBBY);
-
-    // 로비 구독해제
-    // lobby::lobby_update_unsubscribe(pubsub, ws_id);
-
-    // 사용자를 지운다.
-    data.users.remove(ws_id);
+    connections.remove(&ws_id);
 
     // 중요!, 사용자가 pubsub 사용중인 task handle 을 지워준다.
-    if let Some(user_topic_handle) = pubsub.user_topic_handle.get(ws_id) {
-        let topics = user_topic_handle.topics.keys().cloned().collect::<Vec<_>>();
-        for topic in topics {
-            pubsub.unsubscribe(&ws_id, &topic);
-        }
-    }
-    pubsub.user_topic_handle.remove(ws_id);
+    pubsub.delete_topic_handle(&ws_id);
 }
 
 pub fn login_user(
+    connections: &mut WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: &str,
-    user_id: &str,
-    nick_name: &str,
+    ws_id: String,
+    user_id: String,
+    nick_name: String,
 ) {
-    data.users.insert(
-        ws_id.to_string(),
-        WsWorldUser {
-            ws_id: ws_id.to_string(),
-            auth: crate::ws_world::model::AuthStatus::Authenticated {
-                user_id: user_id.to_string(),
-                nick_name: nick_name.to_string(),
+    // 인증된 상태라면 로그인 취소
+    if let Some(WsWorldConnection {
+        auth_status: WsConnAuthStatus::Authenticated { .. },
+        ..
+    }) = connections.get(&ws_id)
+    {
+        let msg = "login fail, User Ws Is already authenticated".to_string();
+        pubsub.publish(
+            &colon!(TOPIC_WS_ID, ws_id),
+            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
+        );
+        dbg!(msg);
+        return;
+    };
+
+    let conn = connections.remove(&ws_id);
+    if let Some(mut conn) = conn {
+        // connection Authenticated 로 업데이트
+        conn.auth_status = WsConnAuthStatus::Authenticated {
+            user_id: user_id.clone(),
+        };
+        connections.insert(ws_id.clone(), conn);
+
+        // data 에 user 넣어주기
+        data.users.insert(
+            user_id.clone(),
+            WsWorldUser {
+                user_id: user_id.clone(),
+                nick_name: nick_name.clone(),
+                state: WsWorldUserState::Idle,
             },
-            state: UserState::InLobby,
-        },
-    );
+        );
+    }
 
     pubsub.publish(
         &colon!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::UserLogined.to_json(),
     );
-
-    lobby::lobby_enter(data, pubsub, ws_id);
 }
 
-pub fn logout_user(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
-    lobby::lobby_leave(data, pubsub, ws_id);
+pub fn logout_user(
+    connections: &mut WsConnections,
+    data: &mut WsData,
+    pubsub: &mut WsPubSub,
+    ws_id: String,
+) {
+    let user_id = {
+        let Some(WsWorldConnection {
+            auth_status: WsConnAuthStatus::Authenticated { user_id },
+            ..
+        }) = connections.get(&ws_id)
+        else {
+            let msg = "logout fail user is not authenticated".to_string();
+            pubsub.publish(
+                &colon!(TOPIC_WS_ID, ws_id),
+                &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
+            );
+            dbg!(msg);
+            return;
+        };
+        user_id.clone()
+    };
 
-    data.users.insert(
-        ws_id.to_string(),
-        WsWorldUser {
-            ws_id: ws_id.to_string(),
-            auth: crate::ws_world::model::AuthStatus::Unauthenticated,
-            state: UserState::InLobby,
-        },
-    );
+    let conn = connections.remove(&ws_id);
+    if let Some(mut conn) = conn {
+        // connection Authenticated 로 업데이트
+
+        conn.auth_status = WsConnAuthStatus::Unauthenticated;
+        connections.insert(ws_id.clone(), conn);
+
+        // data 에 user 제거
+        data.users.remove(&user_id);
+    }
 
     pubsub.publish(
         &colon!(TOPIC_WS_ID, ws_id),

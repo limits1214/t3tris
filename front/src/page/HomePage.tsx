@@ -19,7 +19,8 @@ const HomePage = () => {
   const wsReadyState = useWsStore(s=>s.readyState)
 
   useEffect(() => {
-    if (wsReadyState == ReadyState.OPEN) {
+    if (wsReadyState === ReadyState.OPEN) {
+      console.log('lobby sub')
       // 로비 구독
       const obj = {
         type: 'subscribeTopic',
@@ -30,14 +31,17 @@ const HomePage = () => {
       send(JSON.stringify(obj))
     }
     return () => {
-      // 로비 구독해제
-      const obj = {
-        type: 'unSubscribeTopic',
-        data: {
-          topic: 'lobby'
+      if (wsReadyState === ReadyState.OPEN) {
+        console.log('lobby unsub')
+        // 로비 구독해제
+        const obj = {
+          type: 'unSubscribeTopic',
+          data: {
+            topic: 'lobby'
+          }
         }
+        send(JSON.stringify(obj))
       }
-      send(JSON.stringify(obj))
     }
   }, [send, wsReadyState])
   return (

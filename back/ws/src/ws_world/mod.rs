@@ -1,6 +1,7 @@
 use crate::ws_world::{
     command::{Game, Lobby, Pubsub, Room, Ws, WsWorldCommand},
-    model::{WsData, WsWorldLobby},
+    connections::WsConnections,
+    model::WsData,
     pubsub::WsPubSub,
 };
 use std::collections::HashMap;
@@ -9,6 +10,7 @@ use tokio::task::JoinHandle;
 pub mod command;
 pub mod model;
 
+mod connections;
 mod game;
 mod lobby;
 mod pubsub;
@@ -18,6 +20,7 @@ mod ws;
 
 #[derive(Debug)]
 pub struct WsWorld {
+    connections: WsConnections,
     data: WsData,
     pubsub: WsPubSub,
 }
@@ -32,18 +35,13 @@ impl WsWorld {
         let cloned_world_sender = world_sender.clone();
         let word_receive_task_join_handle = tokio::spawn(async move {
             let mut world = WsWorld {
+                connections: WsConnections::new(),
                 data: WsData {
                     users: HashMap::new(),
-                    lobby: WsWorldLobby {
-                        users: HashMap::new(),
-                    },
                     rooms: HashMap::new(),
                     games: HashMap::new(),
                 },
-                pubsub: WsPubSub {
-                    pubsub: HashMap::new(),
-                    user_topic_handle: HashMap::new(),
-                },
+                pubsub: WsPubSub::new(),
             };
 
             let mut cleanup_timer = tokio::time::interval(std::time::Duration::from_secs(10));
@@ -54,7 +52,7 @@ impl WsWorld {
                 tokio::select! {
                     msg = world_receiver.recv() => {
                         if let Some(msg) = msg {
-                            process(&mut world.data, &mut world.pubsub, msg)
+                            process(&mut world.connections, &mut world.data, &mut world.pubsub, msg)
                         } else {
                             tracing::warn!("WsWorld received None msg, break!");
                             break;
@@ -74,20 +72,25 @@ impl WsWorld {
     }
 }
 
-fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) {
+fn process(
+    connections: &mut WsConnections,
+    data: &mut WsData,
+    pubsub: &mut WsPubSub,
+    msg: WsWorldCommand,
+) {
     match msg {
         WsWorldCommand::Ws(cmd) => match cmd {
             Ws::CreateUser {
                 ws_id,
                 ws_sender_tx,
             } => {
-                ws::create_user(data, pubsub, &ws_id, ws_sender_tx);
+                ws::create_connection(connections, data, pubsub, ws_id, ws_sender_tx);
             }
             Ws::DeleteUser { ws_id } => {
-                ws::delete_user(data, pubsub, &ws_id);
+                ws::delete_connection(connections, data, pubsub, ws_id);
             }
             Ws::GetWsWorldInfo { tx } => {
-                let info_str = ws::get_ws_world_info(data, pubsub);
+                let info_str = ws::get_ws_world_info(connections, data, pubsub);
                 let _ = tx.send(info_str);
             }
             Ws::LoginInUser {
@@ -95,10 +98,10 @@ fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) {
                 user_id,
                 nick_name,
             } => {
-                ws::login_user(data, pubsub, &ws_id, &user_id, &nick_name);
+                ws::login_user(connections, data, pubsub, ws_id, user_id, nick_name);
             }
             Ws::LogoutUser { ws_id } => {
-                ws::logout_user(data, pubsub, &ws_id);
+                ws::logout_user(connections, data, pubsub, ws_id);
             }
         },
         WsWorldCommand::Lobby(cmd) => match cmd {
@@ -109,31 +112,31 @@ fn process(data: &mut WsData, pubsub: &mut WsPubSub, msg: WsWorldCommand) {
                 lobby::lobby_leave(data, pubsub, &ws_id);
             }
             Lobby::Chat { ws_id, msg } => {
-                lobby::lobby_chat(data, pubsub, &ws_id, &msg);
+                lobby::lobby_chat(&connections, data, pubsub, &ws_id, &msg);
             }
         },
         WsWorldCommand::Room(cmd) => match cmd {
             Room::Create { room_name, ws_id } => {
-                room::create(data, pubsub, ws_id, room_name);
+                room::create(connections, data, pubsub, ws_id, room_name);
             }
             Room::Leave { ws_id, room_id } => {
-                room::leave(data, pubsub, ws_id, room_id);
+                room::leave(connections, data, pubsub, ws_id, room_id);
             }
             Room::Enter { ws_id, room_id } => {
-                room::enter(data, pubsub, ws_id, room_id);
+                room::enter(connections, data, pubsub, ws_id, room_id);
             }
             Room::Chat {
                 ws_id,
                 room_id,
                 msg,
             } => {
-                room::chat(data, pubsub, ws_id, room_id, msg);
+                room::chat(connections, data, pubsub, ws_id, room_id, msg);
             }
             Room::GameReady { ws_id, room_id } => {
-                room::room_game_ready(data, pubsub, ws_id, room_id);
+                room::room_game_ready(connections, data, pubsub, ws_id, room_id);
             }
             Room::GameUnReady { ws_id, room_id } => {
-                room::room_game_unready(data, pubsub, ws_id, room_id);
+                room::room_game_unready(connections, data, pubsub, ws_id, room_id);
             }
             Room::GameStart { ws_id, room_id } => {
                 room::room_game_start(data, pubsub, ws_id, room_id);

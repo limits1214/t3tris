@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use crate::{
     colon,
-    constant::{TOPIC_LOBBY_VIEWER, TOPIC_WS_ID},
+    constant::TOPIC_WS_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
     ws_world::{
         WsData, lobby,
-        model::WsWorldUser,
+        model::{UserState, WsWorldUser},
         pubsub::{WsPubSub, WsWorldUserTopicHandle},
         room,
     },
@@ -45,8 +45,10 @@ pub fn create_user(
     let user_ws_id = ws_id.to_string();
     data.users.insert(
         user_ws_id.clone(),
-        WsWorldUser::Unauthenticated {
+        WsWorldUser {
             ws_id: user_ws_id.clone(),
+            auth: crate::ws_world::model::AuthStatus::Unauthenticated,
+            state: UserState::InLobby,
         },
     );
 
@@ -62,7 +64,7 @@ pub fn create_user(
     pubsub.subscribe(&user_ws_id, &colon!(TOPIC_WS_ID, user_ws_id));
 
     // 로비 뷰어 구독
-    pubsub.subscribe(&ws_id, TOPIC_LOBBY_VIEWER);
+    // pubsub.subscribe(&ws_id, TOPIC_LOBBY);
 
     // 현재 로비 내용 받기
     let pub_lobby =
@@ -103,9 +105,7 @@ pub fn delete_user(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
         lobby::lobby_leave(data, pubsub, ws_id);
     }
 
-    pubsub.unsubscribe(&ws_id, TOPIC_LOBBY_VIEWER);
-    // pubsub.unsubscribe(&ws_id, TOPIC_LOBBY_VIEWER);
-    // pubsub.unsubscribe(&ws_id, TOPIC_LOBBY_PARTICIPANT);
+    // pubsub.unsubscribe(&ws_id, TOPIC_LOBBY);
 
     // 로비 구독해제
     // lobby::lobby_update_unsubscribe(pubsub, ws_id);
@@ -132,10 +132,13 @@ pub fn login_user(
 ) {
     data.users.insert(
         ws_id.to_string(),
-        WsWorldUser::Authenticated {
+        WsWorldUser {
             ws_id: ws_id.to_string(),
-            user_id: user_id.to_string(),
-            nick_name: nick_name.to_string(),
+            auth: crate::ws_world::model::AuthStatus::Authenticated {
+                user_id: user_id.to_string(),
+                nick_name: nick_name.to_string(),
+            },
+            state: UserState::InLobby,
         },
     );
 
@@ -152,8 +155,10 @@ pub fn logout_user(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
 
     data.users.insert(
         ws_id.to_string(),
-        WsWorldUser::Unauthenticated {
+        WsWorldUser {
             ws_id: ws_id.to_string(),
+            auth: crate::ws_world::model::AuthStatus::Unauthenticated,
+            state: UserState::InLobby,
         },
     );
 

@@ -21,15 +21,25 @@ pub struct WsData {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum WsWorldUser {
-    Unauthenticated {
-        ws_id: String,
-    },
-    Authenticated {
-        ws_id: String,
-        user_id: String,
-        nick_name: String,
-    },
+pub struct WsWorldUser {
+    pub ws_id: String,
+    pub auth: AuthStatus,
+    pub state: UserState,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum AuthStatus {
+    Unauthenticated,
+    Authenticated { user_id: String, nick_name: String },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum UserState {
+    Idle,
+    InLobby,
+    InRoom { room_id: String },
+    Playing { room_id: String },
+    Spectating { room_id: String },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

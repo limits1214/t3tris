@@ -1,3 +1,5 @@
+import { beforeTokenCheckAndRefresh } from "./auth";
+
 const apiUrl = import.meta.env.VITE_API_URL;
 
 export type UserInfo = {
@@ -9,7 +11,8 @@ export type UserInfo = {
   createdAt: string;
 }
 
-export const getUserInfo = async (accessToken: string): Promise<UserInfo> => {
+export const getUserInfo = async (): Promise<UserInfo> => {
+  const accessToken = await beforeTokenCheckAndRefresh();
   const url = `${apiUrl}/api/user/info`;
   const res = await fetch(url, {
     method: 'GET',

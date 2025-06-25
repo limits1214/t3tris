@@ -1,25 +1,45 @@
 /** @jsxImportSource @emotion/react */
 
 import { css } from "@emotion/react"
-import { Text, Avatar, Flex, Grid, TextField, Button } from "@radix-ui/themes"
+import { Text, Avatar, Flex, Grid, TextField, Button, Dialog } from "@radix-ui/themes"
 import { useAuthStore } from "../store/useAuthStore";
 import { useEffect, useRef, useState } from "react";
 import { getUserInfo, type UserInfo } from "../api/user";
 import { GoogleLoginButton } from "react-social-login-buttons";
 import { guestLogin, serverLogout } from "../api/auth";
 import { useWsStore } from "../store/useWsStore";
-import { readyStateString } from "../util/ws";
 import { useLobbyStore } from "../store/useLobbyStore";
 import {format} from 'date-fns'
+import type { RoomInfo } from "../store/useRoomStore";
+import { ReadyState } from "react-use-websocket";
+import { useNavigate } from "react-router-dom";
 
 const HomePage = () => {
-  // const userIsLogined = useUserStore(s=>s.isLogined);
-  // const send = useWsStore(s=>s.send);
-  // useEffect(() => {
-  //   if(userIsLogined) {
+  const send = useWsStore(s=>s.send);
+  const wsReadyState = useWsStore(s=>s.readyState)
 
-  //   }
-  // }, [userIsLogined])
+  useEffect(() => {
+    if (wsReadyState == ReadyState.OPEN) {
+      // 로비 구독
+      const obj = {
+        type: 'subscribeTopic',
+        data: {
+          topic: 'lobby'
+        }
+      }
+      send(JSON.stringify(obj))
+    }
+    return () => {
+      // 로비 구독해제
+      const obj = {
+        type: 'unSubscribeTopic',
+        data: {
+          topic: 'lobby'
+        }
+      }
+      send(JSON.stringify(obj))
+    }
+  }, [send, wsReadyState])
   return (
     <Flex direction="column" css={css`height: 100vh; padding: 1rem; min-height: 0`}>
       <Flex css={css`border: 1px solid black; flex: 1; `}>
@@ -32,7 +52,7 @@ const HomePage = () => {
       </Flex>
       <Flex css={css`border: 1px solid black; flex: 2.5; min-height: 0; `}>
         <Flex css={css`border: 1px solid red; flex: 2.5;`}>
-          <RoomList/>
+          <RoomList/> 
         </Flex>
         <Flex css={css`border: 1px solid red; flex: 1;`}>
           <LobbyInfo/>
@@ -48,39 +68,67 @@ const LobbyHeader = () => {
   return (
     <Flex justify="between" css={css`width: 100%`}>
       <Flex css={css`flex: 1;`}>Logo</Flex>
-      <Flex direction="column" css={css`flex: 1;`}>
-        <Text>방만들기</Text>
+      <Flex direction="column" css={css`flex: 1;`} justify="center">
+        <CreateRoom/>
       </Flex>
     </Flex>
   );
 };
 
+const CreateRoom = () => {
+  const [roomName, setRoomName] = useState('');
+  const send = useWsStore(s=>s.send);
+  const createRoom = () => {
+    const obj = {
+      type: 'roomCreate',
+      data: {
+        roomName
+      }
+    }
+    send(JSON.stringify(obj));
+  }
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger>
+        <Button>방 만들기</Button>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Title>방 만들기</Dialog.Title>
+        <Dialog.Description>
+          방 설정
+        </Dialog.Description>
+
+        <TextField.Root placeholder="방 이름" onChange={e=>setRoomName(e.target.value)}></TextField.Root>
+
+        <Flex gap="3" justify="end">
+          <Dialog.Close>
+            <Button variant="soft" onClick={createRoom}>
+                만들기
+            </Button>
+          </Dialog.Close>
+          <Dialog.Close>
+            <Button variant="soft" color="gray">
+              닫기
+            </Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  )
+}
+
 const UserInfo = () => {
-  const {isAuthenticated, accessToken, logout, setAuth} = useAuthStore();
+  const {isAuthenticated, logout, setAuth} = useAuthStore();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const send = useWsStore(s=>s.send);
-  const readyState = useWsStore(s=>s.readyState);
   useEffect(() => {
-    if (isAuthenticated && accessToken && readyStateString(readyState) == 'Open') {
-      const fetch = async () => {
-        const userInfo = await getUserInfo(accessToken);
-        console.log(userInfo)
-        setUserInfo(userInfo);
-      }
-      fetch();
-
-      //ws login
-      const obj = {
-        type: 'userLogin',
-        data: {
-          accessToken
-        }
-      }
-      send(JSON.stringify(obj));
-    } else {
-      setUserInfo(null)
+    const fetch = async () => {
+      const userInfo = await getUserInfo();
+      console.log(userInfo)
+      setUserInfo(userInfo);
     }
-  }, [isAuthenticated, accessToken, readyState])
+    fetch();
+  }, [])
 
   const [nickName, setNickName] = useState('');
   const handleGuestLogin = async () =>  {
@@ -88,8 +136,20 @@ const UserInfo = () => {
       return;
     }
     try {
-      const token = await guestLogin(nickName);
-      setAuth(token)
+      const accessToken = await guestLogin(nickName);
+      setAuth(accessToken)
+
+      const userInfo = await getUserInfo();
+      console.log(userInfo)
+      setUserInfo(userInfo);
+
+      const obj = {
+        type: 'userLogin',
+        data: {
+          accessToken
+        }
+      }
+      send(JSON.stringify(obj));
     } catch (e) {
       console.error('e', e);
     }
@@ -141,6 +201,8 @@ const UserInfo = () => {
 };
 
 const RoomList = () => {
+  const lobbyRooms = useLobbyStore(s=>s.rooms);
+  
   return (
     <Flex direction="column" css={css`padding: 1rem; width:100%;`}>
       <Flex css={css`border: 1px solid black; flex: 1; width: 100%;`} justify="between">
@@ -155,28 +217,31 @@ const RoomList = () => {
       </Flex>
       <Flex direction="column" css={css`border: 1px solid black; flex: 10; padding: 1rem;`} overflowY={"auto"}>
         <Grid rows="2" columns="2">
-          <RoomListItem/>
-          <RoomListItem/>
-          <RoomListItem/>
-          <RoomListItem/>
-          <RoomListItem/>
+        {lobbyRooms.map(roomInfo=>(
+          <RoomListItem key={roomInfo.roomId} roomInfo={roomInfo}/>
+        ))}
         </Grid>
       </Flex>
     </Flex>
   );
 };
 
-const RoomListItem = () => {
+const RoomListItem = ({roomInfo}: {roomInfo: RoomInfo}) => {
+  const navigate = useNavigate();
+  /* const send = useWsStore(s=>s.send); */
+  const roomEnter = (roomId: string) => {
+    navigate(`/room/${roomId}`)
+  }
   return (
-    <Flex direction="column" css={css`border: 1px solid black; flex: 1;`}>
+    <Flex onClick={()=>roomEnter(roomInfo.roomId)} direction="column" css={css`border: 1px solid black; flex: 1;`}>
       <Flex>
-        <Text>001</Text>
-        <Text>방제목방제목</Text>
+        <Text>-</Text>
+        <Text>{roomInfo.roomName}</Text>
       </Flex>
       <Flex>
-        <Text>대기중</Text>
-        <Text>노템전</Text>
-        <Text>개인전</Text>
+        <Text>host: {roomInfo.roomHostUser.nickName}</Text>
+        <Text>users: {roomInfo.roomUsers.length}</Text>
+        <Text>-</Text>
       </Flex>
     </Flex>
   )
@@ -185,11 +250,8 @@ const RoomListItem = () => {
 const LobbyInfo = () => {
   return (
     <Flex direction="column" css={css`width: 100%;`}>
-      
-
       <CurrentUser/>
       <LobbyChat/>
-
     </Flex>
   );
 }

@@ -5,13 +5,13 @@ use time::OffsetDateTime;
 
 use crate::{
     colon,
-    constant::{TOPIC_ROOM_ID, TOPIC_WS_ID},
+    constant::{TOPIC_LOBBY, TOPIC_ROOM_ID, TOPIC_WS_ID},
     model::server_to_client_ws_msg::{self, ServerToClientWsMsg},
     ws_world::{
         WsData,
         model::{
-            WsWorldGame, WsWorldGameStatus, WsWorldRoom, WsWorldRoomEvent, WsWorldRoomStatus,
-            WsWorldRoomUser, WsWorldUser,
+            AuthStatus, WsWorldGame, WsWorldGameStatus, WsWorldRoom, WsWorldRoomEvent,
+            WsWorldRoomStatus, WsWorldRoomUser, WsWorldUser,
         },
         pubsub::WsPubSub,
     },
@@ -37,15 +37,35 @@ pub fn create(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_name
     };
     data.rooms.insert(room_id.clone(), room);
 
-    enter(data, pubsub, ws_id, room_id);
+    pubsub.publish(
+        &colon!(TOPIC_WS_ID, ws_id),
+        &ServerToClientWsMsg::RoomCreated {
+            room_id: room_id.clone(),
+        }
+        .to_json(),
+    );
+
+    // enter(data, pubsub, ws_id, room_id);
+
+    let pub_lobby =
+        crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.lobby, &data.rooms);
+    pubsub.publish(
+        TOPIC_LOBBY,
+        &ServerToClientWsMsg::LobbyUpdated {
+            rooms: pub_lobby.rooms,
+            users: pub_lobby.users,
+            chats: vec![],
+        }
+        .to_json(),
+    );
 }
 
 pub fn enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: String) {
     // 로그인 팝업 푸시
-    let Some(WsWorldUser::Authenticated {
+    let Some(WsWorldUser {
         ws_id,
-        user_id,
-        nick_name,
+        auth: AuthStatus::Authenticated { user_id, nick_name },
+        state,
     }) = data.users.get(&ws_id)
     else {
         dbg!();
@@ -75,22 +95,20 @@ pub fn enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
         },
     );
 
-    // event push
-    room.room_events.push(WsWorldRoomEvent::UserEnter {
-        timestamp: OffsetDateTime::now_utc(),
-        ws_id: ws_id.clone(),
-        user_id: user_id.clone(),
-        nick_name: nick_name.clone(),
-    });
-    // event push
-    room.room_events.push(WsWorldRoomEvent::SystemChat {
-        timestamp: OffsetDateTime::now_utc(),
-        msg: format!("{} 방 입장", nick_name),
-    });
+    // pubsub.unsubscribe(&ws_id, TOPIC_LOBBY);
 
     // 방, 방개인 토픽 구독
     pubsub.subscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id));
     pubsub.subscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id));
+
+    // roon enter publish
+    pubsub.publish(
+        &colon!(TOPIC_WS_ID, ws_id),
+        &ServerToClientWsMsg::RoomEntered {
+            room_id: room_id.clone(),
+        }
+        .to_json(),
+    );
 
     // 방에 퍼블리시
     if let Some(pub_room) =
@@ -120,7 +138,7 @@ pub fn enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
     let pub_lobby =
         crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.lobby, &data.rooms);
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
+        TOPIC_LOBBY,
         &ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
@@ -136,10 +154,10 @@ pub fn enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
 //  호스트이다 => ws_id에 첫번째 호스트로 올림
 //  호스트가 아니다 => 걍 나가셈
 pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: String) {
-    let Some(WsWorldUser::Authenticated {
+    let Some(WsWorldUser {
         ws_id,
-        user_id,
-        nick_name,
+        auth: AuthStatus::Authenticated { user_id, nick_name },
+        state,
     }) = data.users.get(&ws_id)
     else {
         dbg!();
@@ -152,18 +170,15 @@ pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
 
     //방 나가기
     room.room_users.remove(ws_id);
-    // eventpush
-    room.room_events.push(WsWorldRoomEvent::UserLeave {
-        timestamp: OffsetDateTime::now_utc(),
-        ws_id: ws_id.clone(),
-        user_id: user_id.clone(),
-        nick_name: nick_name.clone(),
-    });
-    // eventpush
-    room.room_events.push(WsWorldRoomEvent::SystemChat {
-        timestamp: OffsetDateTime::now_utc(),
-        msg: format!("{} 방 퇴장", nick_name),
-    });
+
+    pubsub.publish(
+        &colon!(TOPIC_WS_ID, ws_id),
+        &ServerToClientWsMsg::RoomLeaved {
+            room_id: room_id.clone(),
+        }
+        .to_json(),
+    );
+
     // 방에 방퇴장 시스템챗 퍼블리시
     pubsub.publish(
         &colon!(TOPIC_ROOM_ID, room_id),
@@ -182,10 +197,8 @@ pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
     let mut new_host_ws_id = None;
     if room.room_users.is_empty() {
         // 본인이 마지막이면 방파괴
-        room.room_events.push(WsWorldRoomEvent::DestroyedRoom {
-            timestamp: OffsetDateTime::now_utc(),
-        });
-        room.is_deleted = true;
+
+        // room.is_deleted = true;
     } else {
         match &room.room_host_ws_id {
             // 본인이 마지막이 아닌데 호스트라면
@@ -196,11 +209,7 @@ pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
                     .iter()
                     .next()
                     .map(|(_, room_user)| room_user.ws_id.clone());
-                room.room_events.push(WsWorldRoomEvent::HostChange {
-                    timestamp: OffsetDateTime::now_utc(),
-                    before_ws_id: room.room_host_ws_id.clone(),
-                    after_ws_id: new_host_ws_id.clone(),
-                });
+
                 room.room_host_ws_id = new_host_ws_id.clone();
             }
             // 본인이 마지막도 아니고, 호스트도 아님
@@ -217,6 +226,8 @@ pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
         &colon!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id),
     );
 
+    // pubsub.subscribe(&ws_id, TOPIC_LOBBY);
+
     // 방에 퍼블리시
     if let Some(stc_room) =
         crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
@@ -229,7 +240,12 @@ pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
 
     // new host
     if let Some(new_host_ws_id) = &new_host_ws_id {
-        if let Some(WsWorldUser::Authenticated { nick_name, .. }) = data.users.get(new_host_ws_id) {
+        if let Some(WsWorldUser {
+            ws_id,
+            auth: AuthStatus::Authenticated { user_id, nick_name },
+            state,
+        }) = data.users.get(new_host_ws_id)
+        {
             pubsub.publish(
                 &colon!(TOPIC_ROOM_ID, room_id),
                 &ServerToClientWsMsg::RoomChat {
@@ -261,10 +277,10 @@ pub fn leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: S
 
 pub fn chat(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: String, msg: String) {
     // todo 로그인 팝업
-    let Some(WsWorldUser::Authenticated {
+    let Some(WsWorldUser {
         ws_id,
-        user_id,
-        nick_name,
+        auth: AuthStatus::Authenticated { user_id, nick_name },
+        state,
     }) = data.users.get(&ws_id)
     else {
         dbg!();
@@ -274,14 +290,6 @@ pub fn chat(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: St
         dbg!();
         return;
     };
-
-    room.room_events.push(WsWorldRoomEvent::UserChat {
-        timestamp: OffsetDateTime::now_utc(),
-        nick_name: nick_name.clone(),
-        user_id: user_id.clone(),
-        ws_id: ws_id.clone(),
-        msg: msg.clone(),
-    });
 
     pubsub.publish(
         &colon!(TOPIC_ROOM_ID, room_id),
@@ -412,6 +420,31 @@ pub fn room_game_start(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, 
         pubsub.publish(
             &colon!(TOPIC_ROOM_ID, room_id),
             &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
+        );
+    }
+}
+
+pub fn room_cleanup(data: &mut WsData, pubsub: &mut WsPubSub) {
+    let mut is_do_cleaning = false;
+    data.rooms.iter_mut().for_each(|(_, room)| {
+        // TOOD Created 이후 진입전 clean 이되버리는 현상이 발생할수도 있음
+        if room.room_users.len() == 0 {
+            room.is_deleted = true;
+            is_do_cleaning = true;
+        }
+    });
+
+    if is_do_cleaning {
+        let pub_lobby =
+            crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.lobby, &data.rooms);
+        pubsub.publish(
+            TOPIC_LOBBY,
+            &ServerToClientWsMsg::LobbyUpdated {
+                rooms: pub_lobby.rooms,
+                users: pub_lobby.users,
+                chats: vec![],
+            }
+            .to_json(),
         );
     }
 }

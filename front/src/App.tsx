@@ -10,7 +10,6 @@ import { useAuthStore } from './store/useAuthStore.ts'
 import { useEffect } from 'react'
 import { tokenRefresh } from './api/auth.ts'
 import SinglePlayPage from './page/SinglePlayPage.tsx'
-import MultiPlayLayout from './layout/MultiPlayLayout.tsx'
 import RoomPage from './page/RoomPage.tsx'
 import TestPixiPage from './page/test/TestPixiPage.tsx'
 
@@ -38,7 +37,7 @@ function App() {
       <Routes>
         <Route path="" element={<DefaultLayout/>}>
           <Route index element={<HomePage/>}></Route>
-          <Route path="room">
+          <Route path="room/:roomId">
             <Route index element={<RoomPage/>}></Route>
           </Route>
           <Route path='singleplay' element={<SinglePlayPage/>}></Route>

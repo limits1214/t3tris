@@ -39,9 +39,11 @@ pub enum ServerToClientWsMsg {
 
     // === 룸관련 ===
     #[serde(rename_all = "camelCase")]
-    RoomEntered,
+    RoomCreated { room_id: String },
     #[serde(rename_all = "camelCase")]
-    RoomLeaved,
+    RoomEntered { room_id: String },
+    #[serde(rename_all = "camelCase")]
+    RoomLeaved { room_id: String },
     #[serde(rename_all = "camelCase")]
     RoomUpdated { room: Room },
     #[serde(rename_all = "camelCase")]

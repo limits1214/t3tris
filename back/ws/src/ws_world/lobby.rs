@@ -2,48 +2,17 @@ use time::OffsetDateTime;
 
 use crate::{
     colon,
-    constant::{TOPIC_LOBBY_PARTICIPANT, TOPIC_LOBBY_VIEWER, TOPIC_WS_ID},
+    constant::{TOPIC_LOBBY, TOPIC_WS_ID},
     model::server_to_client_ws_msg::{ServerToClientWsMsg, User},
     ws_world::{
-        model::{WsData, WsWorldLobbyUser, WsWorldUser},
+        model::{AuthStatus, WsData, WsWorldLobbyUser, WsWorldUser},
         pubsub::WsPubSub,
     },
 };
 
-// pub fn lobby_viewer_subscribe(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
-//     pubsub.subscribe(&ws_id, TOPIC_LOBBY_VIEWER);
-// }
-
-/// 로비 구독하기,
-/// 로그인안해도 됨
-// pub fn lobby_update_subscribe(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
-//     pubsub.subscribe(&ws_id, TOPIC_LOBBY_UPDATE);
-
-//     let pub_lobby =
-//         crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.lobby, &data.rooms);
-//     pubsub.publish(
-//         &colon!(TOPIC_WS_ID, ws_id),
-//         &ServerToClientWsMsg::LobbyUpdated {
-//             rooms: pub_lobby.rooms,
-//             users: pub_lobby.users,
-//             chats: vec![],
-//         }
-//         .to_json(),
-//     );
-// }
-
-/// 로비 구독 해제하기
-/// 로그인 안해도됨
-// pub fn lobby_update_unsubscribe(pubsub: &mut WsPubSub, ws_id: &str) {
-//     pubsub.unsubscribe(&ws_id, TOPIC_LOBBY_UPDATE);
-// }
-
 /// 로비입장
 /// 로그인해야됨
 pub fn lobby_enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
-    pubsub.unsubscribe(ws_id, TOPIC_LOBBY_VIEWER);
-    pubsub.subscribe(ws_id, TOPIC_LOBBY_PARTICIPANT);
-
     data.lobby.users.insert(
         ws_id.to_string(),
         WsWorldLobbyUser {
@@ -58,8 +27,8 @@ pub fn lobby_enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
 
     let pub_lobby =
         crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.lobby, &data.rooms);
-    pubsub.publish_vec(
-        &[TOPIC_LOBBY_VIEWER, TOPIC_LOBBY_PARTICIPANT],
+    pubsub.publish(
+        TOPIC_LOBBY,
         &ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
@@ -68,12 +37,17 @@ pub fn lobby_enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
         .to_json(),
     );
 
-    let Some(WsWorldUser::Authenticated { nick_name, .. }) = data.users.get(ws_id).cloned() else {
+    let Some(WsWorldUser {
+        ws_id,
+        auth: AuthStatus::Authenticated { user_id, nick_name },
+        state,
+    }) = data.users.get(ws_id).cloned()
+    else {
         dbg!();
         return;
     };
-    pubsub.publish_vec(
-        &[TOPIC_LOBBY_VIEWER, TOPIC_LOBBY_PARTICIPANT],
+    pubsub.publish(
+        TOPIC_LOBBY,
         &ServerToClientWsMsg::LobbyChat {
             timestamp: OffsetDateTime::now_utc(),
             user: User {
@@ -90,9 +64,6 @@ pub fn lobby_enter(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
 /// 로비 나가기
 /// 로그인 해야됨
 pub fn lobby_leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
-    pubsub.unsubscribe(ws_id, TOPIC_LOBBY_PARTICIPANT);
-    pubsub.subscribe(ws_id, TOPIC_LOBBY_VIEWER);
-
     data.lobby.users.remove(ws_id);
 
     pubsub.publish(
@@ -102,8 +73,8 @@ pub fn lobby_leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
 
     let pub_lobby =
         crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.lobby, &data.rooms);
-    pubsub.publish_vec(
-        &[TOPIC_LOBBY_VIEWER, TOPIC_LOBBY_PARTICIPANT],
+    pubsub.publish(
+        TOPIC_LOBBY,
         &ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
@@ -112,12 +83,17 @@ pub fn lobby_leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
         .to_json(),
     );
 
-    let Some(WsWorldUser::Authenticated { nick_name, .. }) = data.users.get(ws_id).cloned() else {
+    let Some(WsWorldUser {
+        ws_id,
+        auth: AuthStatus::Authenticated { user_id, nick_name },
+        state,
+    }) = data.users.get(ws_id).cloned()
+    else {
         dbg!();
         return;
     };
-    pubsub.publish_vec(
-        &[TOPIC_LOBBY_VIEWER, TOPIC_LOBBY_PARTICIPANT],
+    pubsub.publish(
+        TOPIC_LOBBY,
         &ServerToClientWsMsg::LobbyChat {
             timestamp: OffsetDateTime::now_utc(),
             user: User {
@@ -134,18 +110,18 @@ pub fn lobby_leave(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str) {
 /// 로비 채팅
 /// 로그인 해야됨
 pub fn lobby_chat(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: &str, msg: &str) {
-    let Some(WsWorldUser::Authenticated {
+    let Some(WsWorldUser {
         ws_id,
-        user_id,
-        nick_name,
+        auth: AuthStatus::Authenticated { user_id, nick_name },
+        state,
     }) = data.users.get(ws_id).cloned()
     else {
         dbg!();
         return;
     };
 
-    pubsub.publish_vec(
-        &[TOPIC_LOBBY_VIEWER, TOPIC_LOBBY_PARTICIPANT],
+    pubsub.publish(
+        TOPIC_LOBBY,
         &ServerToClientWsMsg::LobbyChat {
             timestamp: OffsetDateTime::now_utc(),
             user: User {

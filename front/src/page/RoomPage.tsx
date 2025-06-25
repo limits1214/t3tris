@@ -2,8 +2,47 @@
 
 import { css } from "@emotion/react"
 import { Button, Flex, Grid, Text, TextField } from "@radix-ui/themes"
+import { useEffect } from "react"
+import { useRoomStore } from "../store/useRoomStore"
+import { useWsStore } from "../store/useWsStore"
+import { useNavigate, useParams } from "react-router-dom"
 
 const RoomPage = () => {
+  const {roomId} = useParams();
+  const send = useWsStore(s=>s.send);
+  const roomClear = useRoomStore(s=>s.clear);
+
+  const roomEnter = (roomId: string) => {
+    const obj = {
+      type: 'roomEnter',
+      data: {
+        roomId
+      }
+    }
+    send(JSON.stringify(obj));
+  }
+
+  const roomLeave = (roomId: string) => {
+    const obj = {
+      type: 'roomLeave',
+      data: {
+        roomId
+      }
+    }
+    send(JSON.stringify(obj));
+    roomClear();
+  }
+  
+  useEffect(() => {
+    if (roomId) {
+      roomEnter(roomId);
+    }
+    return () => {
+      if (roomId) {
+        roomLeave(roomId);
+      }
+    };
+  }, []);
   return (
     <Flex direction="column" css={css`height: 100vh; padding: 1rem;`}>
       <Header/>
@@ -19,9 +58,10 @@ const RoomPage = () => {
 export default RoomPage
 
 const Header = () => {
+  const roomName = useRoomStore(s=>s.roomName);
   return (
     <Flex>
-      <Text>방제목11</Text>
+      <Text>{roomName}</Text>
     </Flex>
   )
 }
@@ -66,6 +106,7 @@ const Board = () => {
 }
 
 const Infomation = () => {
+  const navigate = useNavigate();
   return (
     <Flex direction="column" css={css`flex: 1; border: 1px solid black; `}>
       <Flex css={css`flex: 1;`}></Flex>
@@ -85,6 +126,7 @@ const Infomation = () => {
       <Flex css={css`flex: 1;`}>
         초대
       </Flex>
+      <Button onClick={() => navigate('/')}>로비로</Button>
     </Flex>
   )
 }

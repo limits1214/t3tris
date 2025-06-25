@@ -62,6 +62,7 @@ impl WsWorld {
                     }
                     _ = cleanup_timer.tick() => {
                         world.pubsub.pubsub_cleanup();
+                        room::room_cleanup(&mut world.data, &mut world.pubsub);
                     }
                     _ = game_ticker_timer.tick() => {
                         let _ = cloned_world_sender.send(WsWorldCommand::Game(Game::Tick));

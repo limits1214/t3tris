@@ -15,6 +15,7 @@ use crate::{
             WsWorldRoomUser, WsWorldUser,
         },
         pubsub::WsPubSub,
+        util::{err_publish, gen_lobby_publish_msg, gen_room_publish_msg},
     },
 };
 
@@ -25,16 +26,13 @@ pub fn create(
     ws_id: WsId,
     room_name: String,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data) else {
-        let msg = "room create not authenticated".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users) else {
+        err_publish(pubsub, &ws_id, dbg!("[room create] not authenticated"));
         return;
     };
 
+    // === 방 생성
     let room_id = RoomId(nanoid!());
     let room = WsWorldRoom {
         room_id: room_id.clone(),
@@ -47,23 +45,23 @@ pub fn create(
     };
     data.rooms.insert(room_id.clone(), room);
 
+    // === 개인 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_WS_ID, ws_id),
-        &ServerToClientWsMsg::RoomCreated {
+        ServerToClientWsMsg::RoomCreated {
             room_id: room_id.into(),
-        }
-        .to_json(),
+        },
     );
 
-    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
+    // === 로비 메시지 발행
+    let pub_lobby = gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
         &topic!(TOPIC_LOBBY),
-        &ServerToClientWsMsg::LobbyUpdated {
+        ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],
-        }
-        .to_json(),
+        },
     );
 }
 
@@ -74,40 +72,39 @@ pub fn enter(
     ws_id: WsId,
     room_id: RoomId,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room enter not authenticated".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users) else {
+        err_publish(pubsub, &ws_id, dbg!("[room enter] not authenticated"));
         return;
     };
 
+    // === 방 가드
     let Some(room) = data.rooms.get_mut(&room_id) else {
-        let msg = "room is not exists".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+        err_publish(pubsub, &ws_id, dbg!("[room enter] room is not exists"));
         return;
     };
 
-    //만약 이미 존재하는 ws_id면 취소
+    // === 유저 중복 체크
     if room
         .room_users
         .iter()
         .any(|(_, room_user)| room_user.user_id == user.user_id)
     {
-        tracing::warn!(
-            "room enter ws_id duplicated, room_id: {room_id:?}, ws_id: {ws_id:?}, user_id: {:?}",
-            user.user_id
+        err_publish(
+            pubsub,
+            &ws_id,
+            dbg!(&format!(
+                "[room enter] user is dup, user_id:{:?}",
+                user.user_id
+            )),
         );
-        return;
     }
 
-    // enter room
+    // === 방, 방개인 구독
+    pubsub.subscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id));
+    pubsub.subscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id));
+
+    // === 방 진입
     room.room_users.insert(
         user.user_id.clone(),
         WsWorldRoomUser {
@@ -116,60 +113,47 @@ pub fn enter(
         },
     );
 
-    // 방, 방개인 토픽 구독
-    pubsub.subscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id));
-    pubsub.subscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id));
-
-    // roon enter publish
+    // === 개인 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_WS_ID, ws_id),
-        &ServerToClientWsMsg::RoomEntered {
+        ServerToClientWsMsg::RoomEntered {
             room_id: room_id.clone().into(),
-        }
-        .to_json(),
+        },
     );
 
-    // 방에 퍼블리시
-    if let Some(pub_room) =
-        crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
-    {
+    // === 개인 메시지 발행 - 룸상세
+    if let Some(pub_room) = gen_room_publish_msg(&data.users, &data.rooms, &room_id) {
         pubsub.publish(
             &topic!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
+            ServerToClientWsMsg::RoomUpdated { room: pub_room },
         );
     }
 
-    // 방에 방입장 시스템챗 퍼블리시
+    // === 방 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_ROOM_ID, room_id),
-        &ServerToClientWsMsg::RoomChat {
+        ServerToClientWsMsg::RoomChat {
             timestamp: OffsetDateTime::now_utc(),
             msg: format!("{} 방 입장", user.nick_name),
             user: server_to_client_ws_msg::User {
                 user_id: "System".to_owned(),
                 nick_name: "System".to_owned(),
             },
-        }
-        .to_json(),
+        },
     );
 
-    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
+    // === 로비 메시지 발행
+    let pub_lobby = gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
         &topic!(TOPIC_LOBBY),
-        &ServerToClientWsMsg::LobbyUpdated {
+        ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],
-        }
-        .to_json(),
+        },
     );
 }
 
-// 나갈때
-// 본인이 마지막 사람이다. => 방파괴
-// 마지막 사람은 아니면서
-//  호스트이다 => ws_id에 첫번째 호스트로 올림
-//  호스트가 아니다 => 걍 나가셈
 pub fn leave(
     connections: &WsConnections,
     data: &mut WsData,
@@ -177,91 +161,32 @@ pub fn leave(
     ws_id: WsId,
     room_id: RoomId,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users) else {
+        err_publish(pubsub, &ws_id, dbg!("[room leave] not authenticated"));
         return;
     };
 
+    // === 방 가드
     let Some(room) = data.rooms.get_mut(&room_id) else {
-        dbg!();
+        err_publish(pubsub, &ws_id, dbg!("[room leave] room is not exists"));
         return;
     };
 
-    //방 나가기
+    // === 방 유저 나가기
     room.room_users.remove(&user.user_id);
 
-    pubsub.publish(
-        &topic!(TOPIC_WS_ID, ws_id),
-        ServerToClientWsMsg::RoomLeaved {
-            room_id: room_id.clone().into(),
-        }
-        .to_json(),
-    );
+    // === 방 나가는데 내가 host 였다면 마지막 user의 첫번째 host로 올려주기
+    let new_host_user_id = match &room.room_host_user_id {
+        Some(host_user_id) if *host_user_id == user.user_id => room
+            .room_users
+            .iter()
+            .next()
+            .map(|(_, room_user)| room_user.user_id.clone()),
+        _ => None,
+    };
 
-    // 방에 방퇴장 시스템챗 퍼블리시
-    pubsub.publish(
-        &topic!(TOPIC_ROOM_ID, room_id),
-        ServerToClientWsMsg::RoomChat {
-            timestamp: OffsetDateTime::now_utc(),
-            user: server_to_client_ws_msg::User {
-                user_id: "System".to_owned(),
-                nick_name: "System".to_owned(),
-            },
-            msg: format!("{} 방 퇴장", user.nick_name),
-        }
-        .to_json(),
-    );
-
-    let mut new_host_user_id = None;
-    if room.room_users.is_empty() {
-        // 본인이 마지막이면 방파괴
-
-        // room.is_deleted = true;
-    } else {
-        match &room.room_host_user_id {
-            // 본인이 마지막이 아닌데 호스트라면
-            Some(host_user_id) if *host_user_id == user.user_id => {
-                // 호스트 체인지
-                new_host_user_id = room
-                    .room_users
-                    .iter()
-                    .next()
-                    .map(|(_, room_user)| room_user.user_id.clone());
-
-                room.room_host_user_id = new_host_user_id.clone();
-            }
-            // 본인이 마지막도 아니고, 호스트도 아님
-            _ => {
-                // 나가
-            }
-        }
-    }
-
-    // 해당 방, 방개인 구독 해제
-    pubsub.unsubscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id));
-    pubsub.unsubscribe(
-        &ws_id.clone(),
-        &topic!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id),
-    );
-
-    // pubsub.subscribe(&ws_id, TOPIC_LOBBY);
-
-    // 방에 퍼블리시
-    if let Some(stc_room) =
-        crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
-    {
-        pubsub.publish(
-            &topic!(TOPIC_ROOM_ID, room_id),
-            ServerToClientWsMsg::RoomUpdated { room: stc_room }.to_json(),
-        );
-    }
-
-    // new host
+    // === 만약 방장 바뀌었으면 바뀌었다고 방 메시지 발행
     if let Some(new_host_user_id) = &new_host_user_id {
         if let Some(WsWorldUser { nick_name, .. }) = data.users.get(new_host_user_id) {
             pubsub.publish(
@@ -273,22 +198,54 @@ pub fn leave(
                         nick_name: "System".to_owned(),
                     },
                     msg: format!("새로운 방장 {}", nick_name),
-                }
-                .to_json(),
+                },
             );
         }
     }
 
-    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
+    // === 개인 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_WS_ID, ws_id),
+        ServerToClientWsMsg::RoomLeaved {
+            room_id: room_id.clone().into(),
+        },
+    );
+
+    // === 방 메시지 발행
+    pubsub.publish(
+        &topic!(TOPIC_ROOM_ID, room_id),
+        ServerToClientWsMsg::RoomChat {
+            timestamp: OffsetDateTime::now_utc(),
+            user: server_to_client_ws_msg::User {
+                user_id: "System".to_owned(),
+                nick_name: "System".to_owned(),
+            },
+            msg: format!("{} 방 퇴장", user.nick_name),
+        },
+    );
+
+    // === 방 메시지 발행
+    if let Some(stc_room) = gen_room_publish_msg(&data.users, &data.rooms, &room_id) {
+        pubsub.publish(
+            &topic!(TOPIC_ROOM_ID, room_id),
+            ServerToClientWsMsg::RoomUpdated { room: stc_room },
+        );
+    }
+
+    // === 로비 메시지 발행
+    let pub_lobby = gen_lobby_publish_msg(&data.users, &data.rooms);
+    pubsub.publish(
+        &topic!(TOPIC_LOBBY),
         ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],
-        }
-        .to_json(),
+        },
     );
+
+    // === 방, 방 개인 구독 해제
+    pubsub.unsubscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id));
+    pubsub.unsubscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id));
 }
 
 pub fn chat(
@@ -299,31 +256,29 @@ pub fn chat(
     room_id: RoomId,
     msg: String,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
-        return;
-    };
-    let Some(_room) = data.rooms.get_mut(&room_id) else {
-        dbg!();
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users) else {
+        err_publish(pubsub, &ws_id, dbg!("[room chat] not authenticated"));
         return;
     };
 
+    // === 방 가드
+    let Some(_) = data.rooms.get_mut(&room_id) else {
+        err_publish(pubsub, &ws_id, dbg!("[room chat] room is not exists"));
+        return;
+    };
+
+    // === 방 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_ROOM_ID, room_id),
         ServerToClientWsMsg::RoomChat {
             timestamp: OffsetDateTime::now_utc(),
             msg: msg,
             user: server_to_client_ws_msg::User {
-                user_id: user.user_id.into(),
+                user_id: user.user_id.clone().into(),
                 nick_name: user.nick_name.clone(),
             },
-        }
-        .to_json(),
+        },
     );
 }
 
@@ -334,39 +289,42 @@ pub fn room_game_ready(
     ws_id: WsId,
     room_id: RoomId,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users) else {
+        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] not authenticated"));
         return;
     };
+
+    // === 방 가드
     let Some(room) = data.rooms.get_mut(&room_id) else {
-        dbg!();
+        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] room is not exists"));
         return;
     };
+
+    // === 방상태가 레디 박을수 있는지 체크
+    if room.room_status != WsWorldRoomStatus::Waiting {
+        err_publish(pubsub, &ws_id, dbg!("[room_gamey] room not waiting"));
+        return;
+    }
+
+    // === 방 유저를 가져오는 가드
     let Some((_, room_user)) = room
         .room_users
         .iter_mut()
         .find(|(_, room_user)| room_user.user_id == user.user_id)
     else {
-        dbg!();
+        err_publish(pubsub, &ws_id, dbg!("[room_gamey] room user not exists"));
         return;
     };
-    if room.room_status != WsWorldRoomStatus::Waiting {
-        tracing::warn!("room_game_start Waiting 인 룸에서만 조작가능");
-        return;
-    }
+
+    // === 레디!
     room_user.is_game_ready = true;
 
-    if let Some(pub_room) =
-        crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
-    {
+    // === 방 메시지 발행
+    if let Some(pub_room) = gen_room_publish_msg(&data.users, &data.rooms, &room_id) {
         pubsub.publish(
             &topic!(TOPIC_ROOM_ID, room_id),
-            ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
+            ServerToClientWsMsg::RoomUpdated { room: pub_room },
         );
     }
 }
@@ -378,44 +336,47 @@ pub fn room_game_unready(
     ws_id: WsId,
     room_id: RoomId,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users) else {
+        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] not authenticated"));
         return;
     };
+
+    // === 방 가드
     let Some(room) = data.rooms.get_mut(&room_id) else {
-        dbg!();
+        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] room is not exists"));
         return;
     };
+
+    // === 방상태가 언레디 박을수 있는지 가드
+    if room.room_status != WsWorldRoomStatus::Waiting {
+        err_publish(pubsub, &ws_id, dbg!("[room_gamey] room not waiting"));
+        return;
+    }
+
+    // === 방 유저를 가져오는 가드
     let Some((_, room_user)) = room
         .room_users
         .iter_mut()
         .find(|(_, room_user)| room_user.user_id == user.user_id)
     else {
-        dbg!();
+        err_publish(pubsub, &ws_id, dbg!("[room_gamey] room user not exists"));
         return;
     };
-    if room.room_status != WsWorldRoomStatus::Waiting {
-        tracing::warn!("room_game_start Waiting 인 룸에서만 조작가능");
-        return;
-    }
+
+    // === 언레디
     room_user.is_game_ready = false;
 
-    if let Some(pub_room) =
-        crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
-    {
+    // === 방 메시지 발행
+    if let Some(pub_room) = gen_room_publish_msg(&data.users, &data.rooms, &room_id) {
         pubsub.publish(
             &topic!(TOPIC_ROOM_ID, room_id),
-            ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
+            ServerToClientWsMsg::RoomUpdated { room: pub_room },
         );
     }
 }
 
-// host만 실행 가능
+/// 방장만 실행 가능
 pub fn room_game_start(
     connections: &WsConnections,
     data: &mut WsData,
@@ -423,37 +384,35 @@ pub fn room_game_start(
     ws_id: WsId,
     room_id: RoomId,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_owned();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users) else {
+        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] not authenticated"));
         return;
     };
+
+    // === 방 가드
     let Some(room) = data.rooms.get_mut(&room_id) else {
-        dbg!();
+        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] room is not exists"));
         return;
     };
-    let Some(host_user_id) = &room.room_host_user_id else {
-        dbg!();
+
+    // === 방장 가드
+    if room
+        .room_host_user_id
+        .iter()
+        .all(|user_id| *user_id == user.user_id)
+    {
+        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] your not host"));
         return;
     };
-    if *host_user_id != user.user_id {
-        tracing::warn!(
-            "host 가 아닌 사용자가 start 조작, room_id:{:?}, host_ws_id: {:?}, request_ws_id: {:?}",
-            room.room_id,
-            host_user_id,
-            ws_id
-        );
-        return;
-    }
+
+    // === 방상태가 언레디 박을수 있는지 가드
     if room.room_status != WsWorldRoomStatus::Waiting {
-        tracing::warn!("room_game_start Waiting 인 룸에서만 조작가능");
+        err_publish(pubsub, &ws_id, dbg!("[room_gamey] room not waiting"));
         return;
     }
 
+    // === 방 유저 전부 레디 했는지 가드
     let is_all_ready = room
         .room_users
         .iter()
@@ -463,8 +422,10 @@ pub fn room_game_start(
         return;
     }
 
+    // === 방 상태 변경
     room.room_status = WsWorldRoomStatus::Gaming;
 
+    // === 게임 추가
     let game_id = GameId(nanoid!());
     let started = Instant::now();
     let now = Instant::now();
@@ -483,36 +444,35 @@ pub fn room_game_start(
         },
     );
 
-    if let Some(pub_room) =
-        crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
-    {
+    // === 방 메시지 발행
+    if let Some(pub_room) = gen_room_publish_msg(&data.users, &data.rooms, &room_id) {
         pubsub.publish(
             &topic!(TOPIC_ROOM_ID, room_id),
-            &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
+            ServerToClientWsMsg::RoomUpdated { room: pub_room },
         );
     }
 }
 
+// 유저 없는 방 제거
 pub fn room_cleanup(data: &mut WsData, pubsub: &mut WsPubSub) {
     let mut is_do_cleaning = false;
     data.rooms.iter_mut().for_each(|(_, room)| {
         // TOOD Created 이후 진입전 clean 이되버리는 현상이 발생할수도 있음
-        if room.room_users.len() == 0 {
+        if !room.is_deleted && room.room_users.len() == 0 {
             room.is_deleted = true;
             is_do_cleaning = true;
         }
     });
 
     if is_do_cleaning {
-        let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
+        let pub_lobby = gen_lobby_publish_msg(&data.users, &data.rooms);
         pubsub.publish(
             &topic!(TOPIC_LOBBY),
             ServerToClientWsMsg::LobbyUpdated {
                 rooms: pub_lobby.rooms,
                 users: pub_lobby.users,
                 chats: vec![],
-            }
-            .to_json(),
+            },
         );
     }
 }

@@ -31,12 +31,11 @@ pub fn lobby_enter(
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],
-        }
-        .to_json(),
+        },
     );
 
     if let Some(WsWorldUser { nick_name, .. }) =
-        connections.get_user_by_ws_id(&ws_id, data).cloned()
+        connections.get_user_by_ws_id(&ws_id, &data.users).cloned()
     {
         pubsub.publish(
             &topic!(TOPIC_LOBBY),
@@ -47,8 +46,7 @@ pub fn lobby_enter(
                     nick_name: "Sytem".to_string(),
                 },
                 msg: format!("{nick_name} 로비 입장"),
-            }
-            .to_json(),
+            },
         );
     };
 }
@@ -78,7 +76,7 @@ pub fn lobby_leave(
     );
 
     if let Some(WsWorldUser { nick_name, .. }) =
-        connections.get_user_by_ws_id(&ws_id, data).cloned()
+        connections.get_user_by_ws_id(&ws_id, &data.users).cloned()
     {
         pubsub.publish(
             &topic!(TOPIC_LOBBY),
@@ -108,7 +106,7 @@ pub fn lobby_chat(
     ws_id: WsId,
     msg: &str,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users).cloned() else {
         let msg = "lobby_chat not authenticated".to_string();
         pubsub.publish(
             &topic!(TOPIC_WS_ID, ws_id),

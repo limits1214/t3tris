@@ -1,8 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
-    model::server_to_client_ws_msg::{self, LobbyUser},
-    ws_world::model::{RoomId, UserId, WsWorldRoom, WsWorldUser},
+    constant::TOPIC_WS_ID,
+    model::server_to_client_ws_msg::{self, LobbyUser, ServerToClientWsMsg},
+    topic,
+    ws_world::{
+        model::{RoomId, UserId, WsId, WsWorldRoom, WsWorldUser},
+        pubsub::WsPubSub,
+    },
 };
 
 pub fn gen_room_publish_msg(
@@ -75,4 +80,17 @@ pub fn gen_lobby_publish_msg(
         rooms,
         users: lobby_users,
     }
+}
+pub fn err_publish(pubsub: &mut WsPubSub, ws_id: &WsId, msg: &str) {
+    err_publish_code(pubsub, ws_id, msg, "N");
+}
+pub fn err_publish_code(pubsub: &mut WsPubSub, ws_id: &WsId, msg: &str, code: &str) {
+    pubsub.publish(
+        &topic!(TOPIC_WS_ID, ws_id),
+        ServerToClientWsMsg::Err {
+            msg: msg.to_owned(),
+            code: code.to_owned(),
+        }
+        .to_json(),
+    );
 }

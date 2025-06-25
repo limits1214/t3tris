@@ -1,4 +1,4 @@
-use crate::ws_world::model::{UserId, WsData, WsId, WsWorldUser};
+use crate::ws_world::model::{UserId, WsId, WsWorldUser};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use time::OffsetDateTime;
@@ -59,12 +59,12 @@ impl WsConnections {
     pub fn get_user_by_ws_id<'a>(
         &self,
         ws_id: &'a WsId,
-        data: &'a WsData,
+        users: &'a HashMap<UserId, WsWorldUser>,
     ) -> Option<&'a WsWorldUser> {
         match self.get(ws_id) {
             Some(conn) => match &conn.auth_status {
                 WsConnAuthStatus::Unauthenticated => None,
-                WsConnAuthStatus::Authenticated { user_id } => data.users.get(user_id),
+                WsConnAuthStatus::Authenticated { user_id } => users.get(user_id),
             },
             None => None,
         }

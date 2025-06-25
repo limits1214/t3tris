@@ -12,6 +12,8 @@ pub enum ServerToClientWsMsg {
     #[serde(rename_all = "camelCase")]
     Echo { msg: String },
     #[serde(rename_all = "camelCase")]
+    Err { msg: String, code: String },
+    #[serde(rename_all = "camelCase")]
     TopicEcho { topic: String, msg: String },
     #[serde(rename_all = "camelCase")]
     UserLogined,
@@ -65,6 +67,16 @@ impl ServerToClientWsMsg {
                 "{}".to_string()
             }
         }
+    }
+}
+impl From<&ServerToClientWsMsg> for String {
+    fn from(msg: &ServerToClientWsMsg) -> Self {
+        msg.to_json()
+    }
+}
+impl From<ServerToClientWsMsg> for String {
+    fn from(msg: ServerToClientWsMsg) -> Self {
+        msg.to_json()
     }
 }
 

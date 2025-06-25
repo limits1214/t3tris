@@ -1,5 +1,3 @@
-use crate::ws_world::model::OneShot;
-
 pub enum WsWorldCommand {
     Pubsub(Pubsub),
     Lobby(Lobby),
@@ -14,17 +12,17 @@ pub enum Game {
 
 pub enum Ws {
     GetWsWorldInfo {
-        tx: OneShot<serde_json::Value>,
+        tx: tokio::sync::oneshot::Sender<serde_json::Value>,
     },
-    CreateUser {
+    CreateConnection {
         ws_id: String,
         // user 가가지고 있는 ws_sender_tx
         ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
     },
-    DeleteUser {
+    DeleteConnection {
         ws_id: String,
     },
-    LoginInUser {
+    LoginUser {
         ws_id: String,
         user_id: String,
         nick_name: String,

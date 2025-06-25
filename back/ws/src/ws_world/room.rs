@@ -4,14 +4,14 @@ use nanoid::nanoid;
 use time::OffsetDateTime;
 
 use crate::{
-    colon,
     constant::{TOPIC_LOBBY, TOPIC_ROOM_ID, TOPIC_WS_ID},
     model::server_to_client_ws_msg::{self, ServerToClientWsMsg},
+    topic,
     ws_world::{
         WsData,
         connections::WsConnections,
         model::{
-            WsWorldGame, WsWorldGameStatus, WsWorldRoom, WsWorldRoomEvent, WsWorldRoomStatus,
+            GameId, RoomId, WsId, WsWorldGame, WsWorldGameStatus, WsWorldRoom, WsWorldRoomStatus,
             WsWorldRoomUser, WsWorldUser,
         },
         pubsub::WsPubSub,
@@ -22,45 +22,42 @@ pub fn create(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
+    ws_id: WsId,
     room_name: String,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data) else {
-        let msg = "room create not authenticated".to_string();
+        let msg = "room create not authenticated".to_owned();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
         return;
     };
 
-    let room_id = nanoid!();
+    let room_id = RoomId(nanoid!());
     let room = WsWorldRoom {
         room_id: room_id.clone(),
         room_name,
         room_host_user_id: Some(user.user_id.clone()),
         room_users: HashMap::new(),
-        room_events: vec![WsWorldRoomEvent::CreateRoom {
-            timestamp: OffsetDateTime::now_utc(),
-            create_ws_id: ws_id.clone(),
-        }],
+        room_events: vec![],
         is_deleted: false,
         room_status: WsWorldRoomStatus::Waiting,
     };
     data.rooms.insert(room_id.clone(), room);
 
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
+        &topic!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::RoomCreated {
-            room_id: room_id.clone(),
+            room_id: room_id.into(),
         }
         .to_json(),
     );
 
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
-        TOPIC_LOBBY,
+        &topic!(TOPIC_LOBBY),
         &ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
@@ -74,13 +71,13 @@ pub fn enter(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
-    room_id: String,
+    ws_id: WsId,
+    room_id: RoomId,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room enter not authenticated".to_string();
+        let msg = "room enter not authenticated".to_owned();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
@@ -88,9 +85,9 @@ pub fn enter(
     };
 
     let Some(room) = data.rooms.get_mut(&room_id) else {
-        let msg = "room is not exists".to_string();
+        let msg = "room is not exists".to_owned();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
@@ -120,14 +117,14 @@ pub fn enter(
     );
 
     // 방, 방개인 토픽 구독
-    pubsub.subscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id));
-    pubsub.subscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id));
+    pubsub.subscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id));
+    pubsub.subscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id));
 
     // roon enter publish
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
+        &topic!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::RoomEntered {
-            room_id: room_id.clone(),
+            room_id: room_id.clone().into(),
         }
         .to_json(),
     );
@@ -137,14 +134,14 @@ pub fn enter(
         crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
     {
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
         );
     }
 
     // 방에 방입장 시스템챗 퍼블리시
     pubsub.publish(
-        &colon!(TOPIC_ROOM_ID, room_id),
+        &topic!(TOPIC_ROOM_ID, room_id),
         &ServerToClientWsMsg::RoomChat {
             timestamp: OffsetDateTime::now_utc(),
             msg: format!("{} 방 입장", user.nick_name),
@@ -158,7 +155,7 @@ pub fn enter(
 
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
-        TOPIC_LOBBY,
+        &topic!(TOPIC_LOBBY),
         &ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
@@ -177,13 +174,13 @@ pub fn leave(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
-    room_id: String,
+    ws_id: WsId,
+    room_id: RoomId,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_string();
+        let msg = "room leave not authenticated".to_owned();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
@@ -199,17 +196,17 @@ pub fn leave(
     room.room_users.remove(&user.user_id);
 
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
-        &ServerToClientWsMsg::RoomLeaved {
-            room_id: room_id.clone(),
+        &topic!(TOPIC_WS_ID, ws_id),
+        ServerToClientWsMsg::RoomLeaved {
+            room_id: room_id.clone().into(),
         }
         .to_json(),
     );
 
     // 방에 방퇴장 시스템챗 퍼블리시
     pubsub.publish(
-        &colon!(TOPIC_ROOM_ID, room_id),
-        &ServerToClientWsMsg::RoomChat {
+        &topic!(TOPIC_ROOM_ID, room_id),
+        ServerToClientWsMsg::RoomChat {
             timestamp: OffsetDateTime::now_utc(),
             user: server_to_client_ws_msg::User {
                 user_id: "System".to_owned(),
@@ -246,10 +243,10 @@ pub fn leave(
     }
 
     // 해당 방, 방개인 구독 해제
-    pubsub.unsubscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id));
+    pubsub.unsubscribe(&ws_id, &topic!(TOPIC_ROOM_ID, room_id));
     pubsub.unsubscribe(
         &ws_id.clone(),
-        &colon!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id),
+        &topic!(TOPIC_ROOM_ID, room_id, TOPIC_WS_ID, ws_id),
     );
 
     // pubsub.subscribe(&ws_id, TOPIC_LOBBY);
@@ -259,8 +256,8 @@ pub fn leave(
         crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
     {
         pubsub.publish(
-            &colon!(TOPIC_ROOM_ID, room_id),
-            &ServerToClientWsMsg::RoomUpdated { room: stc_room }.to_json(),
+            &topic!(TOPIC_ROOM_ID, room_id),
+            ServerToClientWsMsg::RoomUpdated { room: stc_room }.to_json(),
         );
     }
 
@@ -268,8 +265,8 @@ pub fn leave(
     if let Some(new_host_user_id) = &new_host_user_id {
         if let Some(WsWorldUser { nick_name, .. }) = data.users.get(new_host_user_id) {
             pubsub.publish(
-                &colon!(TOPIC_ROOM_ID, room_id),
-                &ServerToClientWsMsg::RoomChat {
+                &topic!(TOPIC_ROOM_ID, room_id),
+                ServerToClientWsMsg::RoomChat {
                     timestamp: OffsetDateTime::now_utc(),
                     user: server_to_client_ws_msg::User {
                         user_id: "System".to_owned(),
@@ -284,8 +281,8 @@ pub fn leave(
 
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
-        &ServerToClientWsMsg::LobbyUpdated {
+        &topic!(TOPIC_WS_ID, ws_id),
+        ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],
@@ -298,15 +295,15 @@ pub fn chat(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
-    room_id: String,
+    ws_id: WsId,
+    room_id: RoomId,
     msg: String,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_string();
+        let msg = "room leave not authenticated".to_owned();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
+            &topic!(TOPIC_WS_ID, ws_id),
+            ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
         return;
@@ -317,12 +314,12 @@ pub fn chat(
     };
 
     pubsub.publish(
-        &colon!(TOPIC_ROOM_ID, room_id),
-        &ServerToClientWsMsg::RoomChat {
+        &topic!(TOPIC_ROOM_ID, room_id),
+        ServerToClientWsMsg::RoomChat {
             timestamp: OffsetDateTime::now_utc(),
             msg: msg,
             user: server_to_client_ws_msg::User {
-                user_id: user.user_id.clone(),
+                user_id: user.user_id.into(),
                 nick_name: user.nick_name.clone(),
             },
         }
@@ -334,13 +331,13 @@ pub fn room_game_ready(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
-    room_id: String,
+    ws_id: WsId,
+    room_id: RoomId,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_string();
+        let msg = "room leave not authenticated".to_owned();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
@@ -368,8 +365,8 @@ pub fn room_game_ready(
         crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
     {
         pubsub.publish(
-            &colon!(TOPIC_ROOM_ID, room_id),
-            &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
+            &topic!(TOPIC_ROOM_ID, room_id),
+            ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
         );
     }
 }
@@ -378,14 +375,14 @@ pub fn room_game_unready(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
-    room_id: String,
+    ws_id: WsId,
+    room_id: RoomId,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room leave not authenticated".to_string();
+        let msg = "room leave not authenticated".to_owned();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
+            &topic!(TOPIC_WS_ID, ws_id),
+            ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
         return;
@@ -412,25 +409,43 @@ pub fn room_game_unready(
         crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
     {
         pubsub.publish(
-            &colon!(TOPIC_ROOM_ID, room_id),
-            &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
+            &topic!(TOPIC_ROOM_ID, room_id),
+            ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
         );
     }
 }
 
 // host만 실행 가능
-pub fn room_game_start(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, room_id: String) {
+pub fn room_game_start(
+    connections: &WsConnections,
+    data: &mut WsData,
+    pubsub: &mut WsPubSub,
+    ws_id: WsId,
+    room_id: RoomId,
+) {
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
+        let msg = "room leave not authenticated".to_owned();
+        pubsub.publish(
+            &topic!(TOPIC_WS_ID, ws_id),
+            ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
+        );
+        dbg!(msg);
+        return;
+    };
     let Some(room) = data.rooms.get_mut(&room_id) else {
         dbg!();
         return;
     };
-    let Some(host_ws_id) = &room.room_host_user_id else {
+    let Some(host_user_id) = &room.room_host_user_id else {
         dbg!();
         return;
     };
-    if *host_ws_id != ws_id {
+    if *host_user_id != user.user_id {
         tracing::warn!(
-            "host 가 아닌 사용자가 start 조작, room_id:{room_id}, host_ws_id: {host_ws_id}, request_ws_id: {ws_id}"
+            "host 가 아닌 사용자가 start 조작, room_id:{:?}, host_ws_id: {:?}, request_ws_id: {:?}",
+            room.room_id,
+            host_user_id,
+            ws_id
         );
         return;
     }
@@ -450,7 +465,7 @@ pub fn room_game_start(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, 
 
     room.room_status = WsWorldRoomStatus::Gaming;
 
-    let game_id = nanoid!();
+    let game_id = GameId(nanoid!());
     let started = Instant::now();
     let now = Instant::now();
     data.games.insert(
@@ -472,7 +487,7 @@ pub fn room_game_start(data: &mut WsData, pubsub: &mut WsPubSub, ws_id: String, 
         crate::ws_world::util::gen_room_publish_msg(&data.users, &data.rooms, &room_id)
     {
         pubsub.publish(
-            &colon!(TOPIC_ROOM_ID, room_id),
+            &topic!(TOPIC_ROOM_ID, room_id),
             &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
         );
     }
@@ -491,8 +506,8 @@ pub fn room_cleanup(data: &mut WsData, pubsub: &mut WsPubSub) {
     if is_do_cleaning {
         let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
         pubsub.publish(
-            TOPIC_LOBBY,
-            &ServerToClientWsMsg::LobbyUpdated {
+            &topic!(TOPIC_LOBBY),
+            ServerToClientWsMsg::LobbyUpdated {
                 rooms: pub_lobby.rooms,
                 users: pub_lobby.users,
                 chats: vec![],

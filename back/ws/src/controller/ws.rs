@@ -1,11 +1,11 @@
 use crate::{
     app::state::{ArcWsAppState, WsShutDown},
-    colon,
     constant::TOPIC_WS_ID,
     model::{
         client_to_server_ws_msg::ClientToServerWsMsg::{self, *},
         server_to_client_ws_msg::ServerToClientWsMsg,
     },
+    topic,
     ws_world::command::{Lobby, Pubsub, Room, Ws, WsWorldCommand},
 };
 use axum::{
@@ -114,7 +114,7 @@ pub async fn ws(
 
         // ws 시작시 해야할것들
         {
-            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::CreateUser {
+            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::CreateConnection {
                 ws_id: ws_id.to_string(),
                 ws_sender_tx: topic_msg_tx,
             }));
@@ -145,7 +145,7 @@ pub async fn ws(
 
         // ws 종료전에 정리할 로직은 여기에
         {
-            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::DeleteUser {
+            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::DeleteConnection {
                 ws_id: ws_id.to_string(),
             }));
         }
@@ -209,13 +209,13 @@ pub fn process_clinet_msg(
             match msg {
                 Ping => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Pubsub(Pubsub::Publish {
-                        topic: colon!(TOPIC_WS_ID, ws_id),
+                        topic: topic!(TOPIC_WS_ID, ws_id).to_string(),
                         msg: ServerToClientWsMsg::Pong.to_json(),
                     }));
                 }
                 Echo { msg } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Pubsub(Pubsub::Publish {
-                        topic: colon!(TOPIC_WS_ID, ws_id),
+                        topic: topic!(TOPIC_WS_ID, ws_id).to_string(),
                         msg: ServerToClientWsMsg::Echo { msg }.to_json(),
                     }));
                 }
@@ -268,7 +268,7 @@ pub fn process_clinet_msg(
                                     .await?;
                             if let Some(user) = user {
                                 let _ =
-                                    ws_world_command_tx.send(WsWorldCommand::Ws(Ws::LoginInUser {
+                                    ws_world_command_tx.send(WsWorldCommand::Ws(Ws::LoginUser {
                                         ws_id: ws_id,
                                         user_id: user.id,
                                         nick_name: user.nick_name,

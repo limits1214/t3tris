@@ -1,7 +1,7 @@
 use crate::ws_world::{
     command::{Game, Lobby, Pubsub, Room, Ws, WsWorldCommand},
     connections::WsConnections,
-    model::WsData,
+    model::{RoomId, TopicId, UserId, WsData, WsId},
     pubsub::WsPubSub,
 };
 use std::collections::HashMap;
@@ -80,76 +80,85 @@ fn process(
 ) {
     match msg {
         WsWorldCommand::Ws(cmd) => match cmd {
-            Ws::CreateUser {
+            Ws::CreateConnection {
                 ws_id,
                 ws_sender_tx,
             } => {
-                ws::create_connection(connections, data, pubsub, ws_id, ws_sender_tx);
+                ws::create_connection(connections, data, pubsub, WsId(ws_id), ws_sender_tx);
             }
-            Ws::DeleteUser { ws_id } => {
-                ws::delete_connection(connections, data, pubsub, ws_id);
+            Ws::DeleteConnection { ws_id } => {
+                ws::delete_connection(connections, data, pubsub, WsId(ws_id));
             }
             Ws::GetWsWorldInfo { tx } => {
                 let info_str = ws::get_ws_world_info(connections, data, pubsub);
                 let _ = tx.send(info_str);
             }
-            Ws::LoginInUser {
+            Ws::LoginUser {
                 ws_id,
                 user_id,
                 nick_name,
             } => {
-                ws::login_user(connections, data, pubsub, ws_id, user_id, nick_name);
+                ws::login_user(
+                    connections,
+                    data,
+                    pubsub,
+                    WsId(ws_id),
+                    UserId(user_id),
+                    nick_name,
+                );
             }
             Ws::LoginFailed { ws_id } => ws::login_failed_user(pubsub, ws_id),
             Ws::LogoutUser { ws_id } => {
-                ws::logout_user(connections, data, pubsub, ws_id);
+                ws::logout_user(connections, data, pubsub, WsId(ws_id));
             }
         },
         WsWorldCommand::Lobby(cmd) => match cmd {
             Lobby::Enter { ws_id } => {
-                lobby::lobby_enter(connections, data, pubsub, &ws_id);
+                lobby::lobby_enter(connections, data, pubsub, WsId(ws_id));
             }
             Lobby::Leave { ws_id } => {
-                lobby::lobby_leave(connections, data, pubsub, &ws_id);
+                lobby::lobby_leave(connections, data, pubsub, WsId(ws_id));
             }
             Lobby::Chat { ws_id, msg } => {
-                lobby::lobby_chat(&connections, data, pubsub, &ws_id, &msg);
+                lobby::lobby_chat(&connections, data, pubsub, WsId(ws_id), &msg);
             }
         },
         WsWorldCommand::Room(cmd) => match cmd {
             Room::Create { room_name, ws_id } => {
-                room::create(connections, data, pubsub, ws_id, room_name);
+                room::create(connections, data, pubsub, WsId(ws_id), room_name);
             }
             Room::Leave { ws_id, room_id } => {
-                room::leave(connections, data, pubsub, ws_id, room_id);
+                room::leave(connections, data, pubsub, WsId(ws_id), RoomId(room_id));
             }
             Room::Enter { ws_id, room_id } => {
-                room::enter(connections, data, pubsub, ws_id, room_id);
+                room::enter(connections, data, pubsub, WsId(ws_id), RoomId(room_id));
             }
             Room::Chat {
                 ws_id,
                 room_id,
                 msg,
             } => {
-                room::chat(connections, data, pubsub, ws_id, room_id, msg);
+                room::chat(connections, data, pubsub, WsId(ws_id), RoomId(room_id), msg);
             }
             Room::GameReady { ws_id, room_id } => {
-                room::room_game_ready(connections, data, pubsub, ws_id, room_id);
+                room::room_game_ready(connections, data, pubsub, WsId(ws_id), RoomId(room_id));
             }
             Room::GameUnReady { ws_id, room_id } => {
-                room::room_game_unready(connections, data, pubsub, ws_id, room_id);
+                room::room_game_unready(connections, data, pubsub, WsId(ws_id), RoomId(room_id));
             }
             Room::GameStart { ws_id, room_id } => {
-                room::room_game_start(data, pubsub, ws_id, room_id);
+                room::room_game_start(&connections, data, pubsub, WsId(ws_id), RoomId(room_id));
             }
         },
         WsWorldCommand::Game(cmd) => match cmd {
             Game::Tick => game::tick(data, pubsub),
         },
         WsWorldCommand::Pubsub(cmd) => match cmd {
-            Pubsub::Subscribe { ws_id, topic } => pubsub.subscribe(&ws_id, &topic),
-            Pubsub::UnSubscribe { ws_id, topic } => pubsub.unsubscribe(&ws_id, &topic),
-            Pubsub::Publish { topic, msg } => pubsub.publish(&topic, &msg),
+            Pubsub::Subscribe { ws_id, topic } => pubsub.subscribe(&WsId(ws_id), &TopicId(topic)),
+            Pubsub::UnSubscribe { ws_id, topic } => {
+                pubsub.unsubscribe(&WsId(ws_id), &TopicId(topic))
+            }
+            Pubsub::Publish { topic, msg } => pubsub.publish(&TopicId(topic), &msg),
         },
     }
 }

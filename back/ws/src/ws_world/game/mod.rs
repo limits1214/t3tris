@@ -1,9 +1,9 @@
 use std::time::{Duration, Instant};
 
 use crate::{
-    colon,
     constant::TOPIC_ROOM_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
+    topic,
     ws_world::{
         WsData,
         model::{WsWorldGameStatus, WsWorldRoomStatus},
@@ -30,7 +30,7 @@ pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
             if game.elapsed > Duration::from_secs(1) {
                 game.status = WsWorldGameStatus::BeforeGameStartTimerTwo;
                 pubsub.publish(
-                    &colon!(TOPIC_ROOM_ID, game.room_id),
+                    &topic!(TOPIC_ROOM_ID, game.room_id),
                     &ServerToClientWsMsg::Echo {
                         msg: format!("BeforeGameStartTimerTwo"),
                     }
@@ -41,7 +41,7 @@ pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
             if game.elapsed > Duration::from_secs(2) {
                 game.status = WsWorldGameStatus::BeforeGameStartTimerOne;
                 pubsub.publish(
-                    &colon!(TOPIC_ROOM_ID, game.room_id),
+                    &topic!(TOPIC_ROOM_ID, game.room_id),
                     &ServerToClientWsMsg::Echo {
                         msg: format!("BeforeGameStartTimerOne"),
                     }
@@ -52,7 +52,7 @@ pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
             if game.elapsed > Duration::from_secs(3) {
                 game.status = WsWorldGameStatus::GameStart;
                 pubsub.publish(
-                    &colon!(TOPIC_ROOM_ID, game.room_id),
+                    &topic!(TOPIC_ROOM_ID, game.room_id),
                     &ServerToClientWsMsg::Echo {
                         msg: format!("GameStart"),
                     }
@@ -76,14 +76,14 @@ pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
                     &game.room_id,
                 ) {
                     pubsub.publish(
-                        &colon!(TOPIC_ROOM_ID, &game.room_id),
+                        &topic!(TOPIC_ROOM_ID, &game.room_id),
                         &ServerToClientWsMsg::RoomUpdated { room: pub_room }.to_json(),
                     );
                 };
 
                 game.is_deleted = true;
                 pubsub.publish(
-                    &colon!(TOPIC_ROOM_ID, game.room_id),
+                    &topic!(TOPIC_ROOM_ID, game.room_id),
                     &ServerToClientWsMsg::Echo {
                         msg: format!("GameEnd"),
                     }

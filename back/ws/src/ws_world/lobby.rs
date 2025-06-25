@@ -1,12 +1,12 @@
 use time::OffsetDateTime;
 
 use crate::{
-    colon,
     constant::{TOPIC_LOBBY, TOPIC_WS_ID},
     model::server_to_client_ws_msg::{ServerToClientWsMsg, User},
+    topic,
     ws_world::{
         connections::WsConnections,
-        model::{WsData, WsWorldUser},
+        model::{WsData, WsId, WsWorldUser},
         pubsub::WsPubSub,
     },
 };
@@ -17,19 +17,17 @@ pub fn lobby_enter(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: &str,
+    ws_id: WsId,
 ) {
-    // pubsub.subscribe(ws_id, TOPIC_LOBBY);
-
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
-        &ServerToClientWsMsg::LobbyEntered.to_json(),
+        &topic!(TOPIC_WS_ID, ws_id),
+        ServerToClientWsMsg::LobbyEntered.to_json(),
     );
 
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
-        TOPIC_LOBBY,
-        &ServerToClientWsMsg::LobbyUpdated {
+        &topic!(TOPIC_LOBBY),
+        ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],
@@ -41,8 +39,8 @@ pub fn lobby_enter(
         connections.get_user_by_ws_id(&ws_id, data).cloned()
     {
         pubsub.publish(
-            TOPIC_LOBBY,
-            &ServerToClientWsMsg::LobbyChat {
+            &topic!(TOPIC_LOBBY),
+            ServerToClientWsMsg::LobbyChat {
                 timestamp: OffsetDateTime::now_utc(),
                 user: User {
                     user_id: "Sytem".to_string(),
@@ -61,16 +59,16 @@ pub fn lobby_leave(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: &str,
+    ws_id: WsId,
 ) {
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
-        &ServerToClientWsMsg::LobbyLeaved.to_json(),
+        &topic!(TOPIC_WS_ID, ws_id),
+        ServerToClientWsMsg::LobbyLeaved.to_json(),
     );
 
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
-        TOPIC_LOBBY,
+        &topic!(TOPIC_LOBBY),
         &ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
@@ -83,7 +81,7 @@ pub fn lobby_leave(
         connections.get_user_by_ws_id(&ws_id, data).cloned()
     {
         pubsub.publish(
-            TOPIC_LOBBY,
+            &topic!(TOPIC_LOBBY),
             &ServerToClientWsMsg::LobbyChat {
                 timestamp: OffsetDateTime::now_utc(),
                 user: User {
@@ -107,13 +105,13 @@ pub fn lobby_chat(
     connections: &WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: &str,
+    ws_id: WsId,
     msg: &str,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
         let msg = "lobby_chat not authenticated".to_string();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
@@ -121,14 +119,14 @@ pub fn lobby_chat(
     };
 
     pubsub.publish(
-        TOPIC_LOBBY,
+        &topic!(TOPIC_LOBBY),
         &ServerToClientWsMsg::LobbyChat {
             timestamp: OffsetDateTime::now_utc(),
             user: User {
-                user_id: user.user_id,
+                user_id: user.user_id.into(),
                 nick_name: user.nick_name,
             },
-            msg: msg.to_string(),
+            msg: msg.to_owned(),
         }
         .to_json(),
     );

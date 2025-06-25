@@ -1,6 +1,6 @@
 #[macro_export]
-macro_rules! colon {
+macro_rules! topic {
     ( $( $x:expr ),* ) => {
-        vec![$($x.to_string()),*].join(":")
+        $crate::ws_world::model::TopicId(vec![$($x.to_string()),*].join(":"))
     };
 }

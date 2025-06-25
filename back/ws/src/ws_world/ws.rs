@@ -1,12 +1,12 @@
 use crate::{
-    colon,
     constant::{TOPIC_LOBBY, TOPIC_WS_ID},
     model::server_to_client_ws_msg::ServerToClientWsMsg,
+    topic,
     ws_world::{
         WsData,
         connections::{WsConnAuthStatus, WsConnections, WsWorldConnection},
         lobby,
-        model::{WsWorldUser, WsWorldUserState},
+        model::{UserId, WsId, WsWorldUser, WsWorldUserState},
         pubsub::WsPubSub,
         room,
     },
@@ -37,7 +37,7 @@ pub fn create_connection(
     connections: &mut WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
+    ws_id: WsId,
     ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
 ) {
     connections.create(ws_id.clone());
@@ -45,12 +45,12 @@ pub fn create_connection(
     pubsub.create_topic_handle(ws_id.clone(), ws_sender_tx);
 
     // 내 채널 구독
-    pubsub.subscribe(&ws_id, &colon!(TOPIC_WS_ID, ws_id));
+    pubsub.subscribe(&ws_id, &topic!(TOPIC_WS_ID, ws_id));
 
     // 현재 로비 내용 받기
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
+        &topic!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
@@ -65,36 +65,33 @@ pub fn delete_connection(
     connections: &mut WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
+    ws_id: WsId,
 ) {
-    // ws_to_user_id
-    let user_id = connections
-        .get(&ws_id)
-        .and_then(|ws_id| match &ws_id.auth_status {
-            WsConnAuthStatus::Authenticated { user_id } => Some(user_id),
-            _ => None,
-        })
-        .cloned();
+    let user = connections.get_user_by_ws_id(&ws_id, data).cloned();
 
-    if let Some(user_id) = user_id {
+    // 로그인한 유저라면
+    if let Some(user) = user {
         let mut rooms_to_delete = vec![];
         // 해당 ws_id가 참가중인 방을 추린다.
         for (_, room) in data.rooms.iter_mut() {
             if room
                 .room_users
                 .iter()
-                .any(|(_, room_user)| room_user.user_id == user_id)
+                .any(|(_, room_user)| room_user.user_id == user.user_id)
             {
                 rooms_to_delete.push(room.room_id.clone());
             }
         }
         // 해당 사용자 방나가기 프로세스 진행
         for room_id in rooms_to_delete {
-            room::leave(&connections, data, pubsub, user_id.clone(), room_id);
+            room::leave(&connections, data, pubsub, ws_id.clone(), room_id);
         }
 
+        // 로비 나가기
+        lobby::lobby_leave(connections, data, pubsub, ws_id.clone());
+
         // data 에서 유저 제거
-        data.users.remove(&user_id);
+        data.users.remove(&user.user_id);
     }
 
     connections.remove(&ws_id);
@@ -107,8 +104,8 @@ pub fn login_user(
     connections: &mut WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
-    user_id: String,
+    ws_id: WsId,
+    user_id: UserId,
     nick_name: String,
 ) {
     // 인증된 상태라면 로그인 취소
@@ -119,7 +116,7 @@ pub fn login_user(
     {
         let msg = "login fail, User Ws Is already authenticated".to_string();
         pubsub.publish(
-            &colon!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
         );
         dbg!(msg);
@@ -146,16 +143,16 @@ pub fn login_user(
     }
 
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
+        &topic!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::UserLogined.to_json(),
     );
 
-    lobby::lobby_enter(connections, data, pubsub, &ws_id);
+    lobby::lobby_enter(connections, data, pubsub, ws_id);
 }
 
 pub fn login_failed_user(pubsub: &mut WsPubSub, ws_id: String) {
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
+        &topic!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::UserLoginFailed.to_json(),
     );
 }
@@ -164,9 +161,9 @@ pub fn logout_user(
     connections: &mut WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,
-    ws_id: String,
+    ws_id: WsId,
 ) {
-    lobby::lobby_leave(connections, data, pubsub, &ws_id);
+    lobby::lobby_leave(connections, data, pubsub, ws_id.clone());
 
     let user_id = {
         let Some(WsWorldConnection {
@@ -176,7 +173,7 @@ pub fn logout_user(
         else {
             let msg = "logout fail user is not authenticated".to_string();
             pubsub.publish(
-                &colon!(TOPIC_WS_ID, ws_id),
+                &topic!(TOPIC_WS_ID, ws_id),
                 &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
             );
             dbg!(msg);
@@ -197,15 +194,14 @@ pub fn logout_user(
     }
 
     pubsub.publish(
-        &colon!(TOPIC_WS_ID, ws_id),
+        &topic!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::UserLogouted.to_json(),
     );
-
     //TODO
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
     pubsub.publish(
-        TOPIC_LOBBY,
-        &ServerToClientWsMsg::LobbyUpdated {
+        &topic!(TOPIC_LOBBY),
+        ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],

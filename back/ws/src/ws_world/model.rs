@@ -1,18 +1,41 @@
 use std::{
     collections::HashMap,
+    ops::Deref,
     time::{Duration, Instant},
 };
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-pub type OneShot<T> = tokio::sync::oneshot::Sender<T>;
+macro_rules! define_id_type {
+    ($name: ident) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+        pub struct $name(pub String);
+        impl Deref for $name {
+            type Target = String;
 
-pub type Topic = String;
-pub type RoomId = String;
-pub type GameId = String;
-pub type UserId = String;
-pub type WsId = String;
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+        impl From<String> for $name {
+            fn from(value: String) -> Self {
+                Self(value)
+            }
+        }
+        impl From<$name> for String {
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
+    };
+}
+
+define_id_type!(TopicId);
+define_id_type!(WsId);
+define_id_type!(UserId);
+define_id_type!(RoomId);
+define_id_type!(GameId);
 
 #[derive(Debug)]
 pub struct WsData {
@@ -23,9 +46,8 @@ pub struct WsData {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WsWorldUser {
-    pub user_id: String,
+    pub user_id: UserId,
     pub nick_name: String,
-    // pub ws_ids: HashSet<WsId>,
     pub state: WsWorldUserState,
 }
 
@@ -40,7 +62,7 @@ pub enum WsWorldUserState {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WsWorldRoom {
-    pub room_id: String,
+    pub room_id: RoomId,
     pub room_name: String,
     pub room_host_user_id: Option<UserId>,
     pub room_users: HashMap<UserId, WsWorldRoomUser>,
@@ -92,7 +114,6 @@ pub enum WsWorldRoomEvent {
     },
     SystemChat {
         timestamp: OffsetDateTime,
-
         msg: String,
     },
     UserChat {
@@ -111,8 +132,8 @@ pub enum WsWorldRoomEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WsWorldGame {
-    pub game_id: String,
-    pub room_id: String,
+    pub game_id: GameId,
+    pub room_id: RoomId,
     //
     pub started_at: OffsetDateTime,
     #[serde(skip)]

@@ -17,7 +17,7 @@ impl WsConnections {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WsWorldConnection {
-    pub ws_id: String,
+    pub ws_id: WsId,
     pub auth_status: WsConnAuthStatus,
     pub connected_at: OffsetDateTime,
 }
@@ -29,8 +29,7 @@ pub enum WsConnAuthStatus {
 }
 
 impl WsConnections {
-    //
-    pub fn create(&mut self, ws_id: String) {
+    pub fn create(&mut self, ws_id: WsId) {
         self.inner.insert(
             ws_id.clone(),
             WsWorldConnection {
@@ -43,23 +42,23 @@ impl WsConnections {
 
     pub fn insert(
         &mut self,
-        ws_id: String,
+        ws_id: WsId,
         connection: WsWorldConnection,
     ) -> Option<WsWorldConnection> {
         self.inner.insert(ws_id, connection)
     }
 
-    pub fn get(&self, ws_id: &str) -> Option<&WsWorldConnection> {
+    pub fn get(&self, ws_id: &WsId) -> Option<&WsWorldConnection> {
         self.inner.get(ws_id)
     }
 
-    pub fn remove(&mut self, ws_id: &str) -> Option<WsWorldConnection> {
+    pub fn remove(&mut self, ws_id: &WsId) -> Option<WsWorldConnection> {
         self.inner.remove(ws_id)
     }
 
     pub fn get_user_by_ws_id<'a>(
         &self,
-        ws_id: &'a str,
+        ws_id: &'a WsId,
         data: &'a WsData,
     ) -> Option<&'a WsWorldUser> {
         match self.get(ws_id) {

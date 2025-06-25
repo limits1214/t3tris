@@ -13,37 +13,93 @@ import {format} from 'date-fns'
 import type { RoomInfo } from "../store/useRoomStore";
 import { ReadyState } from "react-use-websocket";
 import { useNavigate } from "react-router-dom";
+import { useUserStore } from "../store/useUserStore";
 
 const HomePage = () => {
   const send = useWsStore(s=>s.send);
+  const isInitialLoginEnd = useUserStore(s=>s.isInitialLoginEnd);
+  const isLogined = useUserStore(s=>s.isLogined);
   const wsReadyState = useWsStore(s=>s.readyState)
 
   useEffect(() => {
     if (wsReadyState === ReadyState.OPEN) {
       console.log('lobby sub')
-      // 로비 구독
-      const obj = {
-        type: 'subscribeTopic',
-        data: {
-          topic: 'lobby'
-        }
-      }
-      send(JSON.stringify(obj))
-    }
-    return () => {
-      if (wsReadyState === ReadyState.OPEN) {
-        console.log('lobby unsub')
-        // 로비 구독해제
         const obj = {
-          type: 'unSubscribeTopic',
+          type: 'subscribeTopic',
           data: {
             topic: 'lobby'
           }
         }
         send(JSON.stringify(obj))
+      if (isInitialLoginEnd) {
+        // console.log('lobby sub')
+        // const obj = {
+        //   type: 'subscribeTopic',
+        //   data: {
+        //     topic: 'lobby'
+        //   }
+        // }
+        // send(JSON.stringify(obj))
+        // if (isLogined) {
+        //   console.log('lobby enter')
+        //   const obj = {
+        //     type: 'lobbyEnter'
+        //   }
+        //   send(JSON.stringify(obj))
+        // } else {
+        //   console.log('lobby sub')
+        //   const obj = {
+        //     type: 'subscribeTopic',
+        //     data: {
+        //       topic: 'lobby'
+        //     }
+        //   }
+        //   send(JSON.stringify(obj))
+        // }
+        
       }
     }
-  }, [send, wsReadyState])
+    return () => {
+      if (wsReadyState === ReadyState.OPEN) {
+        console.log('lobby unsub')
+          const obj = {
+            type: 'unSubscribeTopic',
+            data: {
+              topic: 'lobby'
+            }
+          }
+          send(JSON.stringify(obj))
+        if (isInitialLoginEnd) {
+          // console.log('lobby unsub')
+          // const obj = {
+          //   type: 'unSubscribeTopic',
+          //   data: {
+          //     topic: 'lobby'
+          //   }
+          // }
+          // send(JSON.stringify(obj))
+
+
+          // if (isLogined) {
+          //   console.log('lobby leave')
+          //   const obj = {
+          //     type: 'lobbyLeave'
+          //   }
+          //   send(JSON.stringify(obj))
+          // } else {
+          //   console.log('lobby unsub')
+          //   const obj = {
+          //     type: 'unSubscribeTopic',
+          //     data: {
+          //       topic: 'lobby'
+          //     }
+          //   }
+          //   send(JSON.stringify(obj))
+          // }
+        }
+      }
+    }
+  }, [isInitialLoginEnd, isLogined, send, wsReadyState])
   return (
     <Flex direction="column" css={css`height: 100vh; padding: 1rem; min-height: 0`}>
       <Flex css={css`border: 1px solid black; flex: 1; `}>
@@ -122,7 +178,8 @@ const CreateRoom = () => {
 }
 
 const UserInfo = () => {
-  const {isAuthenticated, logout, setAuth} = useAuthStore();
+  const { logout, setAuth} = useAuthStore();
+  const isLogined = useUserStore(s=>s.isLogined);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const send = useWsStore(s=>s.send);
   useEffect(() => {
@@ -154,6 +211,11 @@ const UserInfo = () => {
         }
       }
       send(JSON.stringify(obj));
+
+      /* const obj2 = {
+        type: 'lobbyEnter'
+      }
+      send(JSON.stringify(obj2)) */
     } catch (e) {
       console.error('e', e);
     }
@@ -164,18 +226,26 @@ const UserInfo = () => {
       await serverLogout();
       logout();
 
+
+      /* const obj2 = {
+        type: 'lobbyLeave'
+      }
+      send(JSON.stringify(obj2)) */
+
       //ws login
       const obj = {
         type: 'userLogout',
       }
       send(JSON.stringify(obj));
+
     } catch (e) {
       console.error('e', e);
     }
   }
   return (
     <Flex direction="row" css={css`flex: 1; padding: 1rem`}>
-      {isAuthenticated && userInfo ? (
+      <Text>{JSON.stringify(isLogined)}</Text>
+      {isLogined && userInfo ? (
         <>
           <Avatar fallback="A" css={css`flex: 1; height: 100%`}>asdf</Avatar>
           <Flex css={css`flex: 1;`} direction="column" align="center" justify="center">
@@ -243,7 +313,7 @@ const RoomListItem = ({roomInfo}: {roomInfo: RoomInfo}) => {
         <Text>{roomInfo.roomName}</Text>
       </Flex>
       <Flex>
-        <Text>host: {roomInfo.roomHostUser.nickName}</Text>
+        <Text>host: {roomInfo.roomHostUser?.nickName}</Text>
         <Text>users: {roomInfo.roomUsers.length}</Text>
         <Text>-</Text>
       </Flex>

@@ -242,18 +242,39 @@ pub fn process_clinet_msg(
                     let ws_world_command_tx = ws_world_command_tx.clone();
                     let db_pool = db_pool.clone();
                     tokio::spawn(async move {
-                        let claim = common::util::jwt::decode_access_token(&access_token).unwrap();
-                        let mut conn = db_pool.acquire().await.unwrap();
-                        let user =
-                            common::repository::user::select_user_by_id(&mut conn, &claim.sub)
-                                .await
-                                .unwrap();
-                        if let Some(user) = user {
-                            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::LoginInUser {
-                                ws_id: ws_id.to_string(),
-                                user_id: user.id,
-                                nick_name: user.nick_name,
-                            }));
+                        if let Err(err) = task(
+                            db_pool,
+                            access_token,
+                            ws_world_command_tx.clone(),
+                            ws_id.clone(),
+                        )
+                        .await
+                        {
+                            tracing::warn!("ws user login err: {err:?}");
+                            let _ = ws_world_command_tx
+                                .send(WsWorldCommand::Ws(Ws::LoginFailed { ws_id: ws_id }));
+                        }
+
+                        async fn task(
+                            db_pool: PgPool,
+                            access_token: String,
+                            ws_world_command_tx: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
+                            ws_id: String,
+                        ) -> anyhow::Result<()> {
+                            let claim = common::util::jwt::decode_access_token(&access_token)?;
+                            let mut conn = db_pool.acquire().await?;
+                            let user =
+                                common::repository::user::select_user_by_id(&mut conn, &claim.sub)
+                                    .await?;
+                            if let Some(user) = user {
+                                let _ =
+                                    ws_world_command_tx.send(WsWorldCommand::Ws(Ws::LoginInUser {
+                                        ws_id: ws_id,
+                                        user_id: user.id,
+                                        nick_name: user.nick_name,
+                                    }));
+                            }
+                            Ok(())
                         }
                     });
                 }
@@ -264,6 +285,16 @@ pub fn process_clinet_msg(
                 }
 
                 // 로비 관련
+                LobbyEnter => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Enter {
+                        ws_id: ws_id.to_string(),
+                    }));
+                }
+                LobbyLeave => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Leave {
+                        ws_id: ws_id.to_string(),
+                    }));
+                }
                 LobbyChat { msg } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Chat {
                         ws_id: ws_id.to_string(),

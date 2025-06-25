@@ -97,3 +97,16 @@ ws 연결
 
 ws 끈어지면
     해당 ws_id 와관련된 room, lobby 다 나가기 처리
+
+
+ws connected
+ws disconnected
+
+user login =>
+user loginout =>
+
+lobby enter =>
+lobby leave =>
+
+room enter =>
+room leave =>

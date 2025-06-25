@@ -100,16 +100,17 @@ fn process(
             } => {
                 ws::login_user(connections, data, pubsub, ws_id, user_id, nick_name);
             }
+            Ws::LoginFailed { ws_id } => ws::login_failed_user(pubsub, ws_id),
             Ws::LogoutUser { ws_id } => {
                 ws::logout_user(connections, data, pubsub, ws_id);
             }
         },
         WsWorldCommand::Lobby(cmd) => match cmd {
             Lobby::Enter { ws_id } => {
-                lobby::lobby_enter(data, pubsub, &ws_id);
+                lobby::lobby_enter(connections, data, pubsub, &ws_id);
             }
             Lobby::Leave { ws_id } => {
-                lobby::lobby_leave(data, pubsub, &ws_id);
+                lobby::lobby_leave(connections, data, pubsub, &ws_id);
             }
             Lobby::Chat { ws_id, msg } => {
                 lobby::lobby_chat(&connections, data, pubsub, &ws_id, &msg);

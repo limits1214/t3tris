@@ -14,10 +14,11 @@ const WebSocketInitializer = () => {
   const [socketUrl, setSocketUrl] = useState<string|null>(null);
 
   const setSend = useWsStore(s=>s.setSend);
-  const setLastMessage = useWsStore(s=>s.setLastMessage);
+  // const setLastMessage = useWsStore(s=>s.setLastMessage);
   const setReadyState = useWsStore(s=>s.setReadyState);
 
-  const userUpdatedIsLogined = useUserStore(s=>s.updatedIsLogined);
+  const setIsInitialLoginEnd = useUserStore(s=>s.setIsInitialLoginEnd);
+  const setIsLogined = useUserStore(s=>s.setIsLogined);
 
   const lobbyUpdateIsEnterd = useLobbyStore(s=>s.updatedIsEnterd);
   const lobbyUpdateUsers = useLobbyStore(s=>s.updateLobbyUsers);
@@ -49,6 +50,8 @@ const WebSocketInitializer = () => {
             }
           }
           sendMessage(JSON.stringify(obj));
+        } else {
+          setIsInitialLoginEnd(true)
         }
       }
       afterOpen();
@@ -61,18 +64,25 @@ const WebSocketInitializer = () => {
         const lastMessageData = event.data;
         // setLastMessage(lastMessageData)
         const {type, data} = JSON.parse(lastMessageData)
-        if (type === 'ping') return;
+        if (type === 'pong') return;
         console.log('lm',lastMessageData)
         switch (type) {
           case 'echo':
             break;
           case 'topicEcho':
             break;
+
           case 'userLogined':
-            userUpdatedIsLogined(true);
+            setIsInitialLoginEnd(true);
+            setIsLogined(true);
+            break;
+          case 'userLoginFailed':
+            setIsInitialLoginEnd(true);
+            setIsLogined(false);
             break;
           case 'userLogouted':
-            userUpdatedIsLogined(false);
+            setIsInitialLoginEnd(true);
+            setIsLogined(false);
             break;
 
           case 'lobbyEntered':

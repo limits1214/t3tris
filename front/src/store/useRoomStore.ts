@@ -17,7 +17,7 @@ type RoomState = {
 
 type RoomUser = {
   userId: string,
-  wsId: string,
+  // wsId: string,
   nickName: string,
 }
 

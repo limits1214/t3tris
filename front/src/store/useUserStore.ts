@@ -1,17 +1,26 @@
 import { create } from "zustand"
 
 type UserState = {
+  isInitialLoginEnd: boolean,
   isLogined: boolean,
-  updatedIsLogined: (isLogined: boolean) => void
+  setIsLogined: (isLogined: boolean) => void
+  setIsInitialLoginEnd: (isInitialLoginEnd: boolean) => void
 }
 
 export const useUserStore = create<UserState>(
     (set) => ({
+      isInitialLoginEnd: false,
       isLogined: false,
-      updatedIsLogined: (isLogined) => {
+      setIsLogined: (isLogined) => {
         set({
           isLogined
         })
+      },
+      setIsInitialLoginEnd: (isInitialLoginEnd) => {
+        set({
+          isInitialLoginEnd
+        })
       }
     }),
+    
 )

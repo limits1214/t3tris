@@ -16,6 +16,8 @@ pub enum ServerToClientWsMsg {
     #[serde(rename_all = "camelCase")]
     UserLogined,
     #[serde(rename_all = "camelCase")]
+    UserLoginFailed,
+    #[serde(rename_all = "camelCase")]
     UserLogouted,
 
     // === 로비관련 ===

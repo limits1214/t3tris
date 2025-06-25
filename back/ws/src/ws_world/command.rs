@@ -32,6 +32,9 @@ pub enum Ws {
     LogoutUser {
         ws_id: String,
     },
+    LoginFailed {
+        ws_id: String,
+    },
 }
 
 pub enum Pubsub {
@@ -75,11 +78,6 @@ pub enum Room {
 }
 
 pub enum Lobby {
-    // ok not auth
-    // LobbyUpdateSubscribe { ws_id: String },
-    // LobbyUpdateUnSubscribe { ws_id: String },
-
-    // only auth
     Enter { ws_id: String },
     Leave { ws_id: String },
     Chat { ws_id: String, msg: String },

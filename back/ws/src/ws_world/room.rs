@@ -25,7 +25,7 @@ pub fn create(
     ws_id: String,
     room_name: String,
 ) {
-    let Some(_user) = connections.get_user_by_ws_id(&ws_id, data) else {
+    let Some(user) = connections.get_user_by_ws_id(&ws_id, data) else {
         let msg = "room create not authenticated".to_string();
         pubsub.publish(
             &colon!(TOPIC_WS_ID, ws_id),
@@ -35,14 +35,11 @@ pub fn create(
         return;
     };
 
-    // 방생생하면
-    // rooms에 추가
-    // enter
     let room_id = nanoid!();
     let room = WsWorldRoom {
         room_id: room_id.clone(),
         room_name,
-        room_host_user_id: Some(ws_id.clone()),
+        room_host_user_id: Some(user.user_id.clone()),
         room_users: HashMap::new(),
         room_events: vec![WsWorldRoomEvent::CreateRoom {
             timestamp: OffsetDateTime::now_utc(),
@@ -81,7 +78,7 @@ pub fn enter(
     room_id: String,
 ) {
     let Some(user) = connections.get_user_by_ws_id(&ws_id, data).cloned() else {
-        let msg = "room create not authenticated".to_string();
+        let msg = "room enter not authenticated".to_string();
         pubsub.publish(
             &colon!(TOPIC_WS_ID, ws_id),
             &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
@@ -115,14 +112,12 @@ pub fn enter(
 
     // enter room
     room.room_users.insert(
-        ws_id.clone(),
+        user.user_id.clone(),
         WsWorldRoomUser {
             is_game_ready: false,
             user_id: user.user_id.clone(),
         },
     );
-
-    // pubsub.unsubscribe(&ws_id, TOPIC_LOBBY);
 
     // 방, 방개인 토픽 구독
     pubsub.subscribe(&ws_id, &colon!(TOPIC_ROOM_ID, room_id));

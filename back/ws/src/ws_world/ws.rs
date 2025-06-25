@@ -1,10 +1,11 @@
 use crate::{
     colon,
-    constant::TOPIC_WS_ID,
+    constant::{TOPIC_LOBBY, TOPIC_WS_ID},
     model::server_to_client_ws_msg::ServerToClientWsMsg,
     ws_world::{
         WsData,
         connections::{WsConnAuthStatus, WsConnections, WsWorldConnection},
+        lobby,
         model::{WsWorldUser, WsWorldUserState},
         pubsub::WsPubSub,
         room,
@@ -148,6 +149,15 @@ pub fn login_user(
         &colon!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::UserLogined.to_json(),
     );
+
+    lobby::lobby_enter(connections, data, pubsub, &ws_id);
+}
+
+pub fn login_failed_user(pubsub: &mut WsPubSub, ws_id: String) {
+    pubsub.publish(
+        &colon!(TOPIC_WS_ID, ws_id),
+        &ServerToClientWsMsg::UserLoginFailed.to_json(),
+    );
 }
 
 pub fn logout_user(
@@ -156,6 +166,8 @@ pub fn logout_user(
     pubsub: &mut WsPubSub,
     ws_id: String,
 ) {
+    lobby::lobby_leave(connections, data, pubsub, &ws_id);
+
     let user_id = {
         let Some(WsWorldConnection {
             auth_status: WsConnAuthStatus::Authenticated { user_id },
@@ -187,5 +199,17 @@ pub fn logout_user(
     pubsub.publish(
         &colon!(TOPIC_WS_ID, ws_id),
         &ServerToClientWsMsg::UserLogouted.to_json(),
+    );
+
+    //TODO
+    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
+    pubsub.publish(
+        TOPIC_LOBBY,
+        &ServerToClientWsMsg::LobbyUpdated {
+            rooms: pub_lobby.rooms,
+            users: pub_lobby.users,
+            chats: vec![],
+        }
+        .to_json(),
     );
 }

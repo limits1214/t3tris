@@ -24,6 +24,10 @@ pub enum ClientToServerWsMsg {
     // === 로비 관련 ===
     #[serde(rename_all = "camelCase")]
     LobbyChat { msg: String },
+    #[serde(rename_all = "camelCase")]
+    LobbyEnter,
+    #[serde(rename_all = "camelCase")]
+    LobbyLeave,
 
     // === 룸 관련 ===
     #[serde(rename_all = "camelCase")]

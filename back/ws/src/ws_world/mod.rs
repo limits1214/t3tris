@@ -159,6 +159,7 @@ fn process(
                 pubsub.unsubscribe(&WsId(ws_id), &TopicId(topic))
             }
             Pubsub::Publish { topic, msg } => pubsub.publish(&TopicId(topic), &msg),
+            Pubsub::Cleanup => pubsub.pubsub_cleanup(),
         },
     }
 }

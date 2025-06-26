@@ -64,7 +64,7 @@ pub fn gen_lobby_publish_msg(
         .collect::<Vec<_>>();
 
     let lobby_users = connections
-        .iter()
+        .conn_iter()
         .filter_map(|(_, user)| match &user.auth {
             super::connections::WsConnAuth::Unauthenticated => None,
             super::connections::WsConnAuth::Authenticated { user } => Some(LobbyUser {

@@ -74,7 +74,7 @@ impl WsPubSub {
             let broad_receiver = broad_sender.subscribe();
             broad_receiver
         } else {
-            let (s, _) = tokio::sync::broadcast::channel::<String>(16);
+            let (s, _) = tokio::sync::broadcast::channel::<String>(128);
             let broad_receiver = s.subscribe();
             self.pubsub.insert(topic.clone(), s);
             broad_receiver
@@ -144,6 +144,13 @@ impl WsPubSub {
             Some(user_topic_handle) => match user_topic_handle.topics.remove(topic) {
                 Some(handle) => {
                     handle.abort();
+
+                    // TODO: 고민, 바로 cleanup vs 게으른 cleanup
+                    // let cloned_world_sender = self.world_sender.clone();
+                    // tokio::spawn(async move {
+                    //     let _ = handle.await;
+                    //     let _ = cloned_world_sender.send(WsWorldCommand::Pubsub(Pubsub::Cleanup));
+                    // });
                 }
                 None => {
                     tracing::info!(
@@ -182,21 +189,8 @@ impl WsPubSub {
     }
 
     /// pubsub broadcast receiver 가 없는 sender들을 제거한다.
-    /// topic unsubscribe 시에 하지 않는 이유:
-    ///     handle.abort() 하면 바로 receiver 가 사라지는게 아니다
-    ///     handle.await 으로 종료될때까지 기다려야한다.
-    ///     근데 unsubscribe 함수가 현재 async fn 으로 안만들었다.
-    ///     그래서 그냥 defer clean 함.
-    ///     defer clean 하기 싫으면 해당 fn api를 바꿔야함
     pub fn pubsub_cleanup(&mut self) {
-        let mut cleanup_topics = vec![];
-        for (topic, s) in self.pubsub.iter() {
-            if s.receiver_count() == 0 {
-                cleanup_topics.push(topic.clone());
-            }
-        }
-        for topic in cleanup_topics {
-            self.pubsub.remove(&topic);
-        }
+        self.pubsub
+            .retain(|_topic, sender| sender.receiver_count() > 0);
     }
 }

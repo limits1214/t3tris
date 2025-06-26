@@ -39,6 +39,7 @@ pub enum Pubsub {
     Subscribe { ws_id: String, topic: String },
     UnSubscribe { ws_id: String, topic: String },
     Publish { topic: String, msg: String },
+    Cleanup,
 }
 
 // TODO: Kick, Ban, Invite,

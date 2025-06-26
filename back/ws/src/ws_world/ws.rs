@@ -41,7 +41,7 @@ pub fn init_ws(
     ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
 ) {
     // === 커넥션 생성하기
-    connections.create(ws_id.clone());
+    connections.conn_create(ws_id.clone());
 
     // === pubsub 생성하기
     pubsub.create_topic_handle(ws_id.clone(), ws_sender_tx);
@@ -79,18 +79,18 @@ pub fn cleanup_ws(
         // === 로비 나가기
         lobby::lobby_leave(connections, data, pubsub, ws_id.clone());
 
-        // === data 유저 제거
-        connections.remove(&ws_id);
+        // === user ws map 제거
+        connections.del_user_ws_id(&ws_id, &user.user_id);
     }
 
     // === pubsub 제거 및 구독중인 모든 토픽 abort
     pubsub.delete_topic_handle(&ws_id);
 
     // === 커넥션 제거
-    connections.remove(&ws_id);
+    connections.conn_remove(&ws_id);
 }
 
-/// 로그인은 요청시 N번 가능
+/// 로그인
 pub fn login_user(
     connections: &mut WsConnections,
     data: &mut WsData,
@@ -106,11 +106,15 @@ pub fn login_user(
     };
 
     // === 커넥션 auth state 업데이트
-    if let Some(mut conn) = connections.remove(&ws_id) {
+    if let Some(conn) = connections.conn_get_mut(&ws_id) {
         conn.auth = WsConnAuth::Authenticated {
-            user: WsWorldUser { user_id, nick_name },
+            user: WsWorldUser {
+                user_id: user_id.clone(),
+                nick_name,
+            },
         };
-        connections.insert(ws_id.clone(), conn);
+
+        connections.add_user_ws_id(&ws_id, &user_id);
     }
 
     // === 개인 메시지 발행
@@ -130,7 +134,7 @@ pub fn login_failed_user(pubsub: &mut WsPubSub, ws_id: String) {
     );
 }
 
-/// 로그아웃 N번가능
+/// 로그아웃
 pub fn logout_user(
     connections: &mut WsConnections,
     data: &mut WsData,
@@ -138,7 +142,7 @@ pub fn logout_user(
     ws_id: WsId,
 ) {
     // === 유저가 있다면 이미 로그인 되어있는상태고, 없다면 로그인 안되어 있는상태 가드
-    let Some(_) = connections.get_user_by_ws_id(&ws_id).cloned() else {
+    let Some(user) = connections.get_user_by_ws_id(&ws_id).cloned() else {
         err_publish(pubsub, &ws_id, dbg!("[logout_user] not authenticated"));
         return;
     };
@@ -146,11 +150,11 @@ pub fn logout_user(
     lobby::lobby_leave(connections, data, pubsub, ws_id.clone());
 
     // === 커넥션 auth state 업데이트
-    if let Some(mut conn) = connections.remove(&ws_id) {
+    if let Some(mut conn) = connections.conn_remove(&ws_id) {
         conn.auth = WsConnAuth::Unauthenticated;
-        connections.insert(ws_id.clone(), conn);
+        connections.conn_insert(ws_id.clone(), conn);
 
-        connections.remove(&ws_id);
+        connections.del_user_ws_id(&ws_id, &user.user_id);
     }
 
     // === 개인 메시지 발행

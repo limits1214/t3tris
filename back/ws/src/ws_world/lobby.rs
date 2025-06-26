@@ -66,26 +66,24 @@ pub fn lobby_leave(
     let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(connections, &data.rooms);
     pubsub.publish(
         &topic!(TOPIC_LOBBY),
-        &ServerToClientWsMsg::LobbyUpdated {
+        ServerToClientWsMsg::LobbyUpdated {
             rooms: pub_lobby.rooms,
             users: pub_lobby.users,
             chats: vec![],
-        }
-        .to_json(),
+        },
     );
 
     if let Some(WsWorldUser { nick_name, .. }) = connections.get_user_by_ws_id(&ws_id).cloned() {
         pubsub.publish(
             &topic!(TOPIC_LOBBY),
-            &ServerToClientWsMsg::LobbyChat {
+            ServerToClientWsMsg::LobbyChat {
                 timestamp: OffsetDateTime::now_utc(),
                 user: User {
                     user_id: "Sytem".to_string(),
                     nick_name: "Sytem".to_string(),
                 },
                 msg: format!("{nick_name} 로비 퇴장"),
-            }
-            .to_json(),
+            },
         );
     }
 }
@@ -106,14 +104,13 @@ pub fn lobby_chat(
 
     pubsub.publish(
         &topic!(TOPIC_LOBBY),
-        &ServerToClientWsMsg::LobbyChat {
+        ServerToClientWsMsg::LobbyChat {
             timestamp: OffsetDateTime::now_utc(),
             user: User {
                 user_id: user.user_id.into(),
                 nick_name: user.nick_name,
             },
             msg: msg.to_owned(),
-        }
-        .to_json(),
+        },
     );
 }

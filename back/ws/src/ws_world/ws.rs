@@ -4,9 +4,9 @@ use crate::{
     topic,
     ws_world::{
         WsData,
-        connections::{WsConnAuthStatus, WsConnections},
+        connections::{WsConnAuth, WsConnections, WsWorldUser},
         lobby,
-        model::{UserId, WsId, WsWorldUser, WsWorldUserState},
+        model::{UserId, WsId},
         pubsub::WsPubSub,
         room,
         util::err_publish,
@@ -23,7 +23,6 @@ pub fn get_ws_world_info(
     let user_topic = pubsub.get_user_topics();
 
     let j = serde_json::json!({
-        "users" : data.users.clone(),
         "rooms" : data.rooms.clone(),
         "games": data.games.clone(),
         "pubsub": pubsub_info,
@@ -60,7 +59,7 @@ pub fn cleanup_ws(
     ws_id: WsId,
 ) {
     // === 현재 커넥션이 로그인 유저라면 정리 진행
-    if let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users).cloned() {
+    if let Some(user) = connections.get_user_by_ws_id(&ws_id).cloned() {
         // === 방에 참가한게 있으면 leave 해주기
         let rooms_to_delete = data
             .rooms
@@ -81,7 +80,7 @@ pub fn cleanup_ws(
         lobby::lobby_leave(connections, data, pubsub, ws_id.clone());
 
         // === data 유저 제거
-        data.users.remove(&user.user_id);
+        connections.remove(&ws_id);
     }
 
     // === pubsub 제거 및 구독중인 모든 토픽 abort
@@ -101,26 +100,17 @@ pub fn login_user(
     nick_name: String,
 ) {
     // === 이미 로그인했다면 가드, 유저가 없어야한다.
-    let None = connections.get_user_by_ws_id(&ws_id, &data.users).cloned() else {
+    let None = connections.get_user_by_ws_id(&ws_id).cloned() else {
         err_publish(pubsub, &ws_id, dbg!("[login_user] already authenticated"));
         return;
     };
 
     // === 커넥션 auth state 업데이트
     if let Some(mut conn) = connections.remove(&ws_id) {
-        conn.auth_status = WsConnAuthStatus::Authenticated {
-            user_id: user_id.clone(),
+        conn.auth = WsConnAuth::Authenticated {
+            user: WsWorldUser { user_id, nick_name },
         };
         connections.insert(ws_id.clone(), conn);
-
-        data.users.insert(
-            user_id.clone(),
-            WsWorldUser {
-                user_id: user_id.clone(),
-                nick_name: nick_name.clone(),
-                state: WsWorldUserState::Idle,
-            },
-        );
     }
 
     // === 개인 메시지 발행
@@ -148,7 +138,7 @@ pub fn logout_user(
     ws_id: WsId,
 ) {
     // === 유저가 있다면 이미 로그인 되어있는상태고, 없다면 로그인 안되어 있는상태 가드
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users).cloned() else {
+    let Some(_) = connections.get_user_by_ws_id(&ws_id).cloned() else {
         err_publish(pubsub, &ws_id, dbg!("[logout_user] not authenticated"));
         return;
     };
@@ -157,10 +147,10 @@ pub fn logout_user(
 
     // === 커넥션 auth state 업데이트
     if let Some(mut conn) = connections.remove(&ws_id) {
-        conn.auth_status = WsConnAuthStatus::Unauthenticated;
+        conn.auth = WsConnAuth::Unauthenticated;
         connections.insert(ws_id.clone(), conn);
 
-        data.users.remove(&user.user_id);
+        connections.remove(&ws_id);
     }
 
     // === 개인 메시지 발행

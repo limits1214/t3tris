@@ -5,13 +5,14 @@ use crate::{
     model::server_to_client_ws_msg::{self, LobbyUser, ServerToClientWsMsg},
     topic,
     ws_world::{
-        model::{RoomId, UserId, WsId, WsWorldRoom, WsWorldUser},
+        connections::WsConnections,
+        model::{RoomId, WsId, WsWorldRoom},
         pubsub::WsPubSub,
     },
 };
 
 pub fn gen_room_publish_msg(
-    users: &HashMap<UserId, WsWorldUser>,
+    connections: &WsConnections,
     rooms: &HashMap<RoomId, WsWorldRoom>,
     room_id: &RoomId,
 ) -> Option<server_to_client_ws_msg::Room> {
@@ -20,32 +21,28 @@ pub fn gen_room_publish_msg(
         return None;
     };
 
-    let host_user = room
-        .room_host_user_id
-        .clone()
-        .and_then(|room_host_user_id| {
-            users
-                .get(&room_host_user_id)
-                .cloned()
-                .map(|user| server_to_client_ws_msg::User {
-                    user_id: user.user_id.to_string(),
-                    nick_name: user.nick_name,
-                })
-        });
-
-    let room_users =
-        room.room_users
-            .iter()
-            .filter_map(|(_, room_user)| {
-                users.get(&room_user.user_id).cloned().map(|user| {
-                    server_to_client_ws_msg::RoomUser {
-                        user_id: user.user_id.to_string(),
-                        nick_name: user.nick_name,
-                        is_game_ready: room_user.is_game_ready,
-                    }
-                })
+    let host_user = room.room_host_ws_id.clone().and_then(|room_host_ws_id| {
+        connections
+            .get_user_by_ws_id(&room_host_ws_id)
+            .map(|user| server_to_client_ws_msg::User {
+                user_id: user.user_id.to_string(),
+                nick_name: user.nick_name.clone(),
             })
-            .collect::<Vec<_>>();
+    });
+
+    let room_users = room
+        .room_users
+        .iter()
+        .filter_map(|(_, room_user)| {
+            connections.get_user_by_ws_id(&room_user.ws_id).map(|user| {
+                server_to_client_ws_msg::RoomUser {
+                    user_id: user.user_id.to_string(),
+                    nick_name: user.nick_name.clone(),
+                    is_game_ready: room_user.is_game_ready,
+                }
+            })
+        })
+        .collect::<Vec<_>>();
 
     Some(server_to_client_ws_msg::Room {
         room_id: room.room_id.to_string(),
@@ -56,23 +53,24 @@ pub fn gen_room_publish_msg(
 }
 
 pub fn gen_lobby_publish_msg(
-    users: &HashMap<UserId, WsWorldUser>,
+    connections: &WsConnections,
     rooms: &HashMap<RoomId, WsWorldRoom>,
 ) -> server_to_client_ws_msg::Lobby {
     let rooms = rooms
         .clone()
         .iter()
         .filter(|(_, room)| !room.is_deleted)
-        .filter_map(|(_, room)| gen_room_publish_msg(&users, &rooms, &room.room_id))
+        .filter_map(|(_, room)| gen_room_publish_msg(connections, &rooms, &room.room_id))
         .collect::<Vec<_>>();
 
-    let lobby_users = users
+    let lobby_users = connections
         .iter()
-        .filter_map(|(_, user)| {
-            Some(LobbyUser {
+        .filter_map(|(_, user)| match &user.auth {
+            super::connections::WsConnAuth::Unauthenticated => None,
+            super::connections::WsConnAuth::Authenticated { user } => Some(LobbyUser {
                 user_id: user.user_id.to_string(),
                 nick_name: user.nick_name.clone(),
-            })
+            }),
         })
         .collect::<Vec<_>>();
 

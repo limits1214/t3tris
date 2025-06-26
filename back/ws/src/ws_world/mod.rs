@@ -4,7 +4,6 @@ use crate::ws_world::{
     model::{RoomId, TopicId, UserId, WsData, WsId},
     pubsub::WsPubSub,
 };
-use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
 pub mod command;
@@ -24,6 +23,15 @@ pub struct WsWorld {
     data: WsData,
     pubsub: WsPubSub,
 }
+impl WsWorld {
+    pub fn new() -> Self {
+        Self {
+            connections: WsConnections::new(),
+            data: WsData::new(),
+            pubsub: WsPubSub::new(),
+        }
+    }
+}
 
 impl WsWorld {
     pub fn init() -> (
@@ -34,15 +42,7 @@ impl WsWorld {
             tokio::sync::mpsc::unbounded_channel::<WsWorldCommand>();
         let cloned_world_sender = world_sender.clone();
         let word_receive_task_join_handle = tokio::spawn(async move {
-            let mut world = WsWorld {
-                connections: WsConnections::new(),
-                data: WsData {
-                    users: HashMap::new(),
-                    rooms: HashMap::new(),
-                    games: HashMap::new(),
-                },
-                pubsub: WsPubSub::new(),
-            };
+            let mut world = WsWorld::new();
 
             let mut cleanup_timer = tokio::time::interval(std::time::Duration::from_secs(10));
             let mut game_ticker_timer =
@@ -60,7 +60,7 @@ impl WsWorld {
                     }
                     _ = cleanup_timer.tick() => {
                         world.pubsub.pubsub_cleanup();
-                        room::room_cleanup(&mut world.data, &mut world.pubsub);
+                        room::room_cleanup(&world.connections, &mut world.data, &mut world.pubsub);
                     }
                     _ = game_ticker_timer.tick() => {
                         let _ = cloned_world_sender.send(WsWorldCommand::Game(Game::Tick));
@@ -151,7 +151,7 @@ fn process(
             }
         },
         WsWorldCommand::Game(cmd) => match cmd {
-            Game::Tick => game::tick(data, pubsub),
+            Game::Tick => game::tick(&connections, data, pubsub),
         },
         WsWorldCommand::Pubsub(cmd) => match cmd {
             Pubsub::Subscribe { ws_id, topic } => pubsub.subscribe(&WsId(ws_id), &TopicId(topic)),

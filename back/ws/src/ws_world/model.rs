@@ -39,33 +39,24 @@ define_id_type!(GameId);
 
 #[derive(Debug)]
 pub struct WsData {
-    pub users: HashMap<UserId, WsWorldUser>,
     pub rooms: HashMap<RoomId, WsWorldRoom>,
     pub games: HashMap<GameId, WsWorldGame>,
 }
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct WsWorldUser {
-    pub user_id: UserId,
-    pub nick_name: String,
-    pub state: WsWorldUserState,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum WsWorldUserState {
-    Idle,
-    InLobby,
-    InRoom { room_id: String },
-    Playing { room_id: String },
-    Spectating { room_id: String },
+impl WsData {
+    pub fn new() -> Self {
+        Self {
+            rooms: HashMap::new(),
+            games: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WsWorldRoom {
     pub room_id: RoomId,
     pub room_name: String,
-    pub room_host_user_id: Option<UserId>,
-    pub room_users: HashMap<UserId, WsWorldRoomUser>,
+    pub room_host_ws_id: Option<WsId>,
+    pub room_users: HashMap<WsId, WsWorldRoomUser>,
     pub room_events: Vec<WsWorldRoomEvent>,
     pub is_deleted: bool,
     pub room_status: WsWorldRoomStatus,
@@ -73,6 +64,7 @@ pub struct WsWorldRoom {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WsWorldRoomUser {
+    pub ws_id: WsId,
     pub user_id: UserId,
     pub is_game_ready: bool,
 }

@@ -5,9 +5,10 @@ use crate::{
     model::server_to_client_ws_msg::{ServerToClientWsMsg, User},
     topic,
     ws_world::{
-        connections::WsConnections,
-        model::{WsData, WsId, WsWorldUser},
+        connections::{WsConnections, WsWorldUser},
+        model::{WsData, WsId},
         pubsub::WsPubSub,
+        util::err_publish,
     },
 };
 
@@ -24,7 +25,7 @@ pub fn lobby_enter(
         ServerToClientWsMsg::LobbyEntered.to_json(),
     );
 
-    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
+    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(connections, &data.rooms);
     pubsub.publish(
         &topic!(TOPIC_LOBBY),
         ServerToClientWsMsg::LobbyUpdated {
@@ -34,9 +35,7 @@ pub fn lobby_enter(
         },
     );
 
-    if let Some(WsWorldUser { nick_name, .. }) =
-        connections.get_user_by_ws_id(&ws_id, &data.users).cloned()
-    {
+    if let Some(WsWorldUser { nick_name, .. }) = connections.get_user_by_ws_id(&ws_id).cloned() {
         pubsub.publish(
             &topic!(TOPIC_LOBBY),
             ServerToClientWsMsg::LobbyChat {
@@ -64,7 +63,7 @@ pub fn lobby_leave(
         ServerToClientWsMsg::LobbyLeaved.to_json(),
     );
 
-    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(&data.users, &data.rooms);
+    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(connections, &data.rooms);
     pubsub.publish(
         &topic!(TOPIC_LOBBY),
         &ServerToClientWsMsg::LobbyUpdated {
@@ -75,9 +74,7 @@ pub fn lobby_leave(
         .to_json(),
     );
 
-    if let Some(WsWorldUser { nick_name, .. }) =
-        connections.get_user_by_ws_id(&ws_id, &data.users).cloned()
-    {
+    if let Some(WsWorldUser { nick_name, .. }) = connections.get_user_by_ws_id(&ws_id).cloned() {
         pubsub.publish(
             &topic!(TOPIC_LOBBY),
             &ServerToClientWsMsg::LobbyChat {
@@ -90,29 +87,20 @@ pub fn lobby_leave(
             }
             .to_json(),
         );
-    } else {
-        dbg!();
-    };
-
-    // pubsub.unsubscribe(ws_id, TOPIC_LOBBY);
+    }
 }
 
 /// 로비 채팅
 /// 로그인 해야됨
 pub fn lobby_chat(
     connections: &WsConnections,
-    data: &mut WsData,
+    _data: &mut WsData,
     pubsub: &mut WsPubSub,
     ws_id: WsId,
     msg: &str,
 ) {
-    let Some(user) = connections.get_user_by_ws_id(&ws_id, &data.users).cloned() else {
-        let msg = "lobby_chat not authenticated".to_string();
-        pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
-            &ServerToClientWsMsg::Echo { msg: msg.clone() }.to_json(),
-        );
-        dbg!(msg);
+    let Some(user) = connections.get_user_by_ws_id(&ws_id).cloned() else {
+        err_publish(pubsub, &ws_id, dbg!("[lobby_chat] not authenticated"));
         return;
     };
 

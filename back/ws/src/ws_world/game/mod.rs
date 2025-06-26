@@ -6,12 +6,13 @@ use crate::{
     topic,
     ws_world::{
         WsData,
+        connections::WsConnections,
         model::{WsWorldGameStatus, WsWorldRoomStatus},
         pubsub::WsPubSub,
     },
 };
 
-pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
+pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSub) {
     let mut available_game = data
         .games
         .iter_mut()
@@ -71,7 +72,7 @@ pub fn tick(data: &mut WsData, pubsub: &mut WsPubSub) {
                 }
 
                 if let Some(pub_room) = crate::ws_world::util::gen_room_publish_msg(
-                    &data.users,
+                    connections,
                     &data.rooms,
                     &game.room_id,
                 ) {

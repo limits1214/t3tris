@@ -80,14 +80,14 @@ fn process(
 ) {
     match msg {
         WsWorldCommand::Ws(cmd) => match cmd {
-            Ws::CreateConnection {
+            Ws::InitWs {
                 ws_id,
                 ws_sender_tx,
             } => {
-                ws::create_connection(connections, data, pubsub, WsId(ws_id), ws_sender_tx);
+                ws::init_ws(connections, data, pubsub, WsId(ws_id), ws_sender_tx);
             }
-            Ws::DeleteConnection { ws_id } => {
-                ws::delete_connection(connections, data, pubsub, WsId(ws_id));
+            Ws::CleanupWs { ws_id } => {
+                ws::cleanup_ws(connections, data, pubsub, WsId(ws_id));
             }
             Ws::GetWsWorldInfo { tx } => {
                 let info_str = ws::get_ws_world_info(connections, data, pubsub);

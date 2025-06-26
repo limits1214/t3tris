@@ -14,12 +14,12 @@ pub enum Ws {
     GetWsWorldInfo {
         tx: tokio::sync::oneshot::Sender<serde_json::Value>,
     },
-    CreateConnection {
+    InitWs {
         ws_id: String,
         // user 가가지고 있는 ws_sender_tx
         ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
     },
-    DeleteConnection {
+    CleanupWs {
         ws_id: String,
     },
     LoginUser {

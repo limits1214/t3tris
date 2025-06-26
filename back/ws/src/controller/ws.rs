@@ -92,7 +92,7 @@ pub async fn ws(
     let (topic_msg_tx, mut topic_msg_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
 
     // 만약 sender_task가 종료되면 recv_task에게 정리하고 종료 하라고 신호를 보내는용
-    let (ws_sender_dead_tx, mut ws_sender_dead_rx) = tokio::sync::watch::channel(());
+    let (ws_dead_tx, mut ws_dead_rx) = tokio::sync::watch::channel(());
 
     // ws client 로 부터 오는 메시지 처리
     // 어플리케이션 graceful shutdown 처리
@@ -106,15 +106,9 @@ pub async fn ws(
             shutdown.connection_count
         );
 
-        // recv task 수행중 사용되는 요소들 집합 생성
-        // let mut ctx = WsRecvCtx {
-        //     ws_id: &ws_id,
-        //     ws_world_command_tx: &mut ws_world_command_tx,
-        // };
-
         // ws 시작시 해야할것들
         {
-            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::CreateConnection {
+            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::InitWs {
                 ws_id: ws_id.to_string(),
                 ws_sender_tx: topic_msg_tx,
             }));
@@ -136,7 +130,7 @@ pub async fn ws(
                     break;
                 }
                 // sendertask abort
-                _ = ws_sender_dead_rx.changed() => {
+                _ = ws_dead_rx.changed() => {
                     tracing::warn!("ws_sender_dead_rx");
                     break;
                 }
@@ -145,7 +139,7 @@ pub async fn ws(
 
         // ws 종료전에 정리할 로직은 여기에
         {
-            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::DeleteConnection {
+            let _ = ws_world_command_tx.send(WsWorldCommand::Ws(Ws::CleanupWs {
                 ws_id: ws_id.to_string(),
             }));
         }
@@ -183,7 +177,7 @@ pub async fn ws(
             // recv_task를 abort 할수는 없다.
             // recv_task를 abort 해버리면 정리 로직이 수행되지 않을수 있다.
             // 따라서, 정리 로직이 수행되게 위해 channel을통해 recv_task 종료 신호를 준다.
-            if let Err(err) = ws_sender_dead_tx.send(()) {
+            if let Err(err) = ws_dead_tx.send(()) {
                 tracing::warn!("sender_dead_tx_send err: {err:?}");
             }
         }

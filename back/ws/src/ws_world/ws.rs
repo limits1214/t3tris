@@ -34,7 +34,7 @@ pub fn get_ws_world_info(
 }
 
 /// ws 연결시 한번만 수행
-pub fn create_connection(
+pub fn init_ws(
     connections: &mut WsConnections,
     _data: &mut WsData,
     pubsub: &mut WsPubSub,
@@ -53,7 +53,7 @@ pub fn create_connection(
 
 /// ws 해제시 한번만 수행
 /// create_connection 의 반대로 수행
-pub fn delete_connection(
+pub fn cleanup_ws(
     connections: &mut WsConnections,
     data: &mut WsData,
     pubsub: &mut WsPubSub,

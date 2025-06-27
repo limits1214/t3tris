@@ -110,7 +110,7 @@ pub fn login_user(
         conn.auth = WsConnAuth::Authenticated {
             user: WsWorldUser {
                 user_id: user_id.clone(),
-                nick_name,
+                nick_name: nick_name.clone(),
             },
         };
 
@@ -120,7 +120,11 @@ pub fn login_user(
     // === 개인 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_WS_ID, ws_id),
-        ServerToClientWsMsg::UserLogined,
+        ServerToClientWsMsg::UserLogined {
+            user_id: user_id.into(),
+            nick_name: nick_name.into(),
+            ws_id: ws_id.clone().into(),
+        },
     );
 
     // === 로비 진입
@@ -160,6 +164,8 @@ pub fn logout_user(
     // === 개인 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_WS_ID, ws_id),
-        ServerToClientWsMsg::UserLogouted,
+        ServerToClientWsMsg::UserLogouted {
+            user_id: user.user_id.into(),
+        },
     );
 }

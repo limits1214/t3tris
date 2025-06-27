@@ -7,7 +7,20 @@ pub enum WsWorldCommand {
 }
 
 pub enum Game {
-    Tick,
+    Action {
+        ws_id: String,
+        game_id: String,
+        action: GameActionType,
+    },
+}
+#[derive(Debug)]
+pub enum GameActionType {
+    Left,
+    Right,
+    RotateLeft,
+    RotateRight,
+    HardDrop,
+    SoftDrop,
 }
 
 pub enum Ws {
@@ -77,7 +90,9 @@ pub enum Room {
 }
 
 pub enum Lobby {
-    Enter { ws_id: String },
-    Leave { ws_id: String },
+    // Enter { ws_id: String },
+    // Leave { ws_id: String },
+    Subscribe { ws_id: String },
+    UnSubscribe { ws_id: String },
     Chat { ws_id: String, msg: String },
 }

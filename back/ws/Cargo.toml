@@ -13,7 +13,7 @@ tracing-appender = "0.2.3"
 anyhow = "1"
 thiserror = "2"
 
-rand = "0.9"
+rand = { version = "0.9", features = ["small_rng"] }
 time = { version = "0.3", features = ["serde"] }
 chrono = "0.4"
 

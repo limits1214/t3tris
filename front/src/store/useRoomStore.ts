@@ -6,8 +6,9 @@ type RoomState = {
   roomName: string | null,
   hostUser: RoomUser | null,
   users: RoomUser[],
+  roomStatus: string | null,
   chats: RoomChat[],
-  // enter: (info: RoomInfo) => void,
+  games: string[],
   leave: () => void,
   addChat: (chat: RoomChat) => void,
   update: (info: RoomInfo) => void,
@@ -17,7 +18,7 @@ type RoomState = {
 
 type RoomUser = {
   userId: string,
-  // wsId: string,
+  wsId: string,
   nickName: string,
 }
 
@@ -26,6 +27,8 @@ export type RoomInfo = {
   roomName: string,
   roomHostUser: RoomUser,
   roomUsers: RoomUser[]
+  roomStatus: string,
+  games: string[]
 }
 
 type RoomChat = {
@@ -43,6 +46,8 @@ export const useRoomStore = create<RoomState>(
       hostUser: null,
       users: [],
       chats: [],
+      roomStatus: null,
+      games: [],
       // enter: (info) => {
       //   set({
       //     roomId: info.roomId,
@@ -70,6 +75,8 @@ export const useRoomStore = create<RoomState>(
           roomName: info.roomName,
           hostUser: info.roomHostUser,
           users: info.roomUsers,
+          roomStatus: info.roomStatus,
+          games: info.games,
         })
       },
       clear: () => {

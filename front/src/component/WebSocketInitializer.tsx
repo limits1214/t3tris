@@ -5,7 +5,7 @@ import { useWsStore } from "../store/useWsStore";
 import { beforeTokenCheckAndRefresh, getWsToken } from "../api/auth";
 import { useRoomStore } from "../store/useRoomStore";
 import { useLobbyStore } from "../store/useLobbyStore";
-import { useUserStore } from "../store/useUserStore";
+import { useWsUserStore } from "../store/useWsUserStore";
 import { useNavigate } from "react-router-dom";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
@@ -17,8 +17,11 @@ const WebSocketInitializer = () => {
   // const setLastMessage = useWsStore(s=>s.setLastMessage);
   const setReadyState = useWsStore(s=>s.setReadyState);
 
-  const setIsInitialLoginEnd = useUserStore(s=>s.setIsInitialLoginEnd);
-  const setIsLogined = useUserStore(s=>s.setIsLogined);
+  const setIsInitialLoginEnd = useWsUserStore(s=>s.setIsInitialLoginEnd);
+  const setIsLogined = useWsUserStore(s=>s.setIsLogined);
+  const setWsUserId = useWsUserStore(s=>s.setWsUserId);
+  const setWsUserNickName = useWsUserStore(s=>s.setWsUserNickName);
+  const setWsId = useWsUserStore(s=>s.setWsId);
 
   const lobbyUpdateIsEnterd = useLobbyStore(s=>s.updatedIsEnterd);
   const lobbyUpdateUsers = useLobbyStore(s=>s.updateLobbyUsers);
@@ -75,14 +78,23 @@ const WebSocketInitializer = () => {
           case 'userLogined':
             setIsInitialLoginEnd(true);
             setIsLogined(true);
+            setWsUserId(data.userId);
+            setWsUserNickName(data.nickName);
+            setWsId(data.wsId);
             break;
           case 'userLoginFailed':
             setIsInitialLoginEnd(true);
             setIsLogined(false);
+            setWsUserId(null)
+            setWsUserNickName(null);
+            setWsId(null);
             break;
           case 'userLogouted':
             setIsInitialLoginEnd(true);
             setIsLogined(false);
+            setWsUserId(null);
+            setWsUserNickName(null);
+            setWsId(null);
             break;
 
           case 'lobbyEntered':

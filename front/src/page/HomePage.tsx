@@ -13,25 +13,22 @@ import {format} from 'date-fns'
 import type { RoomInfo } from "../store/useRoomStore";
 import { ReadyState } from "react-use-websocket";
 import { useNavigate } from "react-router-dom";
-import { useUserStore } from "../store/useUserStore";
+import { useWsUserStore } from "../store/useWsUserStore";
 
 const HomePage = () => {
   const send = useWsStore(s=>s.send);
-  const isInitialLoginEnd = useUserStore(s=>s.isInitialLoginEnd);
-  const isLogined = useUserStore(s=>s.isLogined);
+  const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
+  // const isWsLogined = useUserStore(s=>s.isWsLogined);
   const wsReadyState = useWsStore(s=>s.readyState)
 
   useEffect(() => {
     if (wsReadyState === ReadyState.OPEN) {
       console.log('lobby sub')
         const obj = {
-          type: 'subscribeTopic',
-          data: {
-            topic: 'lobby'
-          }
+          type: 'lobbySubscribe'
         }
         send(JSON.stringify(obj))
-      if (isInitialLoginEnd) {
+      if (isInitialWsLoginEnd) {
         // console.log('lobby sub')
         // const obj = {
         //   type: 'subscribeTopic',
@@ -63,13 +60,10 @@ const HomePage = () => {
       if (wsReadyState === ReadyState.OPEN) {
         console.log('lobby unsub')
           const obj = {
-            type: 'unSubscribeTopic',
-            data: {
-              topic: 'lobby'
-            }
+            type: 'lobbyUnSubscribe'
           }
           send(JSON.stringify(obj))
-        if (isInitialLoginEnd) {
+        if (isInitialWsLoginEnd) {
           // console.log('lobby unsub')
           // const obj = {
           //   type: 'unSubscribeTopic',
@@ -99,7 +93,7 @@ const HomePage = () => {
         }
       }
     }
-  }, [isInitialLoginEnd, isLogined, send, wsReadyState])
+  }, [isInitialWsLoginEnd, send, wsReadyState])
   return (
     <Flex direction="column" css={css`height: 100vh; padding: 1rem; min-height: 0`}>
       <Flex css={css`border: 1px solid black; flex: 1; `}>
@@ -179,7 +173,7 @@ const CreateRoom = () => {
 
 const UserInfo = () => {
   const { logout, setAuth} = useAuthStore();
-  const isLogined = useUserStore(s=>s.isLogined);
+  const wsUserId = useWsUserStore(s=>s.wsUserId);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const send = useWsStore(s=>s.send);
   useEffect(() => {
@@ -244,8 +238,8 @@ const UserInfo = () => {
   }
   return (
     <Flex direction="row" css={css`flex: 1; padding: 1rem`}>
-      <Text>{JSON.stringify(isLogined)}</Text>
-      {isLogined && userInfo ? (
+      <Text>{JSON.stringify(wsUserId)}</Text>
+      {wsUserId && userInfo ? (
         <>
           <Avatar fallback="A" css={css`flex: 1; height: 100%`}>asdf</Avatar>
           <Flex css={css`flex: 1;`} direction="column" align="center" justify="center">
@@ -337,7 +331,7 @@ const CurrentUser = () => {
       <Text >접속자</Text>
       <Flex direction="column" >
         {lobbyUsers.map(lobbyUser=>(
-          <Flex key={lobbyUser.userId}>
+          <Flex key={lobbyUser.wsId}>
             <Text>{lobbyUser.nickName}</Text>
           </Flex>
         ))}

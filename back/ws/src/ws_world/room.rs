@@ -42,6 +42,7 @@ pub fn create(
         room_events: vec![],
         is_deleted: false,
         room_status: WsWorldRoomStatus::Waiting,
+        games: vec![],
     };
     data.rooms.insert(room_id.clone(), room);
 
@@ -109,7 +110,7 @@ pub fn enter(
         ws_id.clone(),
         WsWorldRoomUser {
             ws_id: ws_id.clone(),
-            is_game_ready: false,
+            is_game_ready: true,
             user_id: user.user_id.clone(),
         },
     );
@@ -122,10 +123,10 @@ pub fn enter(
         },
     );
 
-    // === 개인 메시지 발행 - 룸상세
+    // === 룸 메시지 발행 - 룸상세
     if let Some(pub_room) = gen_room_publish_msg(&connections, &data.rooms, &room_id) {
         pubsub.publish(
-            &topic!(TOPIC_WS_ID, ws_id),
+            &topic!(TOPIC_ROOM_ID, room_id),
             ServerToClientWsMsg::RoomUpdated { room: pub_room },
         );
     }
@@ -139,6 +140,7 @@ pub fn enter(
             user: server_to_client_ws_msg::User {
                 user_id: "System".to_owned(),
                 nick_name: "System".to_owned(),
+                ws_id: "System".to_owned(),
             },
         },
     );
@@ -197,6 +199,7 @@ pub fn leave(
                     user: server_to_client_ws_msg::User {
                         user_id: "System".to_owned(),
                         nick_name: "System".to_owned(),
+                        ws_id: "System".to_owned(),
                     },
                     msg: format!("새로운 방장 {}", nick_name),
                 },
@@ -220,6 +223,7 @@ pub fn leave(
             user: server_to_client_ws_msg::User {
                 user_id: "System".to_owned(),
                 nick_name: "System".to_owned(),
+                ws_id: "System".to_owned(),
             },
             msg: format!("{} 방 퇴장", user.nick_name),
         },
@@ -278,6 +282,7 @@ pub fn chat(
             user: server_to_client_ws_msg::User {
                 user_id: user.user_id.clone().into(),
                 nick_name: user.nick_name.clone(),
+                ws_id: ws_id.into(),
             },
         },
     );
@@ -400,12 +405,13 @@ pub fn room_game_start(
     // === 방장 가드
     if room
         .room_host_ws_id
-        .iter()
-        .all(|room_hostws_id| *room_hostws_id == ws_id)
+        .as_ref()
+        .filter(|host_id| *host_id == &ws_id)
+        .is_none()
     {
-        err_publish(pubsub, &ws_id, dbg!("[room_game_ready] your not host"));
+        err_publish(pubsub, &ws_id, "[room_game_ready] you're not the host");
         return;
-    };
+    }
 
     // === 방상태가 언레디 박을수 있는지 가드
     if room.room_status != WsWorldRoomStatus::Waiting {
@@ -428,6 +434,8 @@ pub fn room_game_start(
 
     // === 게임 추가
     let game_id = GameId(nanoid!());
+    room.games.push(game_id.clone());
+
     let started = Instant::now();
     let now = Instant::now();
     data.games.insert(

@@ -6,7 +6,7 @@ use crate::{
         server_to_client_ws_msg::ServerToClientWsMsg,
     },
     topic,
-    ws_world::command::{Lobby, Pubsub, Room, Ws, WsWorldCommand},
+    ws_world::command::{Game, Lobby, Pubsub, Room, Ws, WsWorldCommand},
 };
 use axum::{
     Json, Router,
@@ -279,16 +279,26 @@ pub fn process_clinet_msg(
                 }
 
                 // 로비 관련
-                LobbyEnter => {
-                    let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Enter {
+                LobbySubscribe => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Subscribe {
                         ws_id: ws_id.to_string(),
                     }));
                 }
-                LobbyLeave => {
-                    let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Leave {
+                LobbyUnSubscribe => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::UnSubscribe {
                         ws_id: ws_id.to_string(),
                     }));
                 }
+                // LobbyEnter => {
+                //     let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Enter {
+                //         ws_id: ws_id.to_string(),
+                //     }));
+                // }
+                // LobbyLeave => {
+                //     let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Leave {
+                //         ws_id: ws_id.to_string(),
+                //     }));
+                // }
                 LobbyChat { msg } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Chat {
                         ws_id: ws_id.to_string(),
@@ -338,6 +348,16 @@ pub fn process_clinet_msg(
                     let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::GameStart {
                         ws_id: ws_id.to_string(),
                         room_id,
+                    }));
+                }
+                //
+                GameAction {
+                    action, game_id, ..
+                } => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Game(Game::Action {
+                        ws_id: ws_id.to_string(),
+                        game_id,
+                        action: action.into(),
                     }));
                 }
             }

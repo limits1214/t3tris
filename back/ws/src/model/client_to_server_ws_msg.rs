@@ -25,9 +25,9 @@ pub enum ClientToServerWsMsg {
     #[serde(rename_all = "camelCase")]
     LobbyChat { msg: String },
     #[serde(rename_all = "camelCase")]
-    LobbyEnter,
+    LobbySubscribe,
     #[serde(rename_all = "camelCase")]
-    LobbyLeave,
+    LobbyUnSubscribe,
 
     // === 룸 관련 ===
     #[serde(rename_all = "camelCase")]
@@ -44,4 +44,42 @@ pub enum ClientToServerWsMsg {
     RoomGameUnReady { room_id: String },
     #[serde(rename_all = "camelCase")]
     RoomGameStart { room_id: String },
+
+    // === 게임관련 ===
+    #[serde(rename_all = "camelCase")]
+    GameAction {
+        game_id: String,
+        input: GameActionInput,
+        action: GameActionType,
+    },
+}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GameActionInput {
+    Press,
+    // Release,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GameActionType {
+    Left,
+    Right,
+    RotateLeft,
+    RotateRight,
+    HardDrop,
+    SoftDrop,
+}
+
+impl From<GameActionType> for crate::ws_world::command::GameActionType {
+    fn from(value: GameActionType) -> Self {
+        match value {
+            GameActionType::Left => Self::Left,
+            GameActionType::Right => Self::Right,
+            GameActionType::RotateLeft => Self::RotateLeft,
+            GameActionType::RotateRight => Self::RotateRight,
+            GameActionType::HardDrop => Self::HardDrop,
+            GameActionType::SoftDrop => Self::SoftDrop,
+        }
+    }
 }

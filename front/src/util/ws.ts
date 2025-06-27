@@ -10,3 +10,5 @@ export const readyStateString = (readyState: ReadyState) => {
   }[readyState];
   return connectionStatus
 }
+
+

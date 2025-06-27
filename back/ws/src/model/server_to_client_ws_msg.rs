@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::ws_world::model::WsWorldRoomStatus;
+
 /// server -> client
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,11 +18,15 @@ pub enum ServerToClientWsMsg {
     #[serde(rename_all = "camelCase")]
     TopicEcho { topic: String, msg: String },
     #[serde(rename_all = "camelCase")]
-    UserLogined,
+    UserLogined {
+        ws_id: String,
+        user_id: String,
+        nick_name: String,
+    },
     #[serde(rename_all = "camelCase")]
     UserLoginFailed,
     #[serde(rename_all = "camelCase")]
-    UserLogouted,
+    UserLogouted { user_id: String },
 
     // === 로비관련 ===
     #[serde(rename_all = "camelCase")]
@@ -83,7 +89,7 @@ impl From<ServerToClientWsMsg> for String {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    // pub ws_id: String,
+    pub ws_id: String,
     pub user_id: String,
     pub nick_name: String,
 }
@@ -91,7 +97,7 @@ pub struct User {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LobbyUser {
-    // pub ws_id: String,
+    pub ws_id: String,
     pub user_id: String,
     pub nick_name: String,
 }
@@ -107,7 +113,7 @@ pub struct Lobby {
 #[serde(rename_all = "camelCase")]
 pub struct RoomUser {
     pub user_id: String,
-    // pub ws_id: String,
+    pub ws_id: String,
     pub nick_name: String,
     pub is_game_ready: bool,
 }
@@ -119,6 +125,8 @@ pub struct Room {
     pub room_name: String,
     pub room_host_user: Option<User>,
     pub room_users: Vec<RoomUser>,
+    pub room_status: WsWorldRoomStatus,
+    pub games: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

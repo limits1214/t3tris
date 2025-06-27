@@ -14,7 +14,7 @@ type LobbyState = {
 
 type LobbyUser = {
   userId: string,
-  // wsId: string,
+  wsId: string,
   nickName: string,
 }
 type LobbyChat = {

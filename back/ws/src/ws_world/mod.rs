@@ -1,7 +1,7 @@
 use crate::ws_world::{
     command::{Game, Lobby, Pubsub, Room, Ws, WsWorldCommand},
     connections::WsConnections,
-    model::{RoomId, TopicId, UserId, WsData, WsId},
+    model::{GameId, RoomId, TopicId, UserId, WsData, WsId},
     pubsub::WsPubSub,
 };
 use tokio::task::JoinHandle;
@@ -40,7 +40,7 @@ impl WsWorld {
     ) {
         let (world_sender, mut world_receiver) =
             tokio::sync::mpsc::unbounded_channel::<WsWorldCommand>();
-        let cloned_world_sender = world_sender.clone();
+
         let word_receive_task_join_handle = tokio::spawn(async move {
             let mut world = WsWorld::new();
 
@@ -63,7 +63,7 @@ impl WsWorld {
                         room::room_cleanup(&world.connections, &mut world.data, &mut world.pubsub);
                     }
                     _ = game_ticker_timer.tick() => {
-                        let _ = cloned_world_sender.send(WsWorldCommand::Game(Game::Tick));
+                        game::tick(&world.connections, &mut world.data, &mut world.pubsub);
                     }
                 }
             }
@@ -113,12 +113,18 @@ fn process(
             }
         },
         WsWorldCommand::Lobby(cmd) => match cmd {
-            Lobby::Enter { ws_id } => {
-                lobby::lobby_enter(connections, data, pubsub, WsId(ws_id));
+            Lobby::Subscribe { ws_id } => {
+                lobby::lobby_subscribe(connections, data, pubsub, WsId(ws_id));
             }
-            Lobby::Leave { ws_id } => {
-                lobby::lobby_leave(connections, data, pubsub, WsId(ws_id));
+            Lobby::UnSubscribe { ws_id } => {
+                lobby::lobby_unsubscribe(connections, data, pubsub, WsId(ws_id));
             }
+            // Lobby::Enter { .. } => {
+            //     lobby::lobby_enter(connections, data, pubsub, WsId(ws_id));
+            // }
+            // Lobby::Leave { .. } => {
+            //     lobby::lobby_leave(connections, data, pubsub, WsId(ws_id));
+            // }
             Lobby::Chat { ws_id, msg } => {
                 lobby::lobby_chat(&connections, data, pubsub, WsId(ws_id), &msg);
             }
@@ -151,7 +157,20 @@ fn process(
             }
         },
         WsWorldCommand::Game(cmd) => match cmd {
-            Game::Tick => game::tick(&connections, data, pubsub),
+            Game::Action {
+                ws_id,
+                game_id,
+                action,
+            } => {
+                game::action(
+                    connections,
+                    data,
+                    pubsub,
+                    WsId(ws_id),
+                    GameId(game_id),
+                    action,
+                );
+            }
         },
         WsWorldCommand::Pubsub(cmd) => match cmd {
             Pubsub::Subscribe { ws_id, topic } => pubsub.subscribe(&WsId(ws_id), &TopicId(topic)),

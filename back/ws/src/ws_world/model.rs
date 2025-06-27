@@ -60,6 +60,7 @@ pub struct WsWorldRoom {
     pub room_events: Vec<WsWorldRoomEvent>,
     pub is_deleted: bool,
     pub room_status: WsWorldRoomStatus,
+    pub games: Vec<GameId>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -27,6 +27,7 @@ pub fn gen_room_publish_msg(
             .map(|user| server_to_client_ws_msg::User {
                 user_id: user.user_id.to_string(),
                 nick_name: user.nick_name.clone(),
+                ws_id: room_host_ws_id.clone().into(),
             })
     });
 
@@ -36,6 +37,7 @@ pub fn gen_room_publish_msg(
         .filter_map(|(_, room_user)| {
             connections.get_user_by_ws_id(&room_user.ws_id).map(|user| {
                 server_to_client_ws_msg::RoomUser {
+                    ws_id: room_user.ws_id.clone().into(),
                     user_id: user.user_id.to_string(),
                     nick_name: user.nick_name.clone(),
                     is_game_ready: room_user.is_game_ready,
@@ -43,12 +45,19 @@ pub fn gen_room_publish_msg(
             })
         })
         .collect::<Vec<_>>();
-
+    let games = room
+        .games
+        .iter()
+        .cloned()
+        .map(Into::into)
+        .collect::<Vec<String>>();
     Some(server_to_client_ws_msg::Room {
         room_id: room.room_id.to_string(),
         room_name: room.room_name.clone(),
         room_host_user: host_user,
         room_users: room_users,
+        room_status: room.room_status.clone(),
+        games,
     })
 }
 
@@ -65,11 +74,12 @@ pub fn gen_lobby_publish_msg(
 
     let lobby_users = connections
         .conn_iter()
-        .filter_map(|(_, user)| match &user.auth {
+        .filter_map(|(_, conn)| match &conn.auth {
             super::connections::WsConnAuth::Unauthenticated => None,
             super::connections::WsConnAuth::Authenticated { user } => Some(LobbyUser {
                 user_id: user.user_id.to_string(),
                 nick_name: user.nick_name.clone(),
+                ws_id: conn.ws_id.clone().into(),
             }),
         })
         .collect::<Vec<_>>();

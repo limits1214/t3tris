@@ -1,5 +1,4 @@
 use rand::{Rng, SeedableRng, rngs::SmallRng};
-mod tetris;
 pub struct Tetris {
     board: TetrisBoard,
     level: usize,

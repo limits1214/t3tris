@@ -2998,7 +2998,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tetris"
+name = "tetris-lib"
 version = "0.1.0"
 dependencies = [
  "fastrand",

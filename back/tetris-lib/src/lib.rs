@@ -1,23 +1,178 @@
-/*
-try_spawn_active
-try_move
-try_rotate
-try_hard_drop
-try_step
-try_line_clear
-
-
-apply_spawn_active
-apply_move
-apply_rotate
-apply_hard_drop
-apply_step
-apply_line_clear
-
-*/
-
 #[cfg(test)]
 mod tests;
+
+#[derive(Debug)]
+pub enum MoveDirection {
+    Left,
+    Right,
+}
+
+impl MoveDirection {
+    pub fn dx(&self) -> isize {
+        match self {
+            Self::Left => -1,
+            Self::Right => 1,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum RotateDirection {
+    Left,
+    Right,
+}
+
+#[derive(Debug)]
+pub enum RotateError {
+    OutOfBounds(RotateDirection),
+    Blocked(RotateDirection, (usize, usize)),
+    InvalidShape,
+}
+
+impl std::fmt::Display for RotateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RotateError::OutOfBounds(dir) => write!(f, "Rotation out of bounds: {:?}", dir),
+            RotateError::Blocked(dir, pos) => write!(f, "Rotation blocked at {:?}: {:?}", pos, dir),
+            RotateError::InvalidShape => write!(f, "Rotation shape is invalid"),
+        }
+    }
+}
+
+impl std::error::Error for RotateError {}
+
+#[derive(Debug)]
+pub enum StepError {
+    OutOfBounds,
+    InvalidShape,
+    Blocked((usize, usize)),
+}
+
+impl std::fmt::Display for StepError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StepError::OutOfBounds => write!(f, "Falling block reached the bottom"),
+            StepError::InvalidShape => write!(f, "Falling block shape is invalid"),
+            StepError::Blocked(pos) => write!(f, "Falling block is blocked at {:?}", pos),
+        }
+    }
+}
+
+impl std::error::Error for StepError {}
+
+#[derive(Debug)]
+pub enum SpawnError {
+    FallingTileExists,
+}
+
+impl std::fmt::Display for SpawnError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Falling tile already exists")
+    }
+}
+
+impl std::error::Error for SpawnError {}
+
+#[derive(Debug)]
+pub enum MoveError {
+    OutOfBounds(MoveDirection),
+    Blocked(MoveDirection, (usize, usize)),
+    InvalidShape,
+}
+
+impl std::fmt::Display for MoveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MoveError::OutOfBounds(dir) => write!(f, "Move out of bounds: {:?}", dir),
+            MoveError::Blocked(dir, pos) => write!(f, "Move blocked at {:?}: {:?}", pos, dir),
+            MoveError::InvalidShape => write!(f, "Move shape is invalid"),
+        }
+    }
+}
+
+impl std::error::Error for MoveError {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+pub enum Tetrimino {
+    I,
+    O,
+    T,
+    J,
+    L,
+    S,
+    Z,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+pub enum Rotate {
+    D0,
+    D90,
+    D180,
+    D270,
+}
+
+impl Rotate {
+    pub fn next_cw(&self) -> Self {
+        match self {
+            Self::D0 => Self::D90,
+            Self::D90 => Self::D180,
+            Self::D180 => Self::D270,
+            Self::D270 => Self::D0,
+        }
+    }
+
+    pub fn next_ccw(&self) -> Self {
+        match self {
+            Self::D0 => Self::D270,
+            Self::D90 => Self::D0,
+            Self::D180 => Self::D90,
+            Self::D270 => Self::D180,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FallingBlock {
+    pub kind: Tetrimino,
+    pub rotation: Rotate,
+    pub id: u8, // 블록 번호
+}
+impl FallingBlock {
+    pub fn with_id(mut self, id: u8) -> Self {
+        self.id = id;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Tile {
+    Falling(FallingBlock),
+    Placed(u8),
+    Hint(u8),
+    Empty,
+}
+
+impl std::fmt::Display for Tile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Tile::Falling(FallingBlock { kind, .. }) => {
+                f.write_str(&format!("{kind:?}"))?;
+            }
+            Tile::Empty => {
+                f.write_str(".")?;
+            }
+            Tile::Placed(_) => {
+                f.write_str("P")?;
+            }
+            Tile::Hint(_) => {
+                f.write_str("H")?;
+            }
+        };
+        Ok(())
+    }
+}
 
 const RIGHT_ROTATE_TABLE: [[[(i8, i8); 4]; 4]; 7] = [
     // Tetrimino::I
@@ -72,7 +227,7 @@ const RIGHT_ROTATE_TABLE: [[[(i8, i8); 4]; 4]; 7] = [
     ],
 ];
 
-pub const SPAWN_TABLE: [[(i8, i8); 4]; 7] = [
+const SPAWN_TABLE: [[(i8, i8); 4]; 7] = [
     // Tetrimino::I
     // 01234
     [(0, 0), (1, 0), (2, 0), (3, 0)],
@@ -102,61 +257,9 @@ pub const SPAWN_TABLE: [[(i8, i8); 4]; 7] = [
     [(0, 0), (1, 0), (1, 1), (2, 1)],
 ];
 
-#[derive(Debug, Clone, Copy , PartialEq, Eq)]
-#[repr(usize)]
-#[rustfmt::skip]
-pub enum Tetrimino {
-    I, O, T, J, L, S, Z
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(usize)]
-#[rustfmt::skip]
-pub enum Rotate {
-    D0, D90, D180, D270
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ActiveBlock {
-    pub kind: Tetrimino,
-    pub rotation: Rotate,
-    pub id: u8, // 블록 번호
-}
-impl ActiveBlock {
-    pub fn with_id(mut self, id: u8) -> Self {
-        self.id = id;
-        self
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Tile {
-    Active(ActiveBlock),
-    Placed(u8),
-    Hint(u8),
-    Empty,
-}
-impl std::fmt::Display for Tile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Tile::Active(ActiveBlock { kind, .. }) => {
-                f.write_str(&format!("{kind:?}"))?;
-            }
-            Tile::Empty => {
-                f.write_str(".")?;
-            }
-            Tile::Placed(_) => {
-                f.write_str("P")?;
-            }
-            Tile::Hint(_) => {
-                f.write_str("H")?;
-            }
-        };
-        Ok(())
-    }
-}
-
 #[derive(Debug)]
 pub struct Board(Vec<Vec<Tile>>);
+
 impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("\n")?;
@@ -187,238 +290,13 @@ impl std::fmt::Display for Board {
 impl Board {
     const HEIGHT: usize = 23;
     const WIDTH: usize = 10;
+
     pub fn new_common() -> Self {
         Self::new(Self::WIDTH, Self::HEIGHT)
     }
+
     pub fn new(width: usize, height: usize) -> Self {
         Self(vec![vec![Tile::Empty; width]; height])
-    }
-
-    pub fn try_spawn_active(
-        &self,
-        tetrimino: Tetrimino,
-    ) -> Result<Vec<((usize, usize), Tile)>, SpawnError> {
-        match tetrimino {
-            Tetrimino::I => self.try_spawn_active_with_location(tetrimino, 3, 1),
-            Tetrimino::O => self.try_spawn_active_with_location(tetrimino, 4, 1),
-            Tetrimino::T => self.try_spawn_active_with_location(tetrimino, 4, 1),
-            Tetrimino::J => self.try_spawn_active_with_location(tetrimino, 3, 1),
-            Tetrimino::L => self.try_spawn_active_with_location(tetrimino, 5, 1),
-            Tetrimino::S => self.try_spawn_active_with_location(tetrimino, 4, 1),
-            Tetrimino::Z => self.try_spawn_active_with_location(tetrimino, 3, 1),
-        }
-    }
-
-    pub fn try_spawn_active_with_location(
-        &self,
-        tetrimino: Tetrimino,
-        x: usize,
-        y: usize,
-    ) -> Result<Vec<((usize, usize), Tile)>, SpawnError> {
-        if !self.collect_active_blocks().is_empty() {
-            return Err(SpawnError::ActiveTileExists);
-        }
-        let active_block = ActiveBlock {
-            kind: tetrimino,
-            rotation: Rotate::D0,
-            id: 0,
-        };
-        let ids = vec![
-            Tile::Active(active_block.clone().with_id(0)),
-            Tile::Active(active_block.clone().with_id(1)),
-            Tile::Active(active_block.clone().with_id(2)),
-            Tile::Active(active_block.with_id(3)),
-        ];
-        Ok(ids
-            .into_iter()
-            .enumerate()
-            .map(|(idx, tile)| {
-                let (dx, dy) = SPAWN_TABLE[tetrimino as usize][idx];
-                (((x as i8 + dx) as usize, (y as i8 + dy) as usize), tile)
-            })
-            .collect::<Vec<_>>())
-    }
-
-    pub fn apply_spawn_active(&mut self, tiles: Vec<((usize, usize), Tile)>) {
-        for ((x, y), tile) in tiles {
-            *self.location_mut(x, y) = tile;
-        }
-    }
-
-    pub fn rotate_right(&mut self) {
-        let active_blocks = self.collect_active_blocks();
-        let mut to_rotate = vec![];
-        for (x, y, active_block) in active_blocks {
-            let (dx, dy) = Board::right_rotate_reference(
-                &active_block.kind,
-                &active_block.rotation,
-                active_block.id,
-            );
-            let new_x = usize::try_from(x as i8 + dx).ok();
-            let new_y = usize::try_from(y as i8 + dy).ok();
-
-            // under flow 방지, 벽에 부딪힌경우 TODO: wall kick
-            let (Some(new_x), Some(new_y)) = (new_x, new_y) else {
-                return;
-            };
-
-            // 벽에 부딪힌경우 TODO: wall kick
-            if new_x >= self.x_len() || new_y >= self.y_len() {
-                return;
-            }
-
-            // 주변에 블록이 있어서 회전못하는경우 TODO: wall kick
-            match self.location(new_x, new_y) {
-                Tile::Active(ActiveBlock { kind, .. }) if *kind == active_block.kind => {}
-                Tile::Empty => {}
-                _ => return,
-            }
-
-            to_rotate.push(((x, y), (new_x, new_y, active_block)));
-        }
-
-        // validatoin
-        if to_rotate.len() != 4 {
-            return;
-        }
-
-        // 먼저 지워주고
-        for ((x, y), _) in &to_rotate {
-            *self.location_mut(*x, *y) = Tile::Empty;
-        }
-        // 로테이션 바꿔주고 타일 바꿔준다.
-        for (_, (new_x, new_y, mut active_block)) in to_rotate {
-            match active_block.rotation {
-                Rotate::D0 => active_block.rotation = Rotate::D90,
-                Rotate::D90 => active_block.rotation = Rotate::D180,
-                Rotate::D180 => active_block.rotation = Rotate::D270,
-                Rotate::D270 => active_block.rotation = Rotate::D0,
-            }
-            *self.location_mut(new_x, new_y) = Tile::Active(active_block);
-        }
-    }
-
-    pub fn rotate_left(&mut self) {
-        let active_blocks = self.collect_active_blocks();
-        let mut to_rotate = vec![];
-        for (x, y, active_block) in active_blocks {
-            let (dx, dy) = Board::left_rotate_reference(
-                &active_block.kind,
-                &active_block.rotation,
-                active_block.id,
-            );
-            let new_x = usize::try_from(x as i8 + dx).ok();
-            let new_y = usize::try_from(y as i8 + dy).ok();
-
-            // under flow 방지, 벽에 부딪힌경우 TODO: wall kick
-            let (Some(new_x), Some(new_y)) = (new_x, new_y) else {
-                return;
-            };
-
-            // 벽에 부딪힌경우 TODO: wall kick
-            if new_x >= self.x_len() || new_y >= self.y_len() {
-                return;
-            }
-
-            // 주변에 블록이 있어서 회전못하는경우 TODO: wall kick
-            match self.location(new_x, new_y) {
-                Tile::Active(ActiveBlock { kind, .. }) if *kind == active_block.kind => {}
-                Tile::Empty => {}
-                _ => return,
-            }
-
-            to_rotate.push(((x, y), (new_x, new_y, active_block)));
-        }
-
-        // validatoin
-        if to_rotate.len() != 4 {
-            return;
-        }
-
-        // 먼저 지워주고
-        for ((x, y), _) in &to_rotate {
-            *self.location_mut(*x, *y) = Tile::Empty;
-        }
-        // 로테이션 바꿔주고 타일 바꿔준다.
-        for (_, (new_x, new_y, mut active_block)) in to_rotate {
-            match active_block.rotation {
-                Rotate::D0 => active_block.rotation = Rotate::D270,
-                Rotate::D90 => active_block.rotation = Rotate::D0,
-                Rotate::D180 => active_block.rotation = Rotate::D90,
-                Rotate::D270 => active_block.rotation = Rotate::D180,
-            }
-            *self.location_mut(new_x, new_y) = Tile::Active(active_block);
-        }
-    }
-
-    pub fn collect_active_blocks(&self) -> Vec<(usize, usize, ActiveBlock)> {
-        let mut active_blocks = vec![];
-        'outer: for y in 0..self.y_len() {
-            for x in 0..self.x_len() {
-                let t = self.location(x, y);
-                match t {
-                    Tile::Active(active_block) => {
-                        active_blocks.push((x, y, active_block.clone()));
-                        if active_blocks.len() == 4 {
-                            break 'outer;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        active_blocks
-    }
-
-    pub fn right(&mut self) {
-        let active_blocks = self.collect_active_blocks();
-        let mut to_left = vec![];
-        for (x, y, active_block) in active_blocks {
-            if x + 1 >= self.x_len() {
-                return;
-            }
-            match self.location(x + 1, y) {
-                Tile::Active(ActiveBlock { kind, .. }) if *kind == active_block.kind => {}
-                Tile::Empty => {}
-                _ => return,
-            }
-            to_left.push((x, y, active_block));
-        }
-        if to_left.len() != 4 {
-            return;
-        }
-        for (x, y, _) in &to_left {
-            *self.location_mut(*x, *y) = Tile::Empty;
-        }
-        for (x, y, active_block) in to_left {
-            *self.location_mut(x + 1, y) = Tile::Active(active_block);
-        }
-    }
-
-    pub fn left(&mut self) {
-        let active_blocks = self.collect_active_blocks();
-        let mut to_left = vec![];
-        for (x, y, active_block) in active_blocks {
-            if x < 1 {
-                return;
-            }
-            match self.location(x - 1, y) {
-                Tile::Active(ActiveBlock { kind, .. }) if *kind == active_block.kind => {}
-                Tile::Empty => {}
-                _ => return,
-            }
-            to_left.push((x, y, active_block));
-        }
-        if to_left.len() != 4 {
-            return;
-        }
-        for (x, y, _) in &to_left {
-            *self.location_mut(*x, *y) = Tile::Empty;
-        }
-        for (x, y, active_block) in to_left {
-            *self.location_mut(x - 1, y) = Tile::Active(active_block);
-        }
     }
 
     fn right_rotate_reference(kind: &Tetrimino, rotate: &Rotate, id: u8) -> (i8, i8) {
@@ -430,26 +308,16 @@ impl Board {
     }
 
     fn left_rotate_reference(kind: &Tetrimino, rotate: &Rotate, id: u8) -> (i8, i8) {
-        // D90 → D0 이라는 의미니까, 결과는 `right_rotate_reference` 역방향
-        let next = match rotate {
-            Rotate::D0 => Rotate::D270,
-            Rotate::D90 => Rotate::D0,
-            Rotate::D180 => Rotate::D90,
-            Rotate::D270 => Rotate::D180,
-        };
+        let next = rotate.next_ccw();
         let (dx, dy) = Board::right_rotate_reference(kind, &next, id);
         (-dx, -dy)
     }
 
     pub fn location(&self, x: usize, y: usize) -> &Tile {
-        // let x = x.clamp(0, self.x_len() - 1);
-        // let y = y.clamp(0, self.y_len() - 1);
         &self.0[y][x]
     }
 
     pub fn location_mut(&mut self, x: usize, y: usize) -> &mut Tile {
-        // let x = x.clamp(0, self.x_len() - 1);
-        // let y = y.clamp(0, self.y_len() - 1);
         &mut self.0[y][x]
     }
 
@@ -460,30 +328,109 @@ impl Board {
         self.0.len()
     }
 
-    pub fn try_move(
+    pub fn board(&self) -> &Vec<Vec<Tile>> {
+        &self.0
+    }
+
+    pub fn line(&self, y: usize) -> &Vec<Tile> {
+        &self.0[y]
+    }
+
+    pub fn try_spawn_falling(
+        &self,
+        tetrimino: Tetrimino,
+    ) -> Result<Vec<((usize, usize), Tile)>, SpawnError> {
+        match tetrimino {
+            Tetrimino::I => self.try_spawn_falling_at(tetrimino, 3, 1),
+            Tetrimino::O => self.try_spawn_falling_at(tetrimino, 4, 1),
+            Tetrimino::T => self.try_spawn_falling_at(tetrimino, 4, 1),
+            Tetrimino::J => self.try_spawn_falling_at(tetrimino, 3, 1),
+            Tetrimino::L => self.try_spawn_falling_at(tetrimino, 5, 1),
+            Tetrimino::S => self.try_spawn_falling_at(tetrimino, 4, 1),
+            Tetrimino::Z => self.try_spawn_falling_at(tetrimino, 3, 1),
+        }
+    }
+
+    pub fn try_spawn_falling_at(
+        &self,
+        tetrimino: Tetrimino,
+        x: usize,
+        y: usize,
+    ) -> Result<Vec<((usize, usize), Tile)>, SpawnError> {
+        if !self.get_falling_blocks().is_empty() {
+            return Err(SpawnError::FallingTileExists);
+        }
+        let falling = FallingBlock {
+            kind: tetrimino,
+            rotation: Rotate::D0,
+            id: 0,
+        };
+        let ids = vec![
+            Tile::Falling(falling.clone().with_id(0)),
+            Tile::Falling(falling.clone().with_id(1)),
+            Tile::Falling(falling.clone().with_id(2)),
+            Tile::Falling(falling.with_id(3)),
+        ];
+        Ok(ids
+            .into_iter()
+            .enumerate()
+            .map(|(idx, tile)| {
+                let (dx, dy) = SPAWN_TABLE[tetrimino as usize][idx];
+                (((x as i8 + dx) as usize, (y as i8 + dy) as usize), tile)
+            })
+            .collect::<Vec<_>>())
+    }
+
+    pub fn apply_spawn_falling(&mut self, tiles: Vec<((usize, usize), Tile)>) {
+        for ((x, y), tile) in tiles {
+            *self.location_mut(x, y) = tile;
+        }
+    }
+
+    pub fn get_falling_blocks(&self) -> Vec<(usize, usize, FallingBlock)> {
+        let mut fallings = vec![];
+        'outer: for y in 0..self.y_len() {
+            for x in 0..self.x_len() {
+                let t = self.location(x, y);
+                match t {
+                    Tile::Falling(active_block) => {
+                        fallings.push((x, y, active_block.clone()));
+                        if fallings.len() == 4 {
+                            break 'outer;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        fallings
+    }
+
+    pub fn try_move_falling(
         &self,
         dir: MoveDirection,
-    ) -> Result<Vec<((usize, usize), (usize, usize, ActiveBlock))>, MoveError> {
-        let active_blocks = self.collect_active_blocks();
+    ) -> Result<Vec<((usize, usize), (usize, usize, FallingBlock))>, MoveError> {
+        let fallings = self.get_falling_blocks();
 
         let mut to_move = vec![];
-        for (x, y, active_block) in active_blocks {
+        for (x, y, falling) in fallings {
             let new_x = x as isize + dir.dx();
             if new_x < 0 || new_x >= self.x_len() as isize {
                 return Err(MoveError::OutOfBounds(dir));
             }
             let new_x = new_x as usize;
 
-            let target_tile = self.location(new_x, y);
-            match target_tile {
-                Tile::Active(ActiveBlock { kind, .. }) if *kind == active_block.kind => {}
+            match self.location(new_x, y) {
+                Tile::Falling(FallingBlock { kind, .. }) if *kind == falling.kind => {}
                 Tile::Empty => {}
+                Tile::Hint(_) => {}
                 _ => {
-                    return Err(MoveError::Blocked(dir, target_tile.clone()));
+                    return Err(MoveError::Blocked(dir, (x, y)));
                 }
             }
 
-            to_move.push(((x, y), (new_x, y, active_block)));
+            to_move.push(((x, y), (new_x, y, falling)));
         }
 
         if to_move.len() != 4 {
@@ -493,36 +440,32 @@ impl Board {
         Ok(to_move)
     }
 
-    pub fn apply_move(
+    pub fn apply_move_falling(
         &mut self,
-        to_move_blocks: Vec<((usize, usize), (usize, usize, ActiveBlock))>,
+        fallings: Vec<((usize, usize), (usize, usize, FallingBlock))>,
     ) {
-        for ((x, y), _) in &to_move_blocks {
+        for ((x, y), _) in &fallings {
             *self.location_mut(*x, *y) = Tile::Empty;
         }
-        for (_, (x, y, active_block)) in to_move_blocks {
-            *self.location_mut(x, y) = Tile::Active(active_block);
+        for (_, (x, y, falling)) in fallings {
+            *self.location_mut(x, y) = Tile::Falling(falling);
         }
     }
 
-    pub fn try_rotate(
+    pub fn try_rotate_falling(
         &self,
         dir: RotateDirection,
-    ) -> Result<Vec<((usize, usize), (usize, usize, ActiveBlock))>, RotateError> {
-        let active_blocks = self.collect_active_blocks();
+    ) -> Result<Vec<((usize, usize), (usize, usize, FallingBlock))>, RotateError> {
+        let fallings = self.get_falling_blocks();
         let mut to_rotate = vec![];
-        for (x, y, mut active_block) in active_blocks {
+        for (x, y, mut falling) in fallings {
             let (dx, dy) = match dir {
-                RotateDirection::Left => Board::left_rotate_reference(
-                    &active_block.kind,
-                    &active_block.rotation,
-                    active_block.id,
-                ),
-                RotateDirection::Right => Board::right_rotate_reference(
-                    &active_block.kind,
-                    &active_block.rotation,
-                    active_block.id,
-                ),
+                RotateDirection::Left => {
+                    Board::left_rotate_reference(&falling.kind, &falling.rotation, falling.id)
+                }
+                RotateDirection::Right => {
+                    Board::right_rotate_reference(&falling.kind, &falling.rotation, falling.id)
+                }
             };
             let new_x = usize::try_from(x as i8 + dx).ok();
             let new_y = usize::try_from(y as i8 + dy).ok();
@@ -535,28 +478,18 @@ impl Board {
                 return Err(RotateError::OutOfBounds(dir));
             }
 
-            let target_tile = self.location(new_x, new_y);
-            match target_tile {
-                Tile::Active(ActiveBlock { kind, .. }) if *kind == active_block.kind => {}
+            match self.location(new_x, new_y) {
+                Tile::Falling(FallingBlock { kind, .. }) if *kind == falling.kind => {}
                 Tile::Empty => {}
-                _ => return Err(RotateError::Blocked(dir, target_tile.clone())),
+                Tile::Hint(_) => {}
+                _ => return Err(RotateError::Blocked(dir, (x, y))),
             }
 
             match dir {
-                RotateDirection::Left => match active_block.rotation {
-                    Rotate::D0 => active_block.rotation = Rotate::D270,
-                    Rotate::D90 => active_block.rotation = Rotate::D0,
-                    Rotate::D180 => active_block.rotation = Rotate::D90,
-                    Rotate::D270 => active_block.rotation = Rotate::D180,
-                },
-                RotateDirection::Right => match active_block.rotation {
-                    Rotate::D0 => active_block.rotation = Rotate::D90,
-                    Rotate::D90 => active_block.rotation = Rotate::D180,
-                    Rotate::D180 => active_block.rotation = Rotate::D270,
-                    Rotate::D270 => active_block.rotation = Rotate::D0,
-                },
+                RotateDirection::Left => falling.rotation = falling.rotation.next_ccw(),
+                RotateDirection::Right => falling.rotation = falling.rotation.next_cw(),
             }
-            to_rotate.push(((x, y), (new_x, new_y, active_block)));
+            to_rotate.push(((x, y), (new_x, new_y, falling)));
         }
 
         if to_rotate.len() != 4 {
@@ -566,37 +499,37 @@ impl Board {
         Ok(to_rotate)
     }
 
-    pub fn apply_rotate(
+    pub fn apply_rotate_falling(
         &mut self,
-        to_rotate_blocks: Vec<((usize, usize), (usize, usize, ActiveBlock))>,
+        fallings: Vec<((usize, usize), (usize, usize, FallingBlock))>,
     ) {
-        for ((x, y), _) in &to_rotate_blocks {
+        for ((x, y), _) in &fallings {
             *self.location_mut(*x, *y) = Tile::Empty;
         }
-        for (_, (new_x, new_y, active_block)) in to_rotate_blocks {
-            *self.location_mut(new_x, new_y) = Tile::Active(active_block);
+        for (_, (new_x, new_y, falling)) in fallings {
+            *self.location_mut(new_x, new_y) = Tile::Falling(falling);
         }
     }
 
     // ok 면 다음으로 이동할 위치
     pub fn try_step(
         &self,
-    ) -> Result<Vec<((usize, usize), (usize, usize, ActiveBlock))>, StepError> {
-        let active_blocks = self.collect_active_blocks();
+    ) -> Result<Vec<((usize, usize), (usize, usize, FallingBlock))>, StepError> {
+        let fallings = self.get_falling_blocks();
         let mut to_step = vec![];
-        for (x, y, active_block) in active_blocks {
+        for (x, y, falling) in fallings {
             // 바닥에 닿은경우
             if y + 1 >= self.y_len() {
                 return Err(StepError::OutOfBounds);
             }
 
-            let target_tile = self.location(x, y + 1);
-            match target_tile {
-                Tile::Active(ActiveBlock { kind, .. }) if *kind == active_block.kind => {}
+            match self.location(x, y + 1) {
+                Tile::Falling(FallingBlock { kind, .. }) if *kind == falling.kind => {}
                 Tile::Empty => {}
-                _ => return Err(StepError::Blocked(target_tile.clone())),
+                Tile::Hint(_) => {}
+                _ => return Err(StepError::Blocked((x, y))),
             }
-            to_step.push(((x, y), (x, y + 1, active_block)));
+            to_step.push(((x, y), (x, y + 1, falling)));
         }
         if to_step.len() != 4 {
             return Err(StepError::InvalidShape);
@@ -605,22 +538,18 @@ impl Board {
         Ok(to_step)
     }
 
-    pub fn apply_step(
-        &mut self,
-        to_step_blocks: Vec<((usize, usize), (usize, usize, ActiveBlock))>,
-    ) {
-        for ((x, y), _) in &to_step_blocks {
+    pub fn apply_step(&mut self, fallings: Vec<((usize, usize), (usize, usize, FallingBlock))>) {
+        for ((x, y), _) in &fallings {
             *self.location_mut(*x, *y) = Tile::Empty;
         }
-        for (_, (x, y, active_block)) in to_step_blocks {
-            *self.location_mut(x - 1, y) = Tile::Active(active_block);
+        for (_, (x, y, falling)) in fallings {
+            *self.location_mut(x, y) = Tile::Falling(falling);
         }
     }
 
-    pub fn place_active(&mut self) {
-        let active_blocks = self.collect_active_blocks();
+    pub fn place_falling(&mut self) {
+        let active_blocks = self.get_falling_blocks();
         for (x, y, active_block) in active_blocks {
-            // TODO: define Placed id
             *self.location_mut(x, y) = Tile::Placed(active_block.kind as u8);
         }
     }
@@ -645,69 +574,52 @@ impl Board {
     }
 
     pub fn apply_line_clear(&mut self, to_clear_lines: Vec<usize>) {
-        for to_clear_line in to_clear_lines.into_iter().rev() {
-            self.0.remove(to_clear_line);
+        for to_clear_line in to_clear_lines.iter().rev() {
+            self.0.remove(*to_clear_line);
+        }
+        for _ in to_clear_lines {
             self.0.insert(0, vec![Tile::Empty; self.x_len()]);
         }
     }
 
-    pub fn try_hard_drop(&mut self) {
-        // while
-    }
-    pub fn apply_hard_drop(&mut self) {
-        //
-    }
-
-    pub fn try_soft_drop() {
-        //
-    }
-    pub fn apply_soft_drop() {
-        //
-    }
-}
-
-#[derive(Debug)]
-pub enum MoveDirection {
-    Left,
-    Right,
-}
-
-#[derive(Debug)]
-pub enum MoveError {
-    OutOfBounds(MoveDirection),
-    Blocked(MoveDirection, Tile),
-    InvalidShape,
-}
-
-impl MoveDirection {
-    pub fn dx(&self) -> isize {
-        match self {
-            Self::Left => -1,
-            Self::Right => 1,
+    pub fn hard_drop(&mut self) -> Result<(), StepError> {
+        loop {
+            self.apply_step(self.try_step()?);
         }
     }
-}
 
-#[derive(Debug)]
-pub enum RotateDirection {
-    Left,
-    Right,
-}
+    pub fn show_falling_hint(&mut self) {
+        let fallings = self.get_falling_blocks();
+        let _ = self.hard_drop();
+        let targets = self.get_falling_blocks();
+        for (x, y, target_block) in targets {
+            *self.location_mut(x, y) = Tile::Hint(target_block.kind as u8);
+        }
+        for (x, y, falling) in fallings {
+            *self.location_mut(x, y) = Tile::Falling(falling);
+        }
+    }
 
-#[derive(Debug)]
-pub enum RotateError {
-    OutOfBounds(RotateDirection),
-    Blocked(RotateDirection, Tile),
-    InvalidShape,
-}
+    pub fn remove_falling_hint(&mut self) {
+        for y in 0..self.y_len() {
+            for x in 0..self.x_len() {
+                match self.location(x, y) {
+                    Tile::Hint(_) => *self.location_mut(x, y) = Tile::Empty,
+                    _ => {}
+                }
+            }
+        }
+    }
 
-#[derive(Debug)]
-pub enum StepError {
-    OutOfBounds,
-    InvalidShape,
-    Blocked(Tile),
-}
-#[derive(Debug)]
-pub enum SpawnError {
-    ActiveTileExists,
+    pub fn has_placed_above(&self, y: usize) -> bool {
+        for y in 0..y {
+            for x in 0..self.x_len() {
+                match self.location(x, y) {
+                    Tile::Placed(_) => return true,
+                    _ => {}
+                }
+            }
+        }
+        return false;
+    }
 }

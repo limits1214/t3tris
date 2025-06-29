@@ -2,7 +2,7 @@ use super::*;
 
 fn activated_rotation(board: &Board) -> Rotate {
     let active_blocks = board.get_falling_blocks();
-    active_blocks.first().unwrap().2.rotation
+    active_blocks.first().unwrap().falling.rotation
 }
 
 #[cfg(test)]

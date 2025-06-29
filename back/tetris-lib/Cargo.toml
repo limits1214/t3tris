@@ -3,8 +3,19 @@ name = "tetris-lib"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+wasm = ["ts-rs", "wasm-bindgen", "serde-wasm-bindgen"]
+
 [dependencies]
-fastrand = "2.3.0"
+serde = { version = "1", features = ["derive"] }
+
+serde-wasm-bindgen = { version = "0.6", optional = true }
+ts-rs = { version = "11", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
 
 [dev-dependencies]
 ratatui = "0.29.0"

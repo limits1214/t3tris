@@ -1,7 +1,14 @@
+use serde::{Deserialize, Serialize};
+
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug)]
+#[cfg(feature = "wasm")]
+mod wasm;
+
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum MoveDirection {
     Left,
     Right,
@@ -16,16 +23,20 @@ impl MoveDirection {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum RotateDirection {
     Left,
     Right,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum RotateError {
     OutOfBounds(RotateDirection),
-    Blocked(RotateDirection, (usize, usize)),
+    Blocked(RotateDirection, Location),
     InvalidShape,
 }
 
@@ -41,11 +52,13 @@ impl std::fmt::Display for RotateError {
 
 impl std::error::Error for RotateError {}
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum StepError {
     OutOfBounds,
     InvalidShape,
-    Blocked((usize, usize)),
+    Blocked(Location),
 }
 
 impl std::fmt::Display for StepError {
@@ -60,7 +73,9 @@ impl std::fmt::Display for StepError {
 
 impl std::error::Error for StepError {}
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum SpawnError {
     FallingTileExists,
 }
@@ -73,10 +88,12 @@ impl std::fmt::Display for SpawnError {
 
 impl std::error::Error for SpawnError {}
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum MoveError {
     OutOfBounds(MoveDirection),
-    Blocked(MoveDirection, (usize, usize)),
+    Blocked(MoveDirection, Location),
     InvalidShape,
 }
 
@@ -92,8 +109,11 @@ impl std::fmt::Display for MoveError {
 
 impl std::error::Error for MoveError {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
+
 pub enum Tetrimino {
     I,
     O,
@@ -104,8 +124,10 @@ pub enum Tetrimino {
     Z,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum Rotate {
     D0,
     D90,
@@ -133,7 +155,9 @@ impl Rotate {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub struct FallingBlock {
     pub kind: Tetrimino,
     pub rotation: Rotate,
@@ -146,12 +170,52 @@ impl FallingBlock {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
+pub struct FallingBlockAt {
+    pub falling: FallingBlock,
+    pub location: Location,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
+pub struct Location {
+    x: usize,
+    y: usize,
+}
+
+impl Location {
+    pub fn new(x: usize, y: usize) -> Self {
+        Self { x, y }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
+pub struct FallingBlockPlan {
+    pub as_is: Location,
+    pub to_be: FallingBlockAt,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
 pub enum Tile {
     Falling(FallingBlock),
     Placed(u8),
     Hint(u8),
     Empty,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
+pub struct TileAt {
+    tile: Tile,
+    location: Location,
 }
 
 impl std::fmt::Display for Tile {
@@ -336,10 +400,7 @@ impl Board {
         &self.0[y]
     }
 
-    pub fn try_spawn_falling(
-        &self,
-        tetrimino: Tetrimino,
-    ) -> Result<Vec<((usize, usize), Tile)>, SpawnError> {
+    pub fn try_spawn_falling(&self, tetrimino: Tetrimino) -> Result<Vec<TileAt>, SpawnError> {
         match tetrimino {
             Tetrimino::I => self.try_spawn_falling_at(tetrimino, 3, 1),
             Tetrimino::O => self.try_spawn_falling_at(tetrimino, 4, 1),
@@ -356,7 +417,7 @@ impl Board {
         tetrimino: Tetrimino,
         x: usize,
         y: usize,
-    ) -> Result<Vec<((usize, usize), Tile)>, SpawnError> {
+    ) -> Result<Vec<TileAt>, SpawnError> {
         if !self.get_falling_blocks().is_empty() {
             return Err(SpawnError::FallingTileExists);
         }
@@ -376,25 +437,35 @@ impl Board {
             .enumerate()
             .map(|(idx, tile)| {
                 let (dx, dy) = SPAWN_TABLE[tetrimino as usize][idx];
-                (((x as i8 + dx) as usize, (y as i8 + dy) as usize), tile)
+                TileAt {
+                    tile: tile,
+                    location: Location::new((x as i8 + dx) as usize, (y as i8 + dy) as usize),
+                }
             })
             .collect::<Vec<_>>())
     }
 
-    pub fn apply_spawn_falling(&mut self, tiles: Vec<((usize, usize), Tile)>) {
-        for ((x, y), tile) in tiles {
+    pub fn apply_spawn_falling(&mut self, tiles: Vec<TileAt>) {
+        for TileAt {
+            tile,
+            location: Location { x, y },
+        } in tiles
+        {
             *self.location_mut(x, y) = tile;
         }
     }
 
-    pub fn get_falling_blocks(&self) -> Vec<(usize, usize, FallingBlock)> {
+    pub fn get_falling_blocks(&self) -> Vec<FallingBlockAt> {
         let mut fallings = vec![];
         'outer: for y in 0..self.y_len() {
             for x in 0..self.x_len() {
                 let t = self.location(x, y);
                 match t {
-                    Tile::Falling(active_block) => {
-                        fallings.push((x, y, active_block.clone()));
+                    Tile::Falling(falling) => {
+                        fallings.push(FallingBlockAt {
+                            location: Location::new(x, y),
+                            falling: falling.clone(),
+                        });
                         if fallings.len() == 4 {
                             break 'outer;
                         }
@@ -407,14 +478,15 @@ impl Board {
         fallings
     }
 
-    pub fn try_move_falling(
-        &self,
-        dir: MoveDirection,
-    ) -> Result<Vec<((usize, usize), (usize, usize, FallingBlock))>, MoveError> {
+    pub fn try_move_falling(&self, dir: MoveDirection) -> Result<Vec<FallingBlockPlan>, MoveError> {
         let fallings = self.get_falling_blocks();
 
         let mut to_move = vec![];
-        for (x, y, falling) in fallings {
+        for FallingBlockAt {
+            falling,
+            location: Location { x, y },
+        } in fallings
+        {
             let new_x = x as isize + dir.dx();
             if new_x < 0 || new_x >= self.x_len() as isize {
                 return Err(MoveError::OutOfBounds(dir));
@@ -426,11 +498,16 @@ impl Board {
                 Tile::Empty => {}
                 Tile::Hint(_) => {}
                 _ => {
-                    return Err(MoveError::Blocked(dir, (x, y)));
+                    return Err(MoveError::Blocked(dir, Location::new(x, y)));
                 }
             }
-
-            to_move.push(((x, y), (new_x, y, falling)));
+            to_move.push(FallingBlockPlan {
+                as_is: Location::new(x, y),
+                to_be: FallingBlockAt {
+                    falling,
+                    location: Location { x: new_x, y: y },
+                },
+            });
         }
 
         if to_move.len() != 4 {
@@ -440,14 +517,23 @@ impl Board {
         Ok(to_move)
     }
 
-    pub fn apply_move_falling(
-        &mut self,
-        fallings: Vec<((usize, usize), (usize, usize, FallingBlock))>,
-    ) {
-        for ((x, y), _) in &fallings {
+    pub fn apply_move_falling(&mut self, fallings: Vec<FallingBlockPlan>) {
+        for FallingBlockPlan {
+            as_is: Location { x, y },
+            ..
+        } in &fallings
+        {
             *self.location_mut(*x, *y) = Tile::Empty;
         }
-        for (_, (x, y, falling)) in fallings {
+        for FallingBlockPlan {
+            to_be:
+                FallingBlockAt {
+                    falling,
+                    location: Location { x, y },
+                },
+            ..
+        } in fallings
+        {
             *self.location_mut(x, y) = Tile::Falling(falling);
         }
     }
@@ -455,10 +541,14 @@ impl Board {
     pub fn try_rotate_falling(
         &self,
         dir: RotateDirection,
-    ) -> Result<Vec<((usize, usize), (usize, usize, FallingBlock))>, RotateError> {
+    ) -> Result<Vec<FallingBlockPlan>, RotateError> {
         let fallings = self.get_falling_blocks();
         let mut to_rotate = vec![];
-        for (x, y, mut falling) in fallings {
+        for FallingBlockAt {
+            mut falling,
+            location: Location { x, y },
+        } in fallings
+        {
             let (dx, dy) = match dir {
                 RotateDirection::Left => {
                     Board::left_rotate_reference(&falling.kind, &falling.rotation, falling.id)
@@ -482,14 +572,21 @@ impl Board {
                 Tile::Falling(FallingBlock { kind, .. }) if *kind == falling.kind => {}
                 Tile::Empty => {}
                 Tile::Hint(_) => {}
-                _ => return Err(RotateError::Blocked(dir, (x, y))),
+                _ => return Err(RotateError::Blocked(dir, Location::new(x, y))),
             }
 
             match dir {
                 RotateDirection::Left => falling.rotation = falling.rotation.next_ccw(),
                 RotateDirection::Right => falling.rotation = falling.rotation.next_cw(),
             }
-            to_rotate.push(((x, y), (new_x, new_y, falling)));
+
+            to_rotate.push(FallingBlockPlan {
+                as_is: Location::new(x, y),
+                to_be: FallingBlockAt {
+                    falling,
+                    location: Location::new(new_x, new_y),
+                },
+            });
         }
 
         if to_rotate.len() != 4 {
@@ -499,25 +596,36 @@ impl Board {
         Ok(to_rotate)
     }
 
-    pub fn apply_rotate_falling(
-        &mut self,
-        fallings: Vec<((usize, usize), (usize, usize, FallingBlock))>,
-    ) {
-        for ((x, y), _) in &fallings {
+    pub fn apply_rotate_falling(&mut self, fallings: Vec<FallingBlockPlan>) {
+        for FallingBlockPlan {
+            as_is: Location { x, y },
+            ..
+        } in &fallings
+        {
             *self.location_mut(*x, *y) = Tile::Empty;
         }
-        for (_, (new_x, new_y, falling)) in fallings {
-            *self.location_mut(new_x, new_y) = Tile::Falling(falling);
+        for FallingBlockPlan {
+            to_be:
+                FallingBlockAt {
+                    falling,
+                    location: Location { x, y },
+                },
+            ..
+        } in fallings
+        {
+            *self.location_mut(x, y) = Tile::Falling(falling);
         }
     }
 
     // ok 면 다음으로 이동할 위치
-    pub fn try_step(
-        &self,
-    ) -> Result<Vec<((usize, usize), (usize, usize, FallingBlock))>, StepError> {
+    pub fn try_step(&self) -> Result<Vec<FallingBlockPlan>, StepError> {
         let fallings = self.get_falling_blocks();
         let mut to_step = vec![];
-        for (x, y, falling) in fallings {
+        for FallingBlockAt {
+            falling,
+            location: Location { x, y },
+        } in fallings
+        {
             // 바닥에 닿은경우
             if y + 1 >= self.y_len() {
                 return Err(StepError::OutOfBounds);
@@ -527,9 +635,15 @@ impl Board {
                 Tile::Falling(FallingBlock { kind, .. }) if *kind == falling.kind => {}
                 Tile::Empty => {}
                 Tile::Hint(_) => {}
-                _ => return Err(StepError::Blocked((x, y))),
+                _ => return Err(StepError::Blocked(Location::new(x, y))),
             }
-            to_step.push(((x, y), (x, y + 1, falling)));
+            to_step.push(FallingBlockPlan {
+                as_is: Location::new(x, y),
+                to_be: FallingBlockAt {
+                    falling,
+                    location: Location::new(x, y + 1),
+                },
+            });
         }
         if to_step.len() != 4 {
             return Err(StepError::InvalidShape);
@@ -538,19 +652,35 @@ impl Board {
         Ok(to_step)
     }
 
-    pub fn apply_step(&mut self, fallings: Vec<((usize, usize), (usize, usize, FallingBlock))>) {
-        for ((x, y), _) in &fallings {
+    pub fn apply_step(&mut self, fallings: Vec<FallingBlockPlan>) {
+        for FallingBlockPlan {
+            as_is: Location { x, y },
+            ..
+        } in &fallings
+        {
             *self.location_mut(*x, *y) = Tile::Empty;
         }
-        for (_, (x, y, falling)) in fallings {
+        for FallingBlockPlan {
+            to_be:
+                FallingBlockAt {
+                    falling,
+                    location: Location { x, y },
+                },
+            ..
+        } in fallings
+        {
             *self.location_mut(x, y) = Tile::Falling(falling);
         }
     }
 
     pub fn place_falling(&mut self) {
-        let active_blocks = self.get_falling_blocks();
-        for (x, y, active_block) in active_blocks {
-            *self.location_mut(x, y) = Tile::Placed(active_block.kind as u8);
+        let fallings = self.get_falling_blocks();
+        for FallingBlockAt {
+            falling,
+            location: Location { x, y },
+        } in fallings
+        {
+            *self.location_mut(x, y) = Tile::Placed(falling.kind as u8);
         }
     }
 
@@ -583,8 +713,13 @@ impl Board {
     }
 
     pub fn hard_drop(&mut self) -> Result<(), StepError> {
+        let mut cnt = 0;
         loop {
             self.apply_step(self.try_step()?);
+            cnt += 1;
+            if cnt > self.y_len() {
+                return Err(StepError::InvalidShape);
+            }
         }
     }
 
@@ -592,10 +727,18 @@ impl Board {
         let fallings = self.get_falling_blocks();
         let _ = self.hard_drop();
         let targets = self.get_falling_blocks();
-        for (x, y, target_block) in targets {
-            *self.location_mut(x, y) = Tile::Hint(target_block.kind as u8);
+        for FallingBlockAt {
+            falling,
+            location: Location { x, y },
+        } in targets
+        {
+            *self.location_mut(x, y) = Tile::Hint(falling.kind as u8);
         }
-        for (x, y, falling) in fallings {
+        for FallingBlockAt {
+            falling,
+            location: Location { x, y },
+        } in fallings
+        {
             *self.location_mut(x, y) = Tile::Falling(falling);
         }
     }

@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 
-import { forwardRef, useEffect,  useImperativeHandle,  useRef, useState } from 'react'
+import { forwardRef, Suspense, useEffect,  useImperativeHandle,  useMemo,  useRef, useState } from 'react'
 import init, {JsBoard} from './pkg/tetris_lib'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, Instance, Instances,  OrbitControls,  Text,  } from '@react-three/drei'
@@ -9,6 +9,7 @@ import {Perf} from 'r3f-perf'
 import * as THREE from 'three'
 import { Multiline } from '../../component/r3f/Multiline'
 import { Flex } from '@radix-ui/themes'
+import { CuboidCollider, InstancedRigidBodies, Physics, RapierRigidBody, type InstancedRigidBodyProps } from '@react-three/rapier'
 const TestR3fPage = () => {
   
   return (
@@ -18,9 +19,12 @@ const TestR3fPage = () => {
         <Perf/>
         <OrbitControls />
 
-        
-        <MyTetrisBoard/>
-
+        <Suspense>
+          <Physics >
+            <MyTetrisBoard/>
+            <CuboidCollider position={[5, -23, 0]} args={[120, 0.5, 120]} />
+          </Physics>
+        </Suspense>
 
         <directionalLight position={[-3 ,2, 10]} intensity={2} />
         <directionalLight position={[3 ,2, 10]} intensity={2} />
@@ -33,13 +37,12 @@ const TestR3fPage = () => {
 
 export default TestR3fPage
 
-
 type TimeController = {
   start: () => void;
   stop: () => void;
   reset: () => void;
 };
-const TetrisBoardCase = forwardRef((_, ref)=>{
+const TetrisBoardCase = forwardRef(({isOver}:{isOver: boolean | null}, ref)=>{
   /* const [startTime, setStartTime] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false); */
 
@@ -89,12 +92,44 @@ const TetrisBoardCase = forwardRef((_, ref)=>{
     const lines: [number, number, number][][] = [...x, ...y];
     setLines(lines)
   }, [])
+
+  const rigidBodies = useRef<RapierRigidBody[]>(null);
+  const instances = useMemo(() => {
+    const instances: InstancedRigidBodyProps[] = [];
+
+    /* for (let i = 0; i < COUNT; i++) {
+      instances.push({
+        key: "instance_" + Math.random(),
+        position: [Math.random() * 100, Math.random() * 100, Math.random() * 100],
+        rotation: [Math.random(), Math.random(), Math.random()]
+      });
+    } */
+
+      instances.push({
+        key: "instance_" + Math.random(),
+        position: [0 - 0.5, -9 - 0.5, 0],
+        scale: [1, 21, 1]
+      })
+      instances.push({
+        key: "instance_" + Math.random(),
+        position: [11 - 0.5, -9 - 0.5, 0],
+        scale: [1, 21, 1]
+      })
+      instances.push({
+        key: "instance_" + Math.random(),
+        position: [5,-20.5,0],
+        scale: [12, 1, 1]
+      })
+
+    return instances;
+  }, []);
   return <>
     <Text position={[-4, -1, 0]} color="black" scale={1}>Hold</Text>
     <Text position={[-6, -15, 0]} color="black" scale={1}>Time</Text>
 
     <Text ref={textRef} position={[-6, -16, 0]} color="black">00.00</Text>
     <Text position={[14, -1, 0]} color="black" scale={1}>Next</Text>
+    
 
     {lines && <Multiline lines={lines} />}
 
@@ -109,13 +144,32 @@ const TetrisBoardCase = forwardRef((_, ref)=>{
 */}
 
     {/* Case */}
-    <Instances>
-      <boxGeometry/>
-      <meshBasicMaterial color={"black"}/>
-      <Instance position={[0 - 0.5, -9 - 0.5, 0]} scale={[1, 21, 1]} />
-      <Instance position={[11 - 0.5, -9 - 0.5, 0]} scale={[1, 21, 1]} />
-      <Instance position={[5,-20.5,0]} scale={[12, 1, 1]} />
-    </Instances>
+    {isOver ? (
+      <InstancedRigidBodies
+        ref={rigidBodies}
+        instances={instances}
+        colliders="cuboid"
+        gravityScale={1}
+      >
+        <instancedMesh args={[undefined, undefined, 3]} count={3} >
+          <boxGeometry />
+          <meshBasicMaterial color={"black"}/>
+        </instancedMesh>
+      </InstancedRigidBodies>
+    ) : (
+      <Instances>
+        <boxGeometry/>
+        <meshBasicMaterial color={"black"}/>
+        <Instance position={[0 - 0.5, -9 - 0.5, 0]} scale={[1, 21, 1]} />
+        <Instance position={[11 - 0.5, -9 - 0.5, 0]} scale={[1, 21, 1]} />
+        <Instance position={[5,-20.5,0]} scale={[12, 1, 1]} />
+      </Instances>
+    )}
+    
+
+{/*
+    
+*/}
   </>
 })
 
@@ -286,9 +340,9 @@ const timerRef = useRef<TimeController>(null);
   }, [isGameOver])
 
   return <>
-    <TetrisBoardCase ref={timerRef} />
+    <TetrisBoardCase ref={timerRef} isOver={isGameOver} />
     {board &&
-      <InstancedTetriminos tetriminos={convertBoard(board.board, board.next ,board.hold)} />
+      <InstancedTetriminos tetriminos={convertBoard(board.board, board.next ,board.hold)} isOver={isGameOver} />
     }
     <Html transform position={[5,-25,0]} scale={[3,3,3]}>
       {wasmInitEnd && <>
@@ -332,12 +386,98 @@ type InstancedTetriminosParam = {
     J: [number, number][]
     L: [number, number][]
     H: [number, number][]
-  } | null
+  } | null,
+  isOver: boolean | null
 };
-const InstancedTetriminos = ({tetriminos}: InstancedTetriminosParam) => {
-  if (!tetriminos) return null;
-  return <>
-    {Object.entries(tetriminos).map(([tet, pos]) => {
+const InstancedTetriminos = ({tetriminos, isOver}: InstancedTetriminosParam, ) => {
+
+  const rigidBodies = useRef<RapierRigidBody[]>(null);
+
+  const objs = useMemo(() => {
+    if (!tetriminos) return;
+   
+    
+
+    /* for (let i = 0; i < COUNT; i++) {
+      instances.push({
+        key: "instance_" + Math.random(),
+        position: [Math.random() * 100, Math.random() * 100, Math.random() * 100],
+        rotation: [Math.random(), Math.random(), Math.random()]
+      });
+    } */
+     
+    const entries = Object.entries(tetriminos);
+    const obj: Record<string, {color: string, instances: InstancedRigidBodyProps[]}> = {};
+    for (const [tet, pos] of entries) {
+      
+
+      let color;
+      if (tet === "I") {
+        color = "#00FFFF"
+      } else if (tet === "O") {
+        color = "#FFFF00"
+      } else if (tet === "T") {
+        color = "#800080"
+      } else if (tet === "S") {
+        color = "#00FF00"
+      } else if (tet === "Z") {
+        color = "#FF0000"
+      } else if (tet === "J") {
+        color = "#0000FF"
+      } else if (tet === "L") {
+        color = "#FFA500"
+      } else if (tet === "H") {
+        color = "gray"
+      } else {
+        color = ""
+      }
+
+      if (!obj[tet]) obj[tet] = {color, instances: []};
+      /* const instances: InstancedRigidBodyProps[] = []; */
+        /* const poses = pos.map((pos)=>(
+          [pos[0] + 0.5, -pos[1] + 2.5, 0]
+        )) */
+
+      pos.forEach((pos)=>{
+         obj[tet].instances.push({
+          key: "instance_tet_" + Math.random(),
+          position: [pos[0] + 0.5, -pos[1] + 2.5, 0]
+        });
+      })
+      
+    }
+    
+
+
+
+    return obj;
+  }, [tetriminos]);
+useEffect(() => {
+  if (rigidBodies.current) {
+    rigidBodies.current.forEach((body) => {
+      body.applyImpulse({ x: 0, y: 110, z: 0 }, true);
+    });
+  }
+}, [objs]);
+  if (isOver) {
+return <>
+    {objs && Object.entries(objs).map(([tet, pos]) => {
+      return <InstancedRigidBodies
+                key={tet}
+                instances={pos.instances}
+                colliders="cuboid"
+                gravityScale={4}
+              >
+                <instancedMesh args={[undefined, undefined, pos.instances.length]}  >
+                  <boxGeometry />
+                  <meshBasicMaterial color={pos.color} />
+                </instancedMesh>
+              </InstancedRigidBodies>
+    })}
+  </>
+  } else {
+return <>
+    {tetriminos && Object.entries(tetriminos).map(([tet, pos]) => {
       let color;
       if (tet === "I") {
         color = "#00FFFF"
@@ -365,6 +505,9 @@ const InstancedTetriminos = ({tetriminos}: InstancedTetriminosParam) => {
       </Instances>
     })}
   </>
+  }
+  
+  
 }
 
 type tetr =  "I" | "O" | "T" | "J" | "L" | "S" | "Z";
@@ -378,7 +521,7 @@ const useTetrisMockServer = () => {
   const next = useRef<tetr[] | null>(null);
   const hold = useRef<tetr | null>(null);
   const isCanHold = useRef<boolean | null>(null);
-  const [isGameOver, setIsGameOver] = useState(true);
+  const [isGameOver, setIsGameOver] = useState<boolean | null>(null);
 
   const tetriminos = ["I", "O", "T", "J", "L", "S", "Z"] ;
 

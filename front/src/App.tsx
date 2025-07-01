@@ -12,6 +12,7 @@ import { tokenRefresh } from './api/auth.ts'
 import SinglePlayPage from './page/SinglePlayPage.tsx'
 import RoomPage from './page/RoomPage.tsx'
 import TestPixiPage from './page/test/TestPixiPage.tsx'
+import TestRapier from './page/test/TestRapier.tsx'
 
 function App() {
   const {isInitialRefreshDone, setIsInitialRefeshDone, setAuth} = useAuthStore();
@@ -48,7 +49,9 @@ function App() {
           <Route path='auth' element={<TestAuthPage/>}></Route>
           <Route path='ws' element={<TestWsPage/>}></Route>
           <Route path='r3f' element={<TestR3fPage/>}></Route>
+          <Route path='rapier' element={<TestRapier/>}></Route>
           <Route path='pixi' element={<TestPixiPage/>}></Route>
+          
         </Route>
       </Routes>
     </BrowserRouter>

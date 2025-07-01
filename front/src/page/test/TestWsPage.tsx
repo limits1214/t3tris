@@ -20,7 +20,7 @@ const TestWsPage = () => {
       <hr />
       <Topic/>
       <hr />
-      <Rooms/>
+      {/* <Rooms/> */}
       <hr />
       <Room/>
     </div>
@@ -102,74 +102,6 @@ const Topic = () => {
   )
 }
 
-const Rooms = () => {
-  // const rooms = useRoomListStore(s=>s.rooms);
-
-  // const [roomName, setRoomName] = useState('');
-  // const send = useWsStore(s=>s.send);
-  // const createRoom = () => {
-  //   const obj = {
-  //     type: 'roomCreate',
-  //     data: {
-  //       roomName
-  //     }
-  //   }
-  //   send(JSON.stringify(obj));
-  // }
-  // // const fetchRoom = () => {
-  // //   const obj = {
-  // //     type: 'roomListFetch',
-  // //   }
-  // //   send(JSON.stringify(obj));
-  // // }
-
-  // const subscribeRoomList = () => {
-  //   const obj = {
-  //     type: 'roomListUpdateSubscribe',
-  //   }
-  //   send(JSON.stringify(obj));
-  // }
-
-  // const unsubscribeRoomList = () => {
-  //   const obj = {
-  //     type: 'roomListUpdateUnSubscribe',
-  //   }
-  //   send(JSON.stringify(obj));
-  // }
-
-  // const enterRoom = (roomId: string) => {
-  //    const obj = {
-  //     type: 'roomEnter',
-  //     data: {
-  //       roomId
-  //     }
-  //   }
-  //   send(JSON.stringify(obj));
-  // }
-  // return (
-  //   <div>
-  //     <div>
-  //       <label htmlFor="">roomName</label>
-  //       <input type="text" onChange={e=>setRoomName(e.target.value)} />
-  //       <button onClick={createRoom}>create</button>
-  //     </div>
-  //     <div>
-  //       {/* <button onClick={fetchRoom}>fetchRoom</button> */}
-  //       <button onClick={subscribeRoomList}>  subscribeRoomList</button>
-  //       <button onClick={unsubscribeRoomList}>unsubscribeRoomList</button>
-  //     </div>
-      
-  //     <div>
-  //       {rooms.map(room=>(
-  //         <div key={room.roomId}>
-  //           <span>{room.roomName}</span>, <span>{room.roomUsers.length}</span>
-  //           <button onClick={()=>enterRoom(room.roomId)}>enter</button>
-  //         </div>
-  //       ))}
-  //     </div>
-  //   </div>
-  // )
-}
 
 const Room = () => {
   const send = useWsStore(s=>s.send);

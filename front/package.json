@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --host"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -19,8 +19,10 @@
     "@types/three": "^0.177.0",
     "date-fns": "^4.1.0",
     "jwt-decode": "^4.0.0",
+    "leva": "^0.10.0",
     "normalize.css": "^8.0.1",
     "pixi.js": "^8.10.1",
+    "r3f-perf": "^7.2.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",

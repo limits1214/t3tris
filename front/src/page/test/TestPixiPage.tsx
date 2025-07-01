@@ -1,6 +1,6 @@
-import {Application, extend, useTick, } from '@pixi/react';
+import {Application, extend, } from '@pixi/react';
 import { Container, Graphics, Text } from 'pixi.js';
-import { useCallback, useRef } from 'react';
+import { useCallback, } from 'react';
 
 extend({
   Container,
@@ -65,39 +65,4 @@ const BackGround = () => {
   return <pixiContainer>
     <pixiGraphics draw={drawCallback}></pixiGraphics>
   </pixiContainer>
-}
-const Grid = () => {
-  const draw = useCallback((g: Graphics) => {
-    g.clear();
-    // g.lineStyle(1, 0xffffff, 1);
-    g.setStrokeStyle({width: 1, color: '0xffffff'});
-
-    for (let i = 0; i <= 10; i++) {
-      g.moveTo(i * 10, 0).lineTo(i * 10, 100);  // vertical
-      g.moveTo(0, i * 10).lineTo(100, i * 10);  // horizontal
-    }
-  }, []);
-
-  return <pixiContainer>
-    <pixiGraphics draw={draw} />
-  </pixiContainer>
-};
-
-const Component = () => {
-  const ref = useRef<Container>(null);
-   const drawCallback = useCallback((graphics: Graphics)=>{
-    graphics.clear();
-    graphics.setFillStyle({color: 'red'});
-    graphics.rect(0, 0, 10, 10);
-    graphics.fill();
-  }, [])
-
-  // useTick(delta=>{
-  //   if (ref.current) {
-      
-  //   }
-  // })
-  return <pixiContainer ref={ref}>
-          <pixiGraphics draw={drawCallback}></pixiGraphics>
-        </pixiContainer>
 }

@@ -80,41 +80,10 @@ export const useKeyboardActionSender = () => {
     }
   };
 
-  // const keyup = (e: KeyboardEvent) => {
-  //   switch (e.key) {
-  //     case 'a':
-  //     case 'ArrowLeft':
-  //       releaseLeft();
-  //       break;
-  //     case 'd':
-  //     case 'ArrowRight':
-  //       releaseRight();
-  //       break;
-  //     case 'w':
-  //     case 'ArrowUp':
-  //       releaseRotateRight();
-  //       break;
-  //     case 'z':
-  //       releaseRotateLeft();
-  //       break;
-  //     case 's':
-  //     case 'ArrowDown':
-  //       releaseSoftDrop();
-  //       break;
-  //     case ' ':
-  //       releaseHardDrop();
-  //       break;
-  //     default:
-  //       break;
-  //   }
-  // };
-
   useEffect(() => {
     window.addEventListener("keydown", keydown);
-    // window.addEventListener("keyup", keyup);
     return () => {
       window.removeEventListener("keydown", keydown);
-      // window.removeEventListener("keyup", keyup)
     }
   }, [gameId])
   

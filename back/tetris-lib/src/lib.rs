@@ -321,7 +321,9 @@ const SPAWN_TABLE: [[(i8, i8); 4]; 7] = [
     [(0, 0), (1, 0), (1, 1), (2, 1)],
 ];
 
-#[derive(Debug)]
+#[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
+#[cfg_attr(feature = "wasm", ts(export))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Board(Vec<Vec<Tile>>);
 
 impl std::fmt::Display for Board {

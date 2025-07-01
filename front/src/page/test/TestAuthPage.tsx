@@ -148,11 +148,11 @@ const GuestLogin = () => {
 }
 
 const Logout = () => {
-  const {setAuth} = useAuthStore();
+  // const {setAuth} = useAuthStore();
   const logout = async () => {
     try {
       await serverLogout();
-      setAuth(null);
+      // setAuth(null);
     } catch (e) {
       console.error('e', e);
     }

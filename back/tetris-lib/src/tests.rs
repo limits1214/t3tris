@@ -981,3 +981,29 @@ _0123456789
     assert_eq!(format!("{board}"), expted);
     assert_eq!(board.has_placed_above(2), false);
 }
+
+#[test]
+fn remove_falling_block() {
+    let mut board = Board::new(10, 4);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::Z).unwrap());
+    let expted = r#"
+___________
+0..........
+1...ZZ.....
+2....ZZ....
+3..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+
+    board.remove_falling_blocks();
+    let expted = r#"
+___________
+0..........
+1..........
+2..........
+3..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}

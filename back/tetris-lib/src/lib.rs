@@ -480,6 +480,17 @@ impl Board {
         fallings
     }
 
+    pub fn remove_falling_blocks(&mut self) {
+        let fallings = self.get_falling_blocks();
+        for FallingBlockAt {
+            location: Location { x, y },
+            ..
+        } in fallings
+        {
+            *self.location_mut(x, y) = Tile::Empty;
+        }
+    }
+
     pub fn try_move_falling(&self, dir: MoveDirection) -> Result<Vec<FallingBlockPlan>, MoveError> {
         let fallings = self.get_falling_blocks();
 

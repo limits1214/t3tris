@@ -7,6 +7,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::ws_world::game::tetris::TetrisGame;
+
 macro_rules! define_id_type {
     ($name: ident) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -137,6 +139,8 @@ pub struct WsWorldGame {
     pub now: Instant,
     pub elapsed: Duration,
     pub delta: Duration,
+    //
+    pub tetries: HashMap<WsId, TetrisGame>,
     //
     pub status: WsWorldGameStatus,
     //

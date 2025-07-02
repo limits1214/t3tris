@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use crate::{
     constant::TOPIC_ROOM_ID,
@@ -61,7 +64,46 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 );
             }
         } else {
-            if game.elapsed > Duration::from_secs(5) {
+            //
+
+            let mut tetries_push_info = HashMap::new();
+            for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
+                //
+                if tetris.is_started {
+                    let step_duration = game.now - tetris.last_step;
+                    if step_duration > Duration::from_millis(500) {
+                        tetris.last_step = game.now;
+                        tetris.step();
+
+                        let info = tetris.get_client_info();
+                        tetries_push_info.insert(tetris.ws_id.clone(), info);
+                    }
+                } else {
+                    tetris.is_started = true;
+                    tetris.is_game_over = false;
+                    tetris.last_step = game.now;
+                    tetris.spawn_next();
+
+                    let info = tetris.get_client_info();
+                    tetries_push_info.insert(tetris.ws_id.clone(), info);
+                }
+            }
+
+            if !tetries_push_info.is_empty() {
+                pubsub.publish(
+                    &topic!(TOPIC_ROOM_ID, game.room_id),
+                    serde_json::to_string(&serde_json::json!({
+                        "gamdId": game.game_id.to_string(),
+                        "roomId": game.room_id.to_string(),
+                        "tetries": tetries_push_info
+                    }))
+                    .unwrap(),
+                );
+            }
+
+            //
+            //
+            if game.elapsed > Duration::from_secs(60) {
                 game.status = WsWorldGameStatus::GameEnd;
 
                 if let Some(room) = data.rooms.get_mut(&game.room_id) {

@@ -10,6 +10,7 @@ use crate::{
     ws_world::{
         WsData,
         connections::{WsConnections, WsWorldUser},
+        game::tetris::TetrisGame,
         model::{
             GameId, RoomId, WsId, WsWorldGame, WsWorldGameStatus, WsWorldRoom, WsWorldRoomStatus,
             WsWorldRoomUser,
@@ -432,6 +433,16 @@ pub fn room_game_start(
     // === 방 상태 변경
     room.room_status = WsWorldRoomStatus::Gaming;
 
+    let mut tetries = HashMap::new();
+
+    for (_, room_user) in &room.room_users {
+        //
+        tetries.insert(
+            room_user.ws_id.clone(),
+            TetrisGame::new(room_user.ws_id.clone()),
+        );
+    }
+
     // === 게임 추가
     let game_id = GameId(nanoid!());
     room.games.push(game_id.clone());
@@ -450,6 +461,7 @@ pub fn room_game_start(
             delta: now - started,
             status: WsWorldGameStatus::BeforeGameStartTimerThree,
             is_deleted: false,
+            tetries,
         },
     );
 

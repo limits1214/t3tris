@@ -5,7 +5,7 @@ const useWsGameActoinSender = () => {
   const send = useWsStore(s=>s.send);
 
   type InputType = 'press' | 'release';
-  type ActionType = 'left' | 'right' | 'rotateLeft' | 'rotateRight' | 'hardDrop' | 'softDrop';
+  type ActionType = 'left' | 'right' | 'rotateLeft' | 'rotateRight' | 'hardDrop' | 'softDrop' | "hold";
   const sendGameAction = (input: InputType, action: ActionType, gameId: string) => {
     const obj = {
       type: 'gameAction',
@@ -23,6 +23,7 @@ const useWsGameActoinSender = () => {
     pressRotateRight: (gameId: string) => sendGameAction("press", "rotateRight", gameId),
     pressSoftDrop: (gameId: string) => sendGameAction("press", "softDrop", gameId),
     pressHardDrop: (gameId: string) => sendGameAction("press", "hardDrop", gameId),
+    pressHold: (gameId: string) => sendGameAction("press", "hold", gameId),
     
     releaseLeft: (gameId: string) => sendGameAction("release", "left", gameId),
     releaseRight: (gameId: string) => sendGameAction("release", "right", gameId),
@@ -42,7 +43,7 @@ export default useWsGameActoinSender
    */ 
 export const useKeyboardActionSender = () => {
   const {
-    pressLeft, pressRight, pressRotateLeft, pressRotateRight, pressHardDrop, pressSoftDrop,
+    pressLeft, pressRight, pressRotateLeft, pressRotateRight, pressHardDrop, pressSoftDrop, pressHold,
     // releaseLeft, releaseRight, releaseRotateLeft, releaseRotateRight, releaseHardDrop, releaseSoftDrop
   } = useWsGameActoinSender();
 
@@ -73,6 +74,9 @@ export const useKeyboardActionSender = () => {
           break;
         case ' ':
           pressHardDrop(gameId);
+          break;
+        case 'Shift':
+          pressHold(gameId);
           break;
         default:
           break;

@@ -21,6 +21,7 @@ pub enum GameActionType {
     RotateRight,
     HardDrop,
     SoftDrop,
+    Hold,
 }
 
 pub enum Ws {

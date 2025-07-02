@@ -69,11 +69,13 @@ pub enum GameActionType {
     RotateRight,
     HardDrop,
     SoftDrop,
+    Hold,
 }
 
 impl From<GameActionType> for crate::ws_world::command::GameActionType {
     fn from(value: GameActionType) -> Self {
         match value {
+            GameActionType::Hold => Self::Hold,
             GameActionType::Left => Self::Left,
             GameActionType::Right => Self::Right,
             GameActionType::RotateLeft => Self::RotateLeft,

@@ -1,92 +1,93 @@
 /** @jsxImportSource @emotion/react */
 
-import { Outlet } from "react-router-dom"
-// import { useAuthStore } from "../store/useAuthStore";
-// import { useState } from "react";
-// import { type UserInfo } from "../api/user";
-// import { Box, Button, } from "@radix-ui/themes";
-// import { serverLogout } from "../api/auth";
-// import LoginModal from "../component/LoginModal";
+import { Outlet, useNavigate } from "react-router-dom"
 import WebSocketInitializer from "../component/WebSocketInitializer";
-
+import { useAuthStore } from "../store/useAuthStore";
+import { useEffect, useState } from "react";
+import { getWsToken, tokenRefresh } from "../api/auth";
+import { useWsStore } from "../store/useWsStore";
+import { Button, Dialog, Flex } from "@radix-ui/themes";
+import { ReadyState } from "react-use-websocket";
+const apiUrl = import.meta.env.VITE_WS_URL;
 
 const DefaultLayout = () => {
-  // const {isAuthenticated, accessToken} = useAuthStore();
-  // const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  // useEffect(() => {
-  //   if (isAuthenticated && accessToken) {
-  //     const fetch = async () => {
-  //       const userInfo = await getUserInfo(accessToken);
-  //       console.log(userInfo)
-  //       setUserInfo(userInfo);
-  //     }
-  //     fetch();
-  //   } else {
-  //     setUserInfo(null)
-  //   }
-  // }, [isAuthenticated, accessToken])
+  const isInitialRefreshDone = useAuthStore(s=>s.isInitialRefreshDone);
+  const setIsInitialRefeshDone = useAuthStore(s=>s.setIsInitialRefeshDone);
+  const setAuth = useAuthStore(s=>s.setAuth);
+  
+  useEffect(() => {
+    (async() => {
+      try {
+        const token = await tokenRefresh();
+        setAuth(token);
+      } catch (e) {
+        console.error(e);
+      }
+      setIsInitialRefeshDone();
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+
+  const readyState = useWsStore(s=>s.readyState);
+
+  if (!isInitialRefreshDone) {
+    return <></>
+  }
+  
   return (
     <>
       <WebSocketInitializer/>
+      <WsDisconnectedDiaglog readyState={readyState} />
       <Outlet/>
     </>
   )
-  // return (
-  //   <Flex direction="column">
-  //     <Flex direction="row" justify="between">
-  //       <Flex>
-  //         <HamburgerMenuIcon/>
-  //       </Flex>
-  //       <Flex>
-  //         {isAuthenticated ? (
-  //           <div> 
-  //             <Authenticated userInfo={userInfo}/>
-  //           </div>
-  //         ) : (
-  //           <div>
-  //             {/* <Button>로그인</Button> */}
-  //             <NotAuthenticated/>
-  //           </div>
-  //         )}
-  //       </Flex>
-  //     </Flex>
-  //     <Box>
-  //       <Outlet/>
-  //     </Box>
-  //     {/* <Flex direction="column">
-        
-  //     </Flex> */}
-  //   </Flex>
-  // )
 }
 
 export default DefaultLayout
 
-// const Authenticated = ({userInfo}:{userInfo: UserInfo | null}) => {
-//   const {logout} = useAuthStore();
-//   const handleLogout = async () => {
-//     try {
-//       await serverLogout();
-//       logout();
-//     } catch (e) {
-//       console.error('e', e);
-//     }
-//   }
-//   return (
-//     <div>
-//       <span>{userInfo?.nickName}</span>
-//       <Button onClick={handleLogout}>로그아웃</Button>
-//     </div>
-//   )
-// }
 
-// const NotAuthenticated = () => {
-//   const [isOpen, setIsOpen] = useState(false);
-  
-//   return (
-//     <Box>
-//       <Button onClick={()=>setIsOpen(!isOpen)}>로그인</Button>
-//       <LoginModal isOpen={isOpen} setIsOpen={setIsOpen} />
-//     </Box>
-//   )
-// }
+
+const WsDisconnectedDiaglog = ({readyState}: {readyState: ReadyState}) => {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (readyState === ReadyState.CLOSED) {
+      navigate('/')
+      setOpen(true)
+    } else if (readyState === ReadyState.OPEN) {
+      setOpen(false)
+    }
+  }, [readyState])
+
+  const setSocketUrl = useWsStore(s=>s.setSocketUrl);
+  return <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Content maxWidth="450px">
+      <Dialog.Title>연결이 끊어졌습니다.</Dialog.Title>
+      <Dialog.Description size="2" mb="4">
+        재연결 하세요
+      </Dialog.Description>
+
+      <Flex direction="column" gap="3">
+        
+      </Flex>
+
+      <Flex gap="3" mt="4" justify="end">
+        <Button variant="soft" onClick={()=>{
+          const connect = async () => {
+            try {
+              const ws_token = await getWsToken();
+              // const ws_token = 'sdf';
+              setSocketUrl(`${apiUrl}/ws/haha?ws_token=${ws_token}`);
+            } catch (e) {
+              console.error(e)
+            }
+          }
+          connect()
+        }}>
+          재연결
+        </Button>
+      </Flex>
+    </Dialog.Content>
+  </Dialog.Root>
+}

@@ -6,33 +6,13 @@ import TestPage from './page/test/TestPage.tsx'
 import TestAuthPage from './page/test/TestAuthPage.tsx'
 import TestWsPage from './page/test/TestWsPage.tsx'
 import TestR3fPage from './page/test/TestR3fPage.tsx'
-import { useAuthStore } from './store/useAuthStore.ts'
-import { useEffect } from 'react'
-import { tokenRefresh } from './api/auth.ts'
 import SinglePlayPage from './page/SinglePlayPage.tsx'
 import RoomPage from './page/RoomPage.tsx'
 import TestPixiPage from './page/test/TestPixiPage.tsx'
 import TestRapier from './page/test/TestRapier.tsx'
 
 function App() {
-  const {isInitialRefreshDone, setIsInitialRefeshDone, setAuth} = useAuthStore();
   
-  useEffect(() => {
-    (async() => {
-      try {
-        const token = await tokenRefresh();
-        setAuth(token);
-      } catch (e) {
-        console.error(e);
-      }
-      setIsInitialRefeshDone();
-    })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  if (!isInitialRefreshDone) {
-    return <></>
-  }
   return (
     <BrowserRouter>
       <Routes>

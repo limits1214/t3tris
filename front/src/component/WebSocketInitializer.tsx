@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 // import { useAuthStore } from "../store/useAuthStore";
 import useWebSocket from "react-use-websocket";
 import { useWsStore } from "../store/useWsStore";
@@ -11,11 +11,10 @@ import { useGameStore } from "../store/useGameStore";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
-  // const {accessToken} = useAuthStore();
-  const [socketUrl, setSocketUrl] = useState<string|null>(null);
+  const socketUrl = useWsStore(s=>s.socketUrl);
+  const setSocketUrl = useWsStore(s=>s.setSocketUrl);
 
   const setSend = useWsStore(s=>s.setSend);
-  // const setLastMessage = useWsStore(s=>s.setLastMessage);
   const setReadyState = useWsStore(s=>s.setReadyState);
 
   const setIsInitialLoginEnd = useWsUserStore(s=>s.setIsInitialLoginEnd);
@@ -154,17 +153,18 @@ const WebSocketInitializer = () => {
   });
 
   const connect = async () => {
-      try {
-        const ws_token = await getWsToken();
-        // const ws_token = 'sdf';
-        setSocketUrl(`${apiUrl}/ws/haha?ws_token=${ws_token}`);
-      } catch (e) {
-        console.error(e)
-      }
+    try {
+      const ws_token = await getWsToken();
+      // const ws_token = 'sdf';
+      setSocketUrl(`${apiUrl}/ws/haha?ws_token=${ws_token}`);
+    } catch (e) {
+      console.error(e)
     }
-    useEffect(() => {
-      connect();
-    }, [])
+  }
+
+  useEffect(() => {
+    connect();
+  }, [])
 
     // todo accessToken이 바뀐다고 재연결하지 않고
     // 연결이 되면 액세스토큰 바뀌어도 재연결하지않게
@@ -189,70 +189,6 @@ const WebSocketInitializer = () => {
     setSend(sendMessage);
   }, [sendMessage, setSend])
 
-  // useEffect(() => {
-  //   if (!lastMessage) {
-  //     return;
-  //   }
-  //   const lastMessageData = lastMessage.data;
-  //   console.log('lm',lastMessageData)
-  //   setLastMessage(lastMessageData)
-  //   const {type, data} = JSON.parse(lastMessageData)
-    
-  //   switch (type) {
-  //     case 'echo':
-  //       break;
-  //     case 'topicEcho':
-  //       break;
-  //     case 'userLogined':
-  //       userUpdatedIsLogined(true);
-  //       break;
-  //     case 'userLogouted':
-  //       userUpdatedIsLogined(false);
-  //       break;
-
-  //     case 'lobbyEntered':
-  //       lobbyUpdateIsEnterd(true);
-  //       break;
-  //     case 'lobbyLeaved':
-  //       lobbyUpdateIsEnterd(false);
-  //       break;
-  //     case 'lobbyUpdated':
-  //       // rooms, user
-  //       lobbyUpdateRooms(data.rooms);
-  //       lobbyUpdateUsers(data.users);
-  //       break;
-  //     case 'lobbyChat':
-  //       lobbyUpdateChats({
-  //         timestamp: data.timestamp,
-  //         user: data.user,
-  //         msg: data.msg
-  //       });
-  //       break;
-
-  //     case 'roomCreated':
-  //       navigate(`/room/${data.roomId}`);
-  //       break;
-  //     case 'roomEntered':
-  //       break;
-  //     case 'roomLeaved':
-  //       // navigate(`/`);
-  //       break;
-  //     case 'roomUpdated':
-  //       roomUpdate(data.room)
-  //       break;
-  //     case 'roomChat':
-  //       roomAddChat({
-  //         timestamp: data.timestamp,
-  //         user: data.user,
-  //         msg: data.msg
-  //       })
-  //       break;
-
-  //     default:
-  //       console.log('ws t not match, t: ', type)
-  //   }
-    
-  // }, [lastMessage])
 
   return null;
 }

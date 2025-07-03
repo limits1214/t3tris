@@ -70,13 +70,15 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
             for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
                 //
                 if tetris.is_started {
-                    let step_duration = game.now - tetris.last_step;
-                    if step_duration > Duration::from_millis(500) {
-                        tetris.last_step = game.now;
-                        tetris.step();
+                    if !tetris.is_game_over {
+                        let step_duration = game.now - tetris.last_step;
+                        if step_duration > Duration::from_millis(500) {
+                            tetris.last_step = game.now;
+                            tetris.step();
 
-                        let info = tetris.get_client_info();
-                        tetries_push_info.insert(tetris.ws_id.clone(), info);
+                            let info = tetris.get_client_info();
+                            tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
+                        }
                     }
                 } else {
                     tetris.is_started = true;
@@ -85,19 +87,17 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                     tetris.spawn_next();
 
                     let info = tetris.get_client_info();
-                    tetries_push_info.insert(tetris.ws_id.clone(), info);
+                    tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
                 }
             }
-
             if !tetries_push_info.is_empty() {
                 pubsub.publish(
                     &topic!(TOPIC_ROOM_ID, game.room_id),
-                    serde_json::to_string(&serde_json::json!({
-                        "gamdId": game.game_id.to_string(),
-                        "roomId": game.room_id.to_string(),
-                        "tetries": tetries_push_info
-                    }))
-                    .unwrap(),
+                    ServerToClientWsMsg::GameMsg {
+                        game_id: game.game_id.to_string(),
+                        room_id: game.room_id.to_string(),
+                        tetries: tetries_push_info,
+                    },
                 );
             }
 

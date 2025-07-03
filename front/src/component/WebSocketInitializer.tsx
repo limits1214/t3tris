@@ -7,6 +7,7 @@ import { useRoomStore } from "../store/useRoomStore";
 import { useLobbyStore } from "../store/useLobbyStore";
 import { useWsUserStore } from "../store/useWsUserStore";
 import { useNavigate } from "react-router-dom";
+import { useGameStore } from "../store/useGameStore";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
@@ -31,6 +32,8 @@ const WebSocketInitializer = () => {
   // const roomEnter = useRoomStore(s=>s.enter);
   const roomAddChat = useRoomStore(s=>s.addChat);
   const roomUpdate = useRoomStore(s=>s.update);
+
+  const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
 
   const navigate = useNavigate();
 
@@ -134,6 +137,10 @@ const WebSocketInitializer = () => {
               msg: data.msg
             })
             break;
+
+          case 'gameMsg':
+            setServerGameMsg(data)
+          break;
 
           default:
             console.log('ws t not match, t: ', type)

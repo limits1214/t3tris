@@ -16,7 +16,7 @@ type RoomState = {
   updateIsRoomEntered: (isRoomEntered: boolean) => void
 }
 
-type RoomUser = {
+export type RoomUser = {
   userId: string,
   wsId: string,
   nickName: string,
@@ -31,12 +31,11 @@ export type RoomInfo = {
   games: string[]
 }
 
-type RoomChat = {
+export type RoomChat = {
   timestamp: string,
   user: RoomUser,
   msg: string
 }
-
 
 export const useRoomStore = create<RoomState>(
     (set) => ({

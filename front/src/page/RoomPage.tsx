@@ -2,14 +2,22 @@
 
 import { css } from "@emotion/react"
 import { Box, Button, Flex, Grid, Text, TextField } from "@radix-ui/themes"
-import { useEffect, useRef, useState } from "react"
-import { useRoomStore } from "../store/useRoomStore"
+import { Suspense, useEffect, useRef, useState } from "react"
+import { useRoomStore, type RoomUser } from "../store/useRoomStore"
 import { useWsStore } from "../store/useWsStore"
 import { useNavigate, useParams } from "react-router-dom"
 import { format } from "date-fns"
 import { ReadyState } from "react-use-websocket"
 import { useWsUserStore } from "../store/useWsUserStore"
 import { useKeyboardActionSender } from "../hooks/useWsGameActoinSender"
+import { Canvas } from "@react-three/fiber"
+import { Perf } from "r3f-perf"
+import { OrbitControls, Text as R3fText } from "@react-three/drei"
+import { CuboidCollider, Physics } from "@react-three/rapier"
+import { TetrisBoardCase, type TimeController } from "../component/r3f/TetrisBoardCase"
+import { convertInstancedTetrimino, TetrisInstancedTetriminos } from "../component/r3f/TetrisInstancedTetriminos"
+import { useGameStore, type ServerGameMsg, type ServerTetris } from "../store/useGameStore"
+import React from "react"
 
 const RoomPage = () => {
   const wsReadyState = useWsStore(s=>s.readyState)
@@ -74,69 +82,101 @@ const RoomPage = () => {
       }
     };
   }, [wsReadyState, roomId, isInitialWsLoginEnd]);
+
+
   return (
-    <Flex direction="column" css={css`height: 100vh; padding: 1rem;`}>
-      <Header/>
-      {games[games.length - 1]}
-      <Flex css={css`height: 100%;`}>
-        <OtherBoard/>
-        <MyBoard/>
-        <Infomation/>
-      </Flex>
+
+    <Flex direction="column" css={css`height: 100vh; `}>
+      <GameCanvas/>
+      <HUD/>
     </Flex>
+
   )
 }
 
 export default RoomPage
 
-const Header = () => {
-  const roomName = useRoomStore(s=>s.roomName);
-  const roomStatus = useRoomStore(s=>s.roomStatus);
+const GameCanvas = () => {
+  const roomUsers = useRoomStore(s=>s.users, );
+
+
   return (
-    <Flex>
-      <Text>{roomName} {roomStatus}</Text>
-    </Flex>
+    <Box css={css`height: 100%;`}>
+      <Canvas>
+        <Perf position="bottom-left" />
+        <OrbitControls />
+        <Suspense>
+          <Physics >
+            {roomUsers.map((roomUser, idx)=>(
+              <group key={roomUser.wsId} position={[idx * 30, 0, 0]}>
+                <GameBoard roomUser={roomUser}  />
+              </group>
+            ))}
+{/**/}
+            <CuboidCollider position={[5, -23, 0]} args={[120, 0.5, 120]} />
+
+          </Physics>
+        </Suspense>
+      </Canvas>
+    </Box>
   )
 }
 
-const OtherBoard = () => {
+type GameBoardParam = {
+  roomUser: RoomUser
+}
+// const GameBoard = ({roomUser}: GameBoardParam) => {
+
+//   const serverTetris = useGameStore(s=>s.serverGameMsg?.tetries[roomUser.wsId])
+//   const timerRef = useRef<TimeController>(null);
+//   return <>
+//     <TetrisBoardCase ref={timerRef} isOver={serverTetris?.isGameOver ?? null}/>
+    
+//     <R3fText position={[ 0, 5, 0]} color="black" scale={1}>{roomUser.nickName}</R3fText>
+//     {serverTetris
+//       && <TetrisInstancedTetriminos tetriminos={convertInstancedTetrimino(serverTetris.board, serverTetris.next, serverTetris.hold)} isOver={serverTetris?.isGameOver ?? null} />}
+    
+//   </>
+// }
+const GameBoard = React.memo(
+  ({ roomUser }: GameBoardParam) => {
+    const serverTetris = useGameStore(s=>s.serverGameMsg?.tetries[roomUser.wsId])
+  const timerRef = useRef<TimeController>(null);
+  return <>
+    <TetrisBoardCase ref={timerRef} isOver={serverTetris?.isGameOver ?? null}/>
+    
+    <R3fText position={[ 0, 5, 0]} color="black" scale={1}>{roomUser.nickName}</R3fText>
+    {serverTetris
+      && <TetrisInstancedTetriminos tetriminos={convertInstancedTetrimino(serverTetris.board, serverTetris.next, serverTetris.hold)} isOver={serverTetris?.isGameOver ?? null} />}
+    
+  </>
+  },
+  (prevProps, nextProps) => {
+    // ✅ 여기서 동일성 비교
+    return (
+      prevProps.roomUser.userId === nextProps.roomUser.userId &&
+      prevProps.roomUser.wsId === nextProps.roomUser.wsId &&
+      prevProps.roomUser.nickName === nextProps.roomUser.nickName
+    );
+  }
+);
+
+const HUD = () => {
+  const navigate = useNavigate();
+  const roomName = useRoomStore(s=>s.roomName);
+  const roomStatus = useRoomStore(s=>s.roomStatus);
+
   const myUserId = useWsUserStore(s=>s.wsUserId);
   const roomUsers = useRoomStore(s=>s.users);
   const hostUser = useRoomStore(s=>s.hostUser);
+  const games = useRoomStore(s=>s.games);
 
-  const otherUsers = myUserId
-                      ? roomUsers.filter(roomUser=>roomUser.userId != myUserId)
-                      : [];
-
-  
-  return (
-    <Flex css={css`flex: 2; border: 1px solid black;`}>
-      <Grid  columns="auto"
-        rows="2"
-        flow="column"
-        >
-          {otherUsers.map((roomUser) =>(
-            <Board isHost={roomUser
-              .userId === hostUser?.userId
-            } wsId={roomUser.wsId} userId={roomUser.userId} nickName={roomUser.nickName}/>
-          ))}
-      </Grid>
-    </Flex>
-  )
-}
-
-
-const MyBoard = () => {
-  const myWsId = useWsUserStore(s=>s.wsId);
-  const myUserId = useWsUserStore(s=>s.wsUserId);
-  const myNicName = useWsUserStore(s=>s.wsNickName);
-  const hostUser = useRoomStore(s=>s.hostUser);
+  const {roomId} = useParams();
+  const send = useWsStore(s=>s.send);
 
   const isHost = hostUser?.userId === myUserId;
 
-  const send = useWsStore(s=>s.send);
-  const roomStatus = useRoomStore(s=>s.roomStatus);
-  const {roomId} = useParams();
+
   const handleGameStart = () => {
     if (roomId) {
       const obj = {
@@ -149,72 +189,77 @@ const MyBoard = () => {
     }
   }
   return (
-    <Flex css={css`flex: 2; border: 1px solid black;`}>
-      <Flex>hold</Flex>
-      <Box position="absolute" css={css`left: 50%; top: 50%;`}>
-        {isHost && roomStatus === 'Waiting'
-        ? (<Button onClick={handleGameStart}>GAME START</Button>)
-        : (<></>)}
-      </Box>
-      <Board isHost={isHost} wsId={myWsId ?? ''} userId={myUserId ?? ''} nickName={myNicName ?? ''}/>
-      
-      <Flex>next</Flex>
-    </Flex>
-  )
-}
-
-type BoardParams = {
-  isHost: boolean,
-  wsId: string,
-  userId: string
-  nickName: string
-}
-const Board = ({isHost, nickName}: BoardParams) => {
-  return (
-    <Flex direction="column" css={css`flex:1; border: 1px solid black;`}>
-      <Flex  css={css`border: 1px solid black; flex: 1`}>
-        GAME AREA
-      </Flex>
-      <Flex>
-        {isHost ? '(방장)': ''}{nickName}
-      </Flex>
-    </Flex>
-  )
-}
-
-const Infomation = () => {
-  const navigate = useNavigate();
-  return (
-    <Flex direction="column" css={css`flex: 1; border: 1px solid black; `}>
-      <Flex css={css`flex: 1;`}></Flex>
-      <Flex css={css`flex: 1;`}>
-        BG
-      </Flex>
-      <Flex direction="column" css={css`flex: 2; border: 1px solid black;`}>
-        <Flex direction="column" css={css`flex: 1;`} >
-          <ChatList/>
-        </Flex>
+    <>
+      <Flex
+        direction="column"
+        css={css`
+          position: absolute;
+          padding: 1rem;
+          border: 1px solid black;
+          left: 0px;
+          top: 0px;
+        `}
+      >
         <Flex>
-          <ChatSender/>
+          <Text>{roomName} ({roomStatus}) / {games[games.length - 1]}</Text>
+        </Flex>
+        <Flex direction="column">
+          <Text>Users</Text>
+          <Flex direction="column">
+            {roomUsers.map((roomUser) =>(
+              <Text>- {roomUser.nickName} {hostUser?.userId == roomUser.userId ? '(방장)' : ''}</Text>
+            ))}
+          </Flex>
+        </Flex>
+        <Flex direction="column">
+          <Button css={css`pointer-events: auto;`} onClick={()=> navigate('/')}>로비로</Button>
+          
+          {isHost && roomStatus === 'Waiting'
+          ? (<Button onClick={handleGameStart}>GAME START</Button>)
+          : (<></>)}
+    
         </Flex>
       </Flex>
-      <Flex css={css`flex: 1;`}>
-        초대
+
+      <Flex
+        direction="column"
+        css={css`
+          position: absolute;
+          padding: 1rem;
+          border: 1px solid black;
+          right: 0px;
+          bottom: 0px;
+        `}
+      >
+        <Flex direction="column" css={css` border: 1px solid black;  width: 30vw`}>
+          <Flex direction="column" css={css`width: 100%`} >
+            <ChatList/>
+          </Flex>
+          <Flex>
+            <ChatSender/>
+          </Flex>
+        </Flex>
+        {/* {games[games.length - 1]} */}
       </Flex>
-      <Button onClick={() => navigate('/')}>로비로</Button>
-    </Flex>
+    </>
   )
 }
-
 
 
 const ChatList = () => {
-  /* const lobbyChats = useLobbyStore(s=>s.lobbychats); */
   const roomChast = useRoomStore(s=>s.chats);
   return (
-    <Flex direction="column">
+    <Flex
+      direction="column"
+      css={css`
+        height: 20vh;
+        overflow:auto;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        white-space: pre-wrap;
+      `}>
       {roomChast.map((chat, idx)=>(
-        <Flex key={`${chat.timestamp}_${idx}`}>
+        <Flex key={`${chat.timestamp}_${idx}`} css={css` width: 10wh;`}>
           <Text >[{format(new Date(chat.timestamp), 'HH:mm:ss')}]</Text>
           <Text >{"<"}{chat.user.nickName}{">"}:&nbsp;</Text>
           <Text >{chat.msg}</Text>
@@ -223,13 +268,6 @@ const ChatList = () => {
     </Flex>
   )
 }
-/* {lobbyChats.map((chat, idx)=>(
-        <Flex key={`${chat.timestamp}_${idx}`}>
-          <Text >[{format(new Date(chat.timestamp), 'HH:mm:ss')}]</Text>
-          <Text >{"<"}{chat.user.nickName}{">"}:&nbsp;</Text>
-          <Text >{chat.msg}</Text>
-        </Flex>
-      ))}  */
 
 const ChatSender = () => {
   const {roomId} = useParams();

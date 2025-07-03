@@ -6,6 +6,7 @@ pub use tick::tick;
 
 use crate::{
     constant::TOPIC_ROOM_ID,
+    model::server_to_client_ws_msg::ServerToClientWsMsg,
     topic,
     ws_world::{
         command::GameActionType,
@@ -40,6 +41,11 @@ pub fn action(
         err_publish(pubsub, &ws_id, dbg!("[game action] tetris not exists"));
         return;
     };
+
+    if tetris.is_game_over {
+        return;
+    }
+
     match action {
         GameActionType::Left => {
             tetris.action_move_left();
@@ -64,19 +70,21 @@ pub fn action(
         }
     };
 
-    let mut tetries = HashMap::new();
-    for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
-        let info = tetris.get_client_info();
-        tetries.insert(tetris.ws_id.clone(), info);
-    }
-
+    let mut tetries_push_info = HashMap::new();
+    // for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
+    //     // if !tetris.is_game_over {
+    //     let info = tetris.get_client_info();
+    //     tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
+    //     // }
+    // }
+    let info = tetris.get_client_info();
+    tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
     pubsub.publish(
         &topic!(TOPIC_ROOM_ID, game.room_id),
-        serde_json::to_string(&serde_json::json!({
-            "gamdId": game.game_id.to_string(),
-            "roomId": game.room_id.to_string(),
-            "tetries": tetries
-        }))
-        .unwrap(),
+        ServerToClientWsMsg::GameMsg {
+            game_id: game.game_id.to_string(),
+            room_id: game.room_id.to_string(),
+            tetries: tetries_push_info,
+        },
     );
 }

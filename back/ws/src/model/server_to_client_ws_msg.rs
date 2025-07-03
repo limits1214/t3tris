@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -62,6 +64,14 @@ pub enum ServerToClientWsMsg {
         timestamp: OffsetDateTime,
         user: User,
         msg: String,
+    },
+
+    // === 게임 관련 ===
+    #[serde(rename_all = "camelCase")]
+    GameMsg {
+        game_id: String,
+        room_id: String,
+        tetries: HashMap<String, serde_json::Value>,
     },
 }
 impl ServerToClientWsMsg {

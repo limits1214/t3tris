@@ -173,8 +173,9 @@ impl TetrisGame {
         }
     }
 
-    pub fn get_client_info(&self) -> serde_json::Value {
-        let x = self
+    pub fn get_client_info(&mut self) -> serde_json::Value {
+        self.hint();
+        let board = self
             .board
             .board()
             .iter()
@@ -183,8 +184,10 @@ impl TetrisGame {
                     .map(|tile| {
                         //
                         let i = match tile {
-                            tetris_lib::Tile::Falling(FallingBlock { kind, .. }) => *kind as usize,
-                            tetris_lib::Tile::Placed(id) => *id as usize,
+                            tetris_lib::Tile::Falling(FallingBlock { kind, .. }) => {
+                                *kind as usize + 1
+                            }
+                            tetris_lib::Tile::Placed(id) => *id as usize + 1,
                             tetris_lib::Tile::Hint(_) => 8,
                             tetris_lib::Tile::Empty => 0,
                         };
@@ -194,10 +197,11 @@ impl TetrisGame {
             })
             .collect::<Vec<_>>();
         serde_json::json!({
-            "board": x,
-            "next": self.next.iter().map(|t| *t as usize).collect::<Vec<_>>(),
-            "hold": self.hold.map(|h| h as usize),
-            "isCanHold": self.is_can_hold
+            "board": board,
+            "next": self.next.iter().map(|t| *t as usize + 1).collect::<Vec<_>>(),
+            "hold": self.hold.map(|h| h as usize + 1),
+            "isCanHold": self.is_can_hold,
+            "isGameOver": self.is_game_over,
         })
     }
 }

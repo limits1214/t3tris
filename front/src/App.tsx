@@ -10,6 +10,7 @@ import SinglePlayPage from './page/SinglePlayPage.tsx'
 import RoomPage from './page/RoomPage.tsx'
 import TestPixiPage from './page/test/TestPixiPage.tsx'
 import TestRapier from './page/test/TestRapier.tsx'
+import TestR3fOptPage from './page/test/TestR3fOptPage.tsx'
 
 function App() {
   
@@ -29,6 +30,7 @@ function App() {
           <Route path='auth' element={<TestAuthPage/>}></Route>
           <Route path='ws' element={<TestWsPage/>}></Route>
           <Route path='r3f' element={<TestR3fPage/>}></Route>
+          <Route path='r3fopt' element={<TestR3fOptPage/>}></Route>
           <Route path='rapier' element={<TestRapier/>}></Route>
           <Route path='pixi' element={<TestPixiPage/>}></Route>
           

@@ -173,4 +173,9 @@ impl JsBoard {
     pub fn has_placed_above(&mut self, y: usize) -> Result<JsValue, JsValue> {
         Ok(to_value(&self.inner.has_placed_above(y))?)
     }
+
+    #[wasm_bindgen(js_name = removeFallingBlocks)]
+    pub fn remove_falling_blocks(&mut self) {
+        self.inner.remove_falling_blocks();
+    }
 }

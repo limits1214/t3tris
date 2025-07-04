@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 
 import { forwardRef, Suspense, useEffect,  useImperativeHandle,  useMemo,  useRef, useState } from 'react'
-import init, {JsBoard} from './pkg/tetris_lib'
+import {JsBoard} from 'tetris-lib'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, Instance, Instances,  OrbitControls,  Text,  } from '@react-three/drei'
 import { css } from '@emotion/react'
@@ -531,7 +531,7 @@ const useTetrisMockServer = () => {
 
   useEffect(() => {
     (async ()=>{
-      await init();
+      /* await init(); */
       setWasmInitEnd(true);
     })()
   }, [])

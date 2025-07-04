@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 // import { useAuthStore } from "../store/useAuthStore";
 import useWebSocket from "react-use-websocket";
 import { useWsStore } from "../store/useWsStore";
@@ -11,8 +11,12 @@ import { useGameStore } from "../store/useGameStore";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
-  const socketUrl = useWsStore(s=>s.socketUrl);
-  const setSocketUrl = useWsStore(s=>s.setSocketUrl);
+  // const socketUrl = useWsStore(s=>s.socketUrl);
+  // const setSocketUrl = useWsStore(s=>s.setSocketUrl);
+  // const getSocketUrl = useWsStore(s=>s.getSocketUrl);
+  
+  const wsToken = useWsStore(s=>s.wsToken);
+  const setWsToken = useWsStore(s=>s.setWsToken);
 
   const setSend = useWsStore(s=>s.setSend);
   const setReadyState = useWsStore(s=>s.setReadyState);
@@ -36,13 +40,19 @@ const WebSocketInitializer = () => {
 
   const navigate = useNavigate();
 
+  const getSocketUrl = useCallback( async () => { 
+    const wsToken = await getWsToken();
+    setWsToken(wsToken)
+    return `${apiUrl}/ws/haha?ws_token=${wsToken}`
+  }, [wsToken])
 
 // const getSocketUrl = useCallback(async () => {
 //   const ws_token = await getWsToken();
 //   return `${apiUrl}/ws/haha?ws_token=${ws_token}`
 // }, []);
   
-  const {sendMessage, readyState} = useWebSocket(socketUrl, {
+  const {sendMessage, readyState} = useWebSocket(getSocketUrl, {
+    // shouldReconnect: () => false,
     onOpen: () => {
       console.log('ws on open');
       const afterOpen = async () => {
@@ -151,20 +161,6 @@ const WebSocketInitializer = () => {
       returnMessage: JSON.stringify({type: 'pong'}),
     }
   });
-
-  const connect = async () => {
-    try {
-      const ws_token = await getWsToken();
-      // const ws_token = 'sdf';
-      setSocketUrl(`${apiUrl}/ws/haha?ws_token=${ws_token}`);
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  useEffect(() => {
-    connect();
-  }, [])
 
     // todo accessToken이 바뀐다고 재연결하지 않고
     // 연결이 되면 액세스토큰 바뀌어도 재연결하지않게

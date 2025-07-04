@@ -18,7 +18,6 @@ import { useWsUserStore } from "../store/useWsUserStore";
 const HomePage = () => {
   const send = useWsStore(s=>s.send);
   const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
-  // const isWsLogined = useUserStore(s=>s.isWsLogined);
   const wsReadyState = useWsStore(s=>s.readyState)
 
   useEffect(() => {
@@ -28,33 +27,6 @@ const HomePage = () => {
           type: 'lobbySubscribe'
         }
         send(JSON.stringify(obj))
-      if (isInitialWsLoginEnd) {
-        // console.log('lobby sub')
-        // const obj = {
-        //   type: 'subscribeTopic',
-        //   data: {
-        //     topic: 'lobby'
-        //   }
-        // }
-        // send(JSON.stringify(obj))
-        // if (isLogined) {
-        //   console.log('lobby enter')
-        //   const obj = {
-        //     type: 'lobbyEnter'
-        //   }
-        //   send(JSON.stringify(obj))
-        // } else {
-        //   console.log('lobby sub')
-        //   const obj = {
-        //     type: 'subscribeTopic',
-        //     data: {
-        //       topic: 'lobby'
-        //     }
-        //   }
-        //   send(JSON.stringify(obj))
-        // }
-        
-      }
     }
     return () => {
       if (wsReadyState === ReadyState.OPEN) {
@@ -63,71 +35,30 @@ const HomePage = () => {
             type: 'lobbyUnSubscribe'
           }
           send(JSON.stringify(obj))
-        if (isInitialWsLoginEnd) {
-          // console.log('lobby unsub')
-          // const obj = {
-          //   type: 'unSubscribeTopic',
-          //   data: {
-          //     topic: 'lobby'
-          //   }
-          // }
-          // send(JSON.stringify(obj))
-
-
-          // if (isLogined) {
-          //   console.log('lobby leave')
-          //   const obj = {
-          //     type: 'lobbyLeave'
-          //   }
-          //   send(JSON.stringify(obj))
-          // } else {
-          //   console.log('lobby unsub')
-          //   const obj = {
-          //     type: 'unSubscribeTopic',
-          //     data: {
-          //       topic: 'lobby'
-          //     }
-          //   }
-          //   send(JSON.stringify(obj))
-          // }
-        }
       }
     }
   }, [isInitialWsLoginEnd, send, wsReadyState])
   return (
-    <Flex direction="column" css={css`height: 100vh; padding: 1rem; min-height: 0`}>
-      <Flex css={css`border: 1px solid black; flex: 1; `}>
-        <Flex css={css`border: 1px solid red; flex: 2.5;`}>
-          <LobbyHeader/>
+    <Flex direction="row" css={css`height: 100vh; padding: 1rem;`}>
+      <Flex direction="column" css={css`border: 1px solid black; flex: 1`} >
+        <Flex justify="between">
+          <Text>T3TRIS</Text>
+          <CreateRoom/>
         </Flex>
-        <Flex css={css`border: 1px solid red; flex: 1;`}>
-          <UserInfo/>
+        <Flex direction="column" css={css`flex: 1;`}>
+          <RoomList/>
         </Flex>
       </Flex>
-      <Flex css={css`border: 1px solid black; flex: 2.5; min-height: 0; `}>
-        <Flex css={css`border: 1px solid red; flex: 2.5;`}>
-          <RoomList/> 
-        </Flex>
-        <Flex css={css`border: 1px solid red; flex: 1;`}>
-          <LobbyInfo/>
-        </Flex>
+      <Flex direction="column" css={css`border: 1px solid black; `}>
+        <MyInfo />
+        <CurrentUser/>
+        <LobbyChat/>
       </Flex>
     </Flex>
   )
 }
 
 export default HomePage;
-
-const LobbyHeader = () => {
-  return (
-    <Flex justify="between" css={css`width: 100%`}>
-      <Flex css={css`flex: 1;`}>Logo</Flex>
-      <Flex direction="column" css={css`flex: 1;`} justify="center">
-        <CreateRoom/>
-      </Flex>
-    </Flex>
-  );
-};
 
 const CreateRoom = () => {
   const [roomName, setRoomName] = useState('');
@@ -171,7 +102,7 @@ const CreateRoom = () => {
   )
 }
 
-const UserInfo = () => {
+const MyInfo = () => {
   const { logout, setAuth} = useAuthStore();
   const wsUserId = useWsUserStore(s=>s.wsUserId);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -205,11 +136,6 @@ const UserInfo = () => {
         }
       }
       send(JSON.stringify(obj));
-
-      /* const obj2 = {
-        type: 'lobbyEnter'
-      }
-      send(JSON.stringify(obj2)) */
     } catch (e) {
       console.error('e', e);
     }
@@ -220,38 +146,32 @@ const UserInfo = () => {
       await serverLogout();
       logout();
 
-
-      /* const obj2 = {
-        type: 'lobbyLeave'
-      }
-      send(JSON.stringify(obj2)) */
-
-      //ws login
       const obj = {
         type: 'userLogout',
       }
       send(JSON.stringify(obj));
-
     } catch (e) {
       console.error('e', e);
     }
   }
   return (
-    <Flex direction="row" css={css`flex: 1; padding: 1rem`}>
-      <Text>{JSON.stringify(wsUserId)}</Text>
+    <Flex direction="row" css={css`padding: 1rem; flex: 1;`}>
       {wsUserId && userInfo ? (
         <>
-          <Avatar fallback="A" css={css`flex: 1; height: 100%`}>asdf</Avatar>
+          {/*
+            <Avatar fallback="A" css={css`flex: 1; height: 100%`}>asdf</Avatar>
+          */}
           <Flex css={css`flex: 1;`} direction="column" align="center" justify="center">
-            <Text>{userInfo?.userId}</Text>
+            {/*
+              <Text>{userInfo?.userId}</Text>
+            */}
             <Text>별명: {userInfo?.nickName}</Text>
-            <Text>승률: x</Text>
             <Button onClick={handleLogout}>로그아웃</Button>
           </Flex>
         </>
       ) : (
         <>
-          <Flex direction="column" css={css`width: 100%; min-height: 0; overflow: hidden`}>
+          <Flex direction="column" css={css``}>
             <Flex direction="column">
               <Text>게스트</Text>
               <TextField.Root placeholder="nick name" onChange={e=>setNickName(e.target.value)}/>
@@ -272,15 +192,17 @@ const RoomList = () => {
   const lobbyRooms = useLobbyStore(s=>s.rooms);
   
   return (
-    <Flex direction="column" css={css`padding: 1rem; width:100%;`}>
+    <Flex direction="column" css={css`padding: 1rem; flex: 1;`}>
       <Flex css={css`border: 1px solid black; flex: 1; width: 100%;`} justify="between">
         <Flex  css={css`flex: 1;`}>
+        {/*
           <Text>sort1</Text>
           <Text>sort2</Text>
           <Text>sort3</Text>
+        */}
         </Flex>
         <Flex css={css`flex: 1;`}>
-          <Text>공지</Text>
+          
         </Flex>
       </Flex>
       <Flex direction="column" css={css`border: 1px solid black; flex: 10; padding: 1rem;`} overflowY={"auto"}>
@@ -315,21 +237,12 @@ const RoomListItem = ({roomInfo}: {roomInfo: RoomInfo}) => {
   )
 }
 
-const LobbyInfo = () => {
-  return (
-    <Flex direction="column" css={css`width: 100%;`}>
-      <CurrentUser/>
-      <LobbyChat/>
-    </Flex>
-  );
-}
-
 const CurrentUser = () => {
   const lobbyUsers = useLobbyStore(s=>s.lobbyUsers);
   return (
-    <Flex direction="column"  css={css`flex: 1; border: 1px solid black;`}>
+    <Flex direction="column"  css={css`flex: 2; border: 1px solid black; min-height: 0`}>
       <Text >접속자</Text>
-      <Flex direction="column" >
+      <Flex direction="column" css={css`overflow: auto;`}>
         {lobbyUsers.map(lobbyUser=>(
           <Flex key={lobbyUser.wsId}>
             <Text>{lobbyUser.nickName}</Text>
@@ -342,8 +255,8 @@ const CurrentUser = () => {
 
 const LobbyChat = () => {
   return (
-    <Flex direction="column" css={css`flex: 1; border: 1px solid black;`}>
-      <Flex direction="column" css={css`flex: 1;`} >
+    <Flex direction="column" css={css`flex: 2; border: 1px solid black; min-height: 0`}>
+      <Flex direction="column" css={css`flex: 1; min-height: 0`} >
         <ChatList/>
       </Flex>
       <Flex>
@@ -358,7 +271,7 @@ const LobbyChat = () => {
 const ChatList = () => {
   const lobbyChats = useLobbyStore(s=>s.lobbychats);
   return (
-    <Flex direction="column">
+    <Flex direction="column" css={css`overflow: auto;`}>
       {lobbyChats.map((chat, idx)=>(
         <Flex key={`${chat.timestamp}_${idx}`}>
           <Text >[{format(new Date(chat.timestamp), 'HH:mm:ss')}]</Text>

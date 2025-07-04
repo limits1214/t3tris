@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 
 import { css } from "@emotion/react"
-import { Box, Button, Flex, Grid, Text, TextField } from "@radix-ui/themes"
+import { Box, Button, Flex, Text, TextField } from "@radix-ui/themes"
 import { Suspense, useEffect, useRef, useState } from "react"
 import { useRoomStore, type RoomUser } from "../store/useRoomStore"
 import { useWsStore } from "../store/useWsStore"
@@ -12,11 +12,11 @@ import { useWsUserStore } from "../store/useWsUserStore"
 import { useKeyboardActionSender } from "../hooks/useWsGameActoinSender"
 import { Canvas } from "@react-three/fiber"
 import { Perf } from "r3f-perf"
-import { OrbitControls, Text as R3fText } from "@react-three/drei"
+import { OrbitControls, OrthographicCamera, PerspectiveCamera, Text as R3fText } from "@react-three/drei"
 import { CuboidCollider, Physics } from "@react-three/rapier"
 import { TetrisBoardCase, type TimeController } from "../component/r3f/TetrisBoardCase"
 import { convertInstancedTetrimino, TetrisInstancedTetriminos } from "../component/r3f/TetrisInstancedTetriminos"
-import { useGameStore, type ServerGameMsg, type ServerTetris } from "../store/useGameStore"
+import { useGameStore } from "../store/useGameStore"
 import React from "react"
 
 const RoomPage = () => {
@@ -27,9 +27,10 @@ const RoomPage = () => {
   const roomClear = useRoomStore(s=>s.clear);
   const games = useRoomStore(s=>s.games);
   const roomStatus = useRoomStore(s=>s.roomStatus);
-
-  // const [gameId, setGameId] = useState<string | null>(null);
+;
   const setGameId = useKeyboardActionSender();
+
+  const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
 
 
   useEffect(() => {
@@ -77,6 +78,7 @@ const RoomPage = () => {
         if (wsReadyState === ReadyState.OPEN) {
           if (isInitialWsLoginEnd) {
             roomLeave(roomId);
+            setServerGameMsg(null);
           }
         }
       }
@@ -85,7 +87,6 @@ const RoomPage = () => {
 
 
   return (
-
     <Flex direction="column" css={css`height: 100vh; `}>
       <GameCanvas/>
       <HUD/>
@@ -99,12 +100,31 @@ export default RoomPage
 const GameCanvas = () => {
   const roomUsers = useRoomStore(s=>s.users, );
 
+  const [isOrth] = useState(false)
 
   return (
     <Box css={css`height: 100%;`}>
-      <Canvas>
+      <Canvas orthographic={isOrth}>
         <Perf position="bottom-left" />
-        <OrbitControls />
+        {isOrth ? (
+          <OrthographicCamera
+            makeDefault
+            position={[0, 0, 10]}
+            zoom={40}
+            near={-100}
+            far={100}
+          />
+        ):(
+          <PerspectiveCamera
+            makeDefault
+            position={[0, 0, 10]}
+          />
+        )}
+        <OrbitControls
+          enableZoom
+          enableRotate
+        />
+      
         <Suspense>
           <Physics >
             {roomUsers.map((roomUser, idx)=>(
@@ -114,7 +134,6 @@ const GameCanvas = () => {
             ))}
 {/**/}
             <CuboidCollider position={[5, -23, 0]} args={[120, 0.5, 120]} />
-
           </Physics>
         </Suspense>
       </Canvas>
@@ -152,7 +171,6 @@ const GameBoard = React.memo(
   </>
   },
   (prevProps, nextProps) => {
-    // ✅ 여기서 동일성 비교
     return (
       prevProps.roomUser.userId === nextProps.roomUser.userId &&
       prevProps.roomUser.wsId === nextProps.roomUser.wsId &&

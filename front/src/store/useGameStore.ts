@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 type GameState = {
   serverGameMsg: ServerGameMsg | null,
-  setServerGameMsg: (serverGameMsg: ServerGameMsg)=>void
+  setServerGameMsg: (serverGameMsg: ServerGameMsg | null)=>void
 }
 
 export type ServerGameMsg = {
@@ -24,6 +24,11 @@ export const useGameStore = create<GameState>()(
     serverGameMsg: null,
     setServerGameMsg: (newServerGameMsg)=>{ 
       set(state => {
+        if (newServerGameMsg == null) {
+          return {
+            serverGameMsg: null
+          }
+        }
         const prev = state.serverGameMsg;
         if (prev?.gameId != newServerGameMsg.gameId || prev.roomId != newServerGameMsg.roomId) {
           return {serverGameMsg: newServerGameMsg}

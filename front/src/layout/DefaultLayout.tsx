@@ -8,7 +8,7 @@ import { getWsToken, tokenRefresh } from "../api/auth";
 import { useWsStore } from "../store/useWsStore";
 import { Button, Dialog, Flex } from "@radix-ui/themes";
 import { ReadyState } from "react-use-websocket";
-const apiUrl = import.meta.env.VITE_WS_URL;
+import { readyStateString } from "../util/ws";
 
 const DefaultLayout = () => {
   const isInitialRefreshDone = useAuthStore(s=>s.isInitialRefreshDone);
@@ -52,6 +52,7 @@ const WsDisconnectedDiaglog = ({readyState}: {readyState: ReadyState}) => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   useEffect(() => {
+    console.log('WsDisconnectedDiaglog, readystate:', readyStateString(readyState))
     if (readyState === ReadyState.CLOSED) {
       navigate('/')
       setOpen(true)
@@ -60,7 +61,8 @@ const WsDisconnectedDiaglog = ({readyState}: {readyState: ReadyState}) => {
     }
   }, [readyState])
 
-  const setSocketUrl = useWsStore(s=>s.setSocketUrl);
+  const setWsToken = useWsStore(s=>s.setWsToken);
+
   return <Dialog.Root open={open} onOpenChange={setOpen}>
     <Dialog.Content maxWidth="450px">
       <Dialog.Title>연결이 끊어졌습니다.</Dialog.Title>
@@ -75,10 +77,10 @@ const WsDisconnectedDiaglog = ({readyState}: {readyState: ReadyState}) => {
       <Flex gap="3" mt="4" justify="end">
         <Button variant="soft" onClick={()=>{
           const connect = async () => {
+          
             try {
-              const ws_token = await getWsToken();
-              // const ws_token = 'sdf';
-              setSocketUrl(`${apiUrl}/ws/haha?ws_token=${ws_token}`);
+              const wsToken = await getWsToken();
+              setWsToken(wsToken)
             } catch (e) {
               console.error(e)
             }

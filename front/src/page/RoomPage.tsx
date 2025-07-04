@@ -18,7 +18,8 @@ import { TetrisBoardCase, type TimeController } from "../component/r3f/TetrisBoa
 import { convertInstancedTetrimino, TetrisInstancedTetriminos } from "../component/r3f/TetrisInstancedTetriminos"
 import { useGameStore } from "../store/useGameStore"
 import React from "react"
-
+import { convertTotalInstancedTetrimino, TotalTetrisInstancedTetriminos,  } from "../component/r3f/TotalTetrisInstancedTetriminos"
+import * as THREE from 'three'
 const RoomPage = () => {
   const wsReadyState = useWsStore(s=>s.readyState)
   const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
@@ -88,7 +89,12 @@ const RoomPage = () => {
 
   return (
     <Flex direction="column" css={css`height: 100vh; `}>
-      <GameCanvas/>
+      <Box css={css`height: 100%;`}>
+        <Canvas orthographic={false}>
+          <GameCanvas/>
+        </Canvas>
+      </Box>
+
       <HUD/>
     </Flex>
 
@@ -99,12 +105,10 @@ export default RoomPage
 
 const GameCanvas = () => {
   const roomUsers = useRoomStore(s=>s.users, );
-
   const [isOrth] = useState(false)
-
+  const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   return (
-    <Box css={css`height: 100%;`}>
-      <Canvas orthographic={isOrth}>
+      <>
         <Perf position="bottom-left" />
         {isOrth ? (
           <OrthographicCamera
@@ -117,29 +121,62 @@ const GameCanvas = () => {
         ):(
           <PerspectiveCamera
             makeDefault
+            ref={cameraRef}
             position={[0, 0, 10]}
+            near={0.1}
+            far={5000}
           />
         )}
         <OrbitControls
+        target={[0, 0, 0]}
           enableZoom
           enableRotate
         />
       
         <Suspense>
-          <Physics >
+{/*
+           <GameBoard2  />
+*/}
+
             {roomUsers.map((roomUser, idx)=>(
               <group key={roomUser.wsId} position={[idx * 30, 0, 0]}>
                 <GameBoard roomUser={roomUser}  />
               </group>
             ))}
-{/**/}
-            <CuboidCollider position={[5, -23, 0]} args={[120, 0.5, 120]} />
+{/* */}
+            
+{/*
+            <Physics >
+              <CuboidCollider position={[5, -23, 0]} args={[120, 0.5, 120]} />
           </Physics>
+*/}
         </Suspense>
-      </Canvas>
-    </Box>
+      </>
   )
 }
+
+const GameBoard2 = () => {
+    const serverGameMsg = useGameStore(s=>s.serverGameMsg);
+    if (!serverGameMsg){
+      return null
+    }
+    // console.log(serverGameMsg)
+    const a = Object.entries(serverGameMsg.tetries).map(([wsId, tetris], idx)=>{
+      return {
+        boardPosition: [idx * 30 , 0, idx * 30 ],
+        boardRotatoin: [0, 0, 0],
+        board: tetris.board,
+        next: tetris.next,
+        hold: tetris.hold
+      }
+    })
+    console.log('abc', a)
+  return (
+    <TotalTetrisInstancedTetriminos tetriminos={convertTotalInstancedTetrimino(a)} />
+  )
+}
+
+
 
 type GameBoardParam = {
   roomUser: RoomUser
@@ -225,7 +262,7 @@ const HUD = () => {
           <Text>Users</Text>
           <Flex direction="column">
             {roomUsers.map((roomUser) =>(
-              <Text>- {roomUser.nickName} {hostUser?.userId == roomUser.userId ? '(방장)' : ''}</Text>
+              <Text key={roomUser.wsId}>- {roomUser.nickName} {hostUser?.userId == roomUser.userId ? '(방장)' : ''}</Text>
             ))}
           </Flex>
         </Flex>

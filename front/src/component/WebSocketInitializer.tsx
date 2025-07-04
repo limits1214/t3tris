@@ -11,10 +11,6 @@ import { useGameStore } from "../store/useGameStore";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
-  // const socketUrl = useWsStore(s=>s.socketUrl);
-  // const setSocketUrl = useWsStore(s=>s.setSocketUrl);
-  // const getSocketUrl = useWsStore(s=>s.getSocketUrl);
-  
   const wsToken = useWsStore(s=>s.wsToken);
   const setWsToken = useWsStore(s=>s.setWsToken);
 
@@ -80,7 +76,7 @@ const WebSocketInitializer = () => {
         // setLastMessage(lastMessageData)
         const {type, data} = JSON.parse(lastMessageData)
         if (type === 'pong') return;
-        console.log('lm',lastMessageData)
+        // console.log('lm',lastMessageData)
         switch (type) {
           case 'echo':
             break;

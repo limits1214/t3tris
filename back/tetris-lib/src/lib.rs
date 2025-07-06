@@ -123,6 +123,24 @@ pub enum Tetrimino {
     S,
     Z,
 }
+impl From<Tetrimino> for String {
+    fn from(value: Tetrimino) -> Self {
+        (&value).into()
+    }
+}
+impl From<&Tetrimino> for String {
+    fn from(value: &Tetrimino) -> Self {
+        match value {
+            Tetrimino::I => "I".to_string(),
+            Tetrimino::O => "O".to_string(),
+            Tetrimino::T => "T".to_string(),
+            Tetrimino::J => "J".to_string(),
+            Tetrimino::L => "L".to_string(),
+            Tetrimino::S => "S".to_string(),
+            Tetrimino::Z => "Z".to_string(),
+        }
+    }
+}
 
 #[repr(usize)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

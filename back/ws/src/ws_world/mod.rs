@@ -10,7 +10,7 @@ pub mod command;
 pub mod model;
 
 mod connections;
-mod game;
+pub mod game;
 mod lobby;
 mod pubsub;
 mod room;

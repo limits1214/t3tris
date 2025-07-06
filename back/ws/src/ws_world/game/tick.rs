@@ -76,29 +76,55 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                             tetris.last_step = game.now;
                             tetris.step();
 
-                            let info = tetris.get_client_info();
-                            tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
+                            tetries_push_info.insert(
+                                tetris.ws_id.clone().to_string(),
+                                tetris.get_action_buffer(),
+                            );
+                            // tetries_push_info
+                            //     .get_mut(&tetris.ws_id.clone().to_string())
+                            //     .unwrap()
+                            //     .extend(tetris.get_action_buffer());
+                            // let info = tetris.get_client_info();
+                            // tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
                         }
                     }
                 } else {
                     tetris.is_started = true;
                     tetris.is_game_over = false;
                     tetris.last_step = game.now;
+                    tetris.setup();
                     tetris.spawn_next();
 
-                    let info = tetris.get_client_info();
-                    tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
+                    // tetries_push_info
+                    //     .get_mut(&tetris.ws_id.clone().to_string())
+                    //     .unwrap()
+                    //     .extend(tetris.get_action_buffer());
+
+                    // let info = tetris.get_client_info();
+                    // tetries_push_info.insert(tetris.ws_id.clone().to_string(), info);
+
+                    tetries_push_info
+                        .insert(tetris.ws_id.clone().to_string(), tetris.get_action_buffer());
                 }
             }
+
             if !tetries_push_info.is_empty() {
                 pubsub.publish(
                     &topic!(TOPIC_ROOM_ID, game.room_id),
-                    ServerToClientWsMsg::GameMsg {
+                    ServerToClientWsMsg::GameAction {
                         game_id: game.game_id.to_string(),
                         room_id: game.room_id.to_string(),
-                        tetries: tetries_push_info,
+                        action: tetries_push_info,
                     },
                 );
+                // pubsub.publish(
+                //     &topic!(TOPIC_ROOM_ID, game.room_id),
+                //     ServerToClientWsMsg::GameMsg {
+                //         game_id: game.game_id.to_string(),
+                //         room_id: game.room_id.to_string(),
+                //         tetries: tetries_push_info,
+                //     },
+                // );
             }
 
             //

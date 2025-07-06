@@ -1,6 +1,10 @@
 import { create } from 'zustand'
+import type { OptTetrisController } from '../component/r3f/OptTetris';
 
 type GameState = {
+  gameRef: React.RefObject<OptTetrisController | null>| null ;
+  setGameRef: (ref: React.RefObject<OptTetrisController | null>) => void;
+  
   serverGameMsg: ServerGameMsg | null,
   setServerGameMsg: (serverGameMsg: ServerGameMsg | null)=>void
 }
@@ -21,6 +25,9 @@ export type ServerTetris= {
 
 export const useGameStore = create<GameState>()(
   (set) => ({
+    gameRef: null,
+    setGameRef: (ref) => set({ gameRef: ref }),
+
     serverGameMsg: null,
     setServerGameMsg: (newServerGameMsg)=>{ 
       set(state => {

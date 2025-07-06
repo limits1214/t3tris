@@ -13,13 +13,13 @@ import { useKeyboardActionSender } from "../hooks/useWsGameActoinSender"
 import { Canvas } from "@react-three/fiber"
 import { Perf } from "r3f-perf"
 import { OrbitControls, OrthographicCamera, PerspectiveCamera, Text as R3fText } from "@react-three/drei"
-import { CuboidCollider, Physics } from "@react-three/rapier"
 import { TetrisBoardCase, type TimeController } from "../component/r3f/TetrisBoardCase"
 import { convertInstancedTetrimino, TetrisInstancedTetriminos } from "../component/r3f/TetrisInstancedTetriminos"
 import { useGameStore } from "../store/useGameStore"
 import React from "react"
 import { convertTotalInstancedTetrimino, TotalTetrisInstancedTetriminos,  } from "../component/r3f/TotalTetrisInstancedTetriminos"
 import * as THREE from 'three'
+import { OptTetris, type OptTetrisController } from "../component/r3f/OptTetris"
 const RoomPage = () => {
   const wsReadyState = useWsStore(s=>s.readyState)
   const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
@@ -134,16 +134,20 @@ const GameCanvas = () => {
         />
       
         <Suspense>
+
+
+           <GameBoard3  />
+
 {/*
            <GameBoard2  />
 */}
-
+{/*
             {roomUsers.map((roomUser, idx)=>(
               <group key={roomUser.wsId} position={[idx * 30, 0, 0]}>
                 <GameBoard roomUser={roomUser}  />
               </group>
             ))}
-{/* */}
+ */}
             
 {/*
             <Physics >
@@ -153,6 +157,53 @@ const GameCanvas = () => {
         </Suspense>
       </>
   )
+}
+
+const GameBoard3 = () => {
+  const roomUsers = useRoomStore(s=>s.users);
+  const ref = useRef<OptTetrisController | null>(null);
+
+  const setGameRef = useGameStore((s) => s.setGameRef);
+
+  useEffect(() => {
+    if (ref !== null) {
+      console.log('setGameRef')
+      setGameRef(ref);
+    }
+  }, [ref]);
+
+  useEffect(()=>{
+    if (ref.current == null) {
+      return;
+    }
+    const roomUserWsId = roomUsers.map(ru => ({wsId: ru.wsId, nickName: ru.nickName}));
+    const boardList = {...ref.current.boardList()};
+    console.log('roomUserWsId', roomUserWsId)
+    console.log('boardist', boardList)
+
+    
+    for (const {wsId, nickName} of roomUserWsId) {
+      if (boardList[wsId]) {
+        delete boardList[wsId]
+      } else {
+        console.log('to create', wsId)
+        //to create
+        ref.current.boardCreate(wsId, {
+          position: [(Math.random() -0.5) * 30, 0, Math.random() * 30,],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1]
+        }, {nickName})
+      }
+    }
+
+    //to delete
+    for (const [k, v] of Object.entries(boardList)) {
+      ref.current.boardDelete(k)
+    }
+
+  }, [ref, roomUsers])
+
+  return <OptTetris ref={ref} />
 }
 
 const GameBoard2 = () => {

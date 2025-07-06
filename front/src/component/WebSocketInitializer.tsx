@@ -33,6 +33,7 @@ const WebSocketInitializer = () => {
   const roomUpdate = useRoomStore(s=>s.update);
 
   const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
+  const gameRef = useGameStore(s=>s.gameRef);
 
   const navigate = useNavigate();
 
@@ -76,7 +77,7 @@ const WebSocketInitializer = () => {
         // setLastMessage(lastMessageData)
         const {type, data} = JSON.parse(lastMessageData)
         if (type === 'pong') return;
-        // console.log('lm',lastMessageData)
+        console.log('lm',lastMessageData)
         switch (type) {
           case 'echo':
             break;
@@ -145,7 +146,66 @@ const WebSocketInitializer = () => {
 
           case 'gameMsg':
             setServerGameMsg(data)
-          break;
+            console.log('s', data)
+            break;
+          case 'gameAction':
+            /*
+              {
+                "type":"gameAction",
+                "data":{
+                  "game_id":"ppnuEnBLwqX81ge-mQ-9B",
+                  "room_id":"VWEgR-WHTLwkrUcX9QpGG",
+                  "action":{
+                    "Reqp_9gOX8veBzmzXF4J7":[
+                      {"Setup":{"next":["Z","Z","Z","O","S"]}},
+                      {"SpawnNext":{"spawned":"Z","added_next":"T"}}
+                    ]
+                  }
+                }
+              }
+            */
+            for (const [k, v] of Object.entries(data.action)) {
+              for (const action of v) {
+                console.log('action:', action)
+                if (typeof action === "object" && action !== null && "setup" in action) {
+                  gameRef?.current?.boardReset(k)
+                  // v["gameSetup"]
+                  // gameRef?.current?.boardSpawnNext(k, )
+                } else if (typeof action === "object" && action !== null && "nextAdd" in action) {
+                  const t = action["nextAdd"].next;
+                  gameRef?.current?.nextAdd(k, t);
+                } else if (typeof action === "object" && action !== null && "spawnFromNext" in action) {
+                  const t = action["spawnFromNext"].spawn;
+                  gameRef?.current?.spawnFromNext(k, t);
+                } else if (typeof action === "object" && action !== null && "spawnFromHold" in action) {
+                  const t = action["spawnFromHold"].spawn;
+                  gameRef?.current?.spawnFromHold(k, t);
+                } else if (typeof action === "string" && action === "removeFalling") {
+                  gameRef?.current?.removeFalling(k,);
+                } else if (typeof action === "object" && action !== null &&  action === "holdFalling") {
+                  const t = action["holdFalling"].hold
+                  gameRef?.current?.holdFalling(k, t);
+                } else if (typeof action === "string" && action === "moveLeft") {
+                  gameRef?.current?.moveLeft(k)
+                } else if (typeof action === "string" && action === "moveRight") {
+                  gameRef?.current?.moveRight(k)
+                } else if (typeof action === "string" && action === "rotateRight") {
+                  gameRef?.current?.rotateRight(k)
+                } else if (typeof action === "string" && action === "rotateLeft") {
+                  gameRef?.current?.rotateLeft(k)
+                } else if (typeof action === "string" && action === "hardDrop") {
+                  gameRef?.current?.hardDrop(k)
+                } else if (typeof action === "string" && action === "step") {
+                  gameRef?.current?.step(k)
+                } else if (typeof action === "string" && action === "placing") {
+                  gameRef?.current?.placing(k)
+                } else if (typeof action === "string" && action === "lineClear") {
+                  gameRef?.current?.lineClear(k)
+                }
+              }
+            }
+            
+            break;
 
           default:
             console.log('ws t not match, t: ', type)

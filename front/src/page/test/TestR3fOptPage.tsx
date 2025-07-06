@@ -88,6 +88,10 @@ const TestR3fOptPage = () => {
           <boxGeometry/>
         </mesh>
 
+        <mesh position= {[-6, -4, 0]}>
+          <boxGeometry/>
+        </mesh>
+
         <OptTetris ref={ref}/>
       </Canvas>
     </div>

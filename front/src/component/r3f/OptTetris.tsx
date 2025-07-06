@@ -27,7 +27,7 @@ export type OptTetrisController = {
   boardReset: (boardId: string) => void,
   nextAdd: (boardId: string, block: Tetrimino) => void,
   spawnFromNext: (boardId: string, block: Tetrimino) => void,
-  spawnFromHold: (boardId: string, block: Tetrimino) => void,
+  spawnFromHold: (boardId: string, block: Tetrimino, hold: Tetrimino) => void,
   step: (boardId: string) => void,
   moveRight: (boardId: string) => void,
   moveLeft: (boardId: string) => void,
@@ -36,7 +36,7 @@ export type OptTetrisController = {
   hardDrop: (boardId: string) => void,
   placing: (boardId: string) => void,
   lineClear:(boardId: string) => void,
-  holdFalling:(boardId: string, hold: Tetrimino) => void,
+  holdFalling:(boardId: string, hold: Tetrimino ) => void,
   removeFalling:(boardId: string) => void,
 };
 export type InstanceType = {
@@ -54,7 +54,7 @@ export const blockColorMapping = (block: Block) => {
   } else if (block === "T") {
     return "#800080"
   } else if (block === "J") {
-    return "#00FF00"
+    return "#0000FF"
   } else if (block === "L") {
     return "#FFA500"
   } else if (block === "S") {
@@ -72,6 +72,8 @@ type TetrisGame = {
   boardTransform: Transform,
   createInfo: BoardCreateInfo,
   texts: Record<string, Text>
+  next: Tetrimino[],
+  hold: Tetrimino | null
 }
 
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
@@ -253,6 +255,57 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     }
 
+    const BlockLocation = {
+      I: [[0,0], [1,0], [2,0],[3,0]],
+      O: [[0,0], [1,0], [1,1],[0,1]],
+      T: [[0,0], [1,0], [2,0],[1,1]],
+      J: [[0,1], [1,1], [2,1],[2,0]],
+      L: [[0,0], [0,1], [1,1],[2,1]],
+      S: [[2,0], [1,1], [1,0],[0,1]],
+      Z: [[0,0], [1,1], [1,0],[2,1]],
+    }
+
+    for (const [idx, next] of tetris.next.entries()) {
+      dummy.position.set(12, -4 + (-idx * 3), 0);
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldQuaternion(finalQuat);
+      finalEuler.setFromQuaternion(finalQuat);
+      dummy.getWorldScale(finalScale);
+
+      for (const [dx, dy] of BlockLocation[next]) {
+        blocks[next].push({
+          id: `${boardId}_Block`,
+          transform: {
+            position: [finalPos.x + dx, finalPos.y + dy, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        });
+      }
+
+      
+    }
+
+    if (tetris.hold) {
+      console.log('meshses hold!!', tetris.hold)
+      dummy.position.set(-6, -4, 0);
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldQuaternion(finalQuat);
+      finalEuler.setFromQuaternion(finalQuat);
+      dummy.getWorldScale(finalScale);
+
+      for (const [dx, dy] of BlockLocation[tetris.hold]) {
+        blocks[tetris.hold].push({
+          id: `${boardId}_Block`,
+          transform: {
+            position: [finalPos.x + dx, finalPos.y + dy, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        });
+      }
+    }
+
     updateInstancedMeshes();
   }
 
@@ -270,6 +323,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         return;
       }
       tetris.board = new JsBoard(10, 23);
+      tetris.hold = null;
+      tetris.next = [];
       updateBoardInstancedMeshse(boardId);
     },
     boardCreate: (boardId, boardTransform, createInfo) => {
@@ -277,7 +332,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         board: new JsBoard(10, 23),
         boardTransform,
         createInfo,
-        texts: {}
+        texts: {},
+        hold: null,
+        next: []
       }
       const tetris = tetrisGames.current[boardId];
       const blocks = instancedBlocks.current;
@@ -365,7 +422,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         return;
       }
 
-      for (const [k, v] of Object.entries(tetris.texts)) {
+      for (const [_, v] of Object.entries(tetris.texts)) {
         removeText(v);
       }
       
@@ -380,7 +437,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       updateInstancedMeshes()
     },
-    spawnFromHold(boardId, block) {
+    spawnFromHold(boardId, block, hold) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
         console.log('tetris undefined');
@@ -389,6 +446,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     
       const plan = tetris.board.trySpawnFalling(block);
       tetris.board.applySpawnFalling(plan);
+      
+      tetris.hold = hold;
 
       updateBoardInstancedMeshse(boardId)
     },
@@ -402,10 +461,17 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const plan = tetris.board.trySpawnFalling(block);
       tetris.board.applySpawnFalling(plan);
 
+      tetris.next.shift();
+
       updateBoardInstancedMeshse(boardId)
     },
     nextAdd(boardId, block) {
-        console.log('todo next add')
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.next.push(block)
     },
     step: (boardId) => {
       const tetris = tetrisGames.current[boardId];
@@ -515,7 +581,13 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       updateBoardInstancedMeshse(boardId)
     },
     holdFalling(boardId, tetr) {
-           console.log('todo hold falling')
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.hold = tetr
+      updateBoardInstancedMeshse(boardId)
     },
     placing(boardId) {
       const tetris = tetrisGames.current[boardId];

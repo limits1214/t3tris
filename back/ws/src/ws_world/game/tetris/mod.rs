@@ -24,6 +24,7 @@ pub enum TetrisGameAction {
     },
     SpawnFromHold {
         spawn: Tetrimino,
+        hold: Option<Tetrimino>,
     },
     RemoveFalling,
     MoveRight,
@@ -237,7 +238,10 @@ impl TetrisGame {
 
             let spawn = self.board.try_spawn_falling(hold_tetr).unwrap();
             self.board.apply_spawn_falling(spawn);
-            self.push_action_buffer(TetrisGameAction::SpawnFromHold { spawn: hold_tetr });
+            self.push_action_buffer(TetrisGameAction::SpawnFromHold {
+                spawn: hold_tetr,
+                hold: self.hold,
+            });
         } else {
             let fallings = self.board.get_falling_blocks();
             if let Some(f) = fallings.first() {

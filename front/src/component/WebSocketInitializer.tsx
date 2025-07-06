@@ -171,6 +171,10 @@ const WebSocketInitializer = () => {
                   gameRef?.current?.boardReset(k)
                   // v["gameSetup"]
                   // gameRef?.current?.boardSpawnNext(k, )
+                  const nexts = action["setup"].next;
+                  for (const next of nexts) {
+                    gameRef?.current?.nextAdd(k, next)
+                  }
                 } else if (typeof action === "object" && action !== null && "nextAdd" in action) {
                   const t = action["nextAdd"].next;
                   gameRef?.current?.nextAdd(k, t);
@@ -179,12 +183,13 @@ const WebSocketInitializer = () => {
                   gameRef?.current?.spawnFromNext(k, t);
                 } else if (typeof action === "object" && action !== null && "spawnFromHold" in action) {
                   const t = action["spawnFromHold"].spawn;
-                  gameRef?.current?.spawnFromHold(k, t);
-                } else if (typeof action === "string" && action === "removeFalling") {
-                  gameRef?.current?.removeFalling(k,);
-                } else if (typeof action === "object" && action !== null &&  action === "holdFalling") {
+                  const hold = action["spawnFromHold"].hold;
+                  gameRef?.current?.spawnFromHold(k, t, hold);
+                } else if (typeof action === "object" && action !== null && "holdFalling" in action) {
                   const t = action["holdFalling"].hold
                   gameRef?.current?.holdFalling(k, t);
+                } else if (typeof action === "string" && action === "removeFalling") {
+                  gameRef?.current?.removeFalling(k,);
                 } else if (typeof action === "string" && action === "moveLeft") {
                   gameRef?.current?.moveLeft(k)
                 } else if (typeof action === "string" && action === "moveRight") {

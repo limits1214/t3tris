@@ -177,14 +177,14 @@ const GameBoard3 = () => {
       return;
     }
     const roomUserWsId = roomUsers.map(ru => ({wsId: ru.wsId, nickName: ru.nickName}));
-    const boardList = {...ref.current.boardList()};
+    const tetrisList = {...ref.current.tetrisGameList()};
     console.log('roomUserWsId', roomUserWsId)
-    console.log('boardist', boardList)
+    console.log('boardist', tetrisList)
 
     
     for (const {wsId, nickName} of roomUserWsId) {
-      if (boardList[wsId]) {
-        delete boardList[wsId]
+      if (tetrisList[wsId]) {
+        delete tetrisList[wsId]
       } else {
         console.log('to create', wsId)
         //to create
@@ -197,7 +197,7 @@ const GameBoard3 = () => {
     }
 
     //to delete
-    for (const [k, v] of Object.entries(boardList)) {
+    for (const [k, v] of Object.entries(tetrisList)) {
       ref.current.boardDelete(k)
     }
 

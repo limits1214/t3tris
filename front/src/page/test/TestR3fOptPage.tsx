@@ -24,7 +24,7 @@ const TestR3fOptPage = () => {
       ref.current?.boardDelete(get('boardId'));
     }),
     spawnNext: button((get)=>{
-      ref.current?.spawnNext(get('boardId'), randPickTetrimino())
+      ref.current?.spawnFromNext(get('boardId'), randPickTetrimino())
     }),
     step: button((get)=> {
       ref.current?.step(get('boardId'));
@@ -84,6 +84,10 @@ const TestR3fOptPage = () => {
           <boxGeometry/>
         </mesh>
         
+        <mesh position= {[12, -4, 0]}>
+          <boxGeometry/>
+        </mesh>
+
         <OptTetris ref={ref}/>
       </Canvas>
     </div>

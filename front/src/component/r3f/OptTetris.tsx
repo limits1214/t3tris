@@ -20,8 +20,8 @@ export type BoardInfo = {
 }
 
 export type OptTetrisController = {
-  boardList: ()=>Record<string, BoardCreateInfo>,
-  boardInfo: (boardId: string) => BoardInfo | null,
+  tetrisGameList: ()=>Partial<Record<string, TetrisGame>>,
+  tetrisInfo: (boardId: string) => TetrisGame | undefined,
   boardCreate: (boardId: string, boardTransform: Transform, boardCreateInfo: BoardCreateInfo) => void,
   boardDelete: (boardId: string) => void,
   boardReset: (boardId: string) => void,
@@ -67,6 +67,13 @@ export const blockColorMapping = (block: Block) => {
     return ""
   }
 }
+type TetrisGame = {
+  board: JsBoard,
+  boardTransform: Transform,
+  createInfo: BoardCreateInfo,
+  texts: Record<string, Text>
+}
+
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const RESERVE = 1000;
   const geometry = new THREE.BoxGeometry();
@@ -85,10 +92,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const instancedBlocks = useRef<Record<Block, InstanceType[]>>({
     C: [], E: [], I: [], O: [], T: [], J: [], L: [], S: [], Z: [], H: []
   });
-  const texts = useRef<Record<string, Text>>({});
-  const boardCreateInfo = useRef<Record<string, BoardCreateInfo>>({});
-  const boards = useRef<Record<string, JsBoard>>({});
-  const boardTransforms = useRef<Record<string, Transform>>({});
+  const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
   const { scene } = useThree()
   
   useEffect(() => {
@@ -124,7 +128,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     else return "Z" // 6
   }
 
-  const addText = (txt: string, transform: Transform, id: string) => {
+  const addText = (txt: string, transform: Transform) => {
     const text = new Text()
     text.text = `${txt}`
     text.fontSize = 1
@@ -137,12 +141,12 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
     text.sync(()=>{
       scene.add(text)
-      texts.current[`${id}`] = text;
     })
+    return text;
   }
 
-  const removeText = ( id: string) => {
-    const text = texts.current[`${id}`];
+  const removeText = (text: Text) => {
+    // const text = texts.current[`${id}`];
     scene.remove(text);
     text.geometry.dispose();
     if (Array.isArray(text.material)) {
@@ -169,9 +173,15 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   }
 
   const updateBoardInstancedMeshse = (boardId: string) => {
-    const board = boards.current[boardId];
+    const tetris = tetrisGames.current[boardId];
+    if (!tetris) {
+      console.log('tetris undefined');
+      return;
+    }
+
+    const board = tetris.board;
     const blocks = instancedBlocks.current;
-    const boardTransform = boardTransforms.current;
+    const boardTransform = tetris.boardTransform;
 
     for (const [k, block] of Object.entries(blocks)) {
       if (k === "C") continue;
@@ -180,9 +190,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
 
     const group = new THREE.Group();
-    group.position.set(...boardTransform[boardId].position);
-    group.rotation.set(...boardTransform[boardId].rotation);
-    group.scale.set(...boardTransform[boardId].scale);
+    group.position.set(...boardTransform.position);
+    group.rotation.set(...boardTransform.rotation);
+    group.scale.set(...boardTransform.scale);
 
     const dummy = new THREE.Object3D();
     group.add(dummy)
@@ -247,35 +257,35 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   }
 
   useImperativeHandle(ref, ()=>({
-    boardList() {
-        return boardCreateInfo.current;
+    tetrisGameList() {
+        return tetrisGames.current
     },
-    boardInfo(boardId) {
-      const board = boards.current[boardId];
-      const createInfo = boardCreateInfo.current[boardId];
-      if (!board) {
-        return null;
-      }
-
-      return {
-        nickName: createInfo.nickName
-      }
+    tetrisInfo(boardId) {
+      return tetrisGames.current[boardId]
     },
     boardReset(boardId) {
-      delete boards.current[boardId];
-      boards.current[boardId] = new JsBoard(10, 23);
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.board = new JsBoard(10, 23);
       updateBoardInstancedMeshse(boardId);
     },
-    boardCreate: (id, transform, boardInfo) => {
-      boardCreateInfo.current[id] = boardInfo;
-      boardTransforms.current[id] = transform;
+    boardCreate: (boardId, boardTransform, createInfo) => {
+      tetrisGames.current[boardId] = {
+        board: new JsBoard(10, 23),
+        boardTransform,
+        createInfo,
+        texts: {}
+      }
+      const tetris = tetrisGames.current[boardId];
       const blocks = instancedBlocks.current;
-      console.log('boardCreate',blocks.C.length, id)
 
       const group = new THREE.Group();
-      group.position.set(...transform.position);
-      group.rotation.set(...transform.rotation);
-      group.scale.set(...transform.scale);
+      group.position.set(...tetris.boardTransform.position);
+      group.rotation.set(...tetris.boardTransform.rotation);
+      group.scale.set(...tetris.boardTransform.scale);
 
       const dummy = new THREE.Object3D();
       group.add(dummy)
@@ -289,11 +299,15 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       finalEuler.setFromQuaternion(finalQuat);
-      addText(boardInfo.nickName, {
+      const text = addText(tetris.createInfo.nickName, {
         position: [finalPos.x, finalPos.y, finalPos.z],
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
         scale: [1,1,1],
-      }, `${id}_NickName`)
+      });
+      tetris.texts = {
+        ...tetris.texts,
+        "nickName": text
+      }
 
       dummy.position.set(-1, -12.5, 0);
       dummy.scale.set(1, 20, 1);
@@ -302,7 +316,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       dummy.getWorldScale(finalScale)
       finalEuler.setFromQuaternion(finalQuat);
       blocks.C.push({
-        id: `${id}_Block`,
+        id: `${boardId}_Block`,
         transform: {
           position: [finalPos.x, finalPos.y, finalPos.z],
           rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
@@ -317,7 +331,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       dummy.getWorldScale(finalScale)
       finalEuler.setFromQuaternion(finalQuat);
       blocks.C.push({
-        id: `${id}_Block`,
+        id: `${boardId}_Block`,
         transform: {
           position: [finalPos.x, finalPos.y, finalPos.z],
           rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
@@ -332,68 +346,77 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       dummy.getWorldScale(finalScale)
       finalEuler.setFromQuaternion(finalQuat);
       blocks.C.push({
-        id: `${id}_Block`,
+        id: `${boardId}_Block`,
         transform: {
           position: [finalPos.x, finalPos.y, finalPos.z],
           rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
           scale: [finalScale.x, finalScale.y, finalScale.z]
         }
       });
-      boards.current[id] = new JsBoard(10, 23);
       
 
       updateInstancedMeshes();
     },
 
-    boardDelete: (id) => {
-      const blocks = instancedBlocks.current;
+    boardDelete: (boardId) => {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+
+      for (const [k, v] of Object.entries(tetris.texts)) {
+        removeText(v);
+      }
       
-      removeText(`${id}_NickName`);
+      const blocks = instancedBlocks.current;
 
       for (const [k, block] of Object.entries(blocks)) {
-        const newArr = block.filter(item => item.id !== `${id}_Block`);
+        const newArr = block.filter(item => item.id !== `${boardId}_Block`);
         blocks[k as Block] = newArr
       }
 
-      delete boards.current[id];
-      delete boardTransforms.current[id];
-      delete boardCreateInfo.current[id];
+      delete tetrisGames.current[boardId]
 
       updateInstancedMeshes()
     },
     spawnFromHold(boardId, block) {
-        const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+    
+      const plan = tetris.board.trySpawnFalling(block);
+      tetris.board.applySpawnFalling(plan);
 
-        const plan = board.trySpawnFalling(block);
-        board.applySpawnFalling(plan);
-
-        updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId)
     },
     spawnFromNext(boardId, block) {
-        const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
-        const plan = board.trySpawnFalling(block);
-        board.applySpawnFalling(plan);
+      const plan = tetris.board.trySpawnFalling(block);
+      tetris.board.applySpawnFalling(plan);
 
-        updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId)
     },
     nextAdd(boardId, block) {
         console.log('todo next add')
     },
-    // spawnNext: (boardId, tetr) => {
-    //   const board = boards.current[boardId];
-
-    //   const plan = board.trySpawnFalling(tetr);
-    //   board.applySpawnFalling(plan);
-
-    //   updateBoardInstancedMeshse(boardId)
-    // },
     step: (boardId) => {
-      const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
       try {
-        const plan = board.tryStep();
-        board.applyStep(plan)
+        const plan = tetris.board.tryStep();
+        tetris.board.applyStep(plan)
       } catch (e) {
         // const isStepError = (err: unknown): err is StepError => {
         //   return (
@@ -417,42 +440,62 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       updateBoardInstancedMeshse(boardId)
     },
     moveRight(boardId) {
-      const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
-      const plan = board.tryMoveFalling("Right");
-      board.applyMoveFalling(plan)
+      const plan = tetris.board.tryMoveFalling("Right");
+      tetris.board.applyMoveFalling(plan)
 
       updateBoardInstancedMeshse(boardId)
     },
     moveLeft(boardId) {
-      const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
-      const plan = board.tryMoveFalling("Left");
-      board.applyMoveFalling(plan)
+      const plan = tetris.board.tryMoveFalling("Left");
+      tetris.board.applyMoveFalling(plan)
 
       updateBoardInstancedMeshse(boardId)
     },
     rotateRight(boardId) {
-      const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
-      const plan = board.tryRotateFalling("Right");
-      board.applyRotateFalling(plan)
+      const plan = tetris.board.tryRotateFalling("Right");
+      tetris.board.applyRotateFalling(plan)
 
       updateBoardInstancedMeshse(boardId)
     },
     rotateLeft(boardId) {
-      const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
-      const plan = board.tryRotateFalling("Left");
-      board.applyRotateFalling(plan)
+      const plan = tetris.board.tryRotateFalling("Left");
+      tetris.board.applyRotateFalling(plan)
 
       updateBoardInstancedMeshse(boardId)
     },
     hardDrop(boardId) {
-      const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
      try {
-        board.hardDrop();
+        tetris.board.hardDrop();
       } catch (e) {
         console.log(e)
       }
@@ -460,10 +503,14 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       updateBoardInstancedMeshse(boardId)
     },
     lineClear(boardId) {
-      const board = boards.current[boardId];
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
 
-      const clear = board.tryLineClear();
-        board.applyLineClear(clear)
+      const clear = tetris.board.tryLineClear();
+      tetris.board.applyLineClear(clear)
 
       updateBoardInstancedMeshse(boardId)
     },
@@ -471,15 +518,22 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
            console.log('todo hold falling')
     },
     placing(boardId) {
-      const board = boards.current[boardId];
-        board.placeFalling();
-        updateBoardInstancedMeshse(boardId)
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.board.placeFalling();
+      updateBoardInstancedMeshse(boardId)
     },
     removeFalling(boardId) {
-        const board = boards.current[boardId];
-        board.removeFallingBlocks();
-        updateBoardInstancedMeshse(boardId);
-
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.board.removeFallingBlocks();
+      updateBoardInstancedMeshse(boardId);
     },
   }));
 

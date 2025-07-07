@@ -1,4 +1,4 @@
-import { useThree } from "@react-three/fiber"
+import { useLoader, useThree } from "@react-three/fiber"
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
 import * as THREE from 'three';
 import {Text} from 'troika-three-text'
@@ -75,8 +75,19 @@ type TetrisGame = {
   next: Tetrimino[],
   hold: Tetrimino | null
 }
-
+import {FontLoader} from 'three/addons/loaders/FontLoader.js'
+import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
+  const font = useLoader(FontLoader, 'https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json');
+
+  const instanced3dTextMeshes = useRef<Record<string, THREE.InstancedMesh>>({
+    Next: new THREE.InstancedMesh(undefined, undefined, 100),
+    Hold: new THREE.InstancedMesh(undefined, undefined, 100),
+  });
+  const instanced3dText =  useRef<Record<string, InstanceType[]>>({
+    Next: [], Hold: []
+  });
+  
   const RESERVE = 1000;
   const geometry = new THREE.BoxGeometry();
   const instancedBlocksMeshes = useRef<Record<Block, THREE.InstancedMesh>>({
@@ -96,6 +107,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   });
   const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
   const { scene } = useThree()
+
+  
   
   useEffect(() => {
     const keys: Block[] = ["C", "I", "O", "T", "J", "L", "S", "Z", "H"];
@@ -105,7 +118,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       localRef[key].frustumCulled = false;
       scene.add(localRef[key]);
     }
+    const localRefTetrisGames = tetrisGames.current;
     return () => {
+      console.log('del effect opt ')
       for (const key of keys) {
         const mesh = localRef[key]; 
         if (!mesh) continue;
@@ -117,8 +132,56 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           mesh.material.dispose();
         }
       }
+
+      for (const [k, v] of Object.entries(localRefTetrisGames)) {
+        boardDelete(k)
+      }
     };
   }, [scene]);
+
+
+  useEffect(() => {
+    const nextInstanced = instanced3dTextMeshes.current.Next;
+    const nextGeometry = new TextGeometry('Next', {
+      font: font,
+      size: 1,
+      depth: 0.5,
+    })
+    nextInstanced.geometry = nextGeometry;
+    nextInstanced.material = new THREE.MeshBasicMaterial({color: 'black'});
+    nextInstanced.count = 0;
+    scene.add(nextInstanced);
+
+
+    const holdInstanced = instanced3dTextMeshes.current.Hold;
+    const holdGeometry = new TextGeometry('Hold', {
+      font: font,
+      size: 1,
+      depth: 0.5,
+    })
+    holdInstanced.geometry = holdGeometry;
+    holdInstanced.material = new THREE.MeshBasicMaterial({color: 'black'});
+    holdInstanced.count = 0;
+    scene.add(holdInstanced);
+    return () => {
+      scene.remove(nextInstanced);
+      nextInstanced.geometry.dispose();
+      if (Array.isArray(nextInstanced.material)) {
+        nextInstanced.material.forEach((m) => m.dispose());
+      } else {
+        nextInstanced.material.dispose();
+      }
+
+
+      scene.remove(holdInstanced);
+      holdInstanced.geometry.dispose();
+      if (Array.isArray(holdInstanced.material)) {
+        holdInstanced.material.forEach((m) => m.dispose());
+      } else {
+        holdInstanced.material.dispose();
+      }
+    }
+  }, [font, scene])
 
   const placedIdMap = (placedId: number) => {
     if (placedId === 0) return "I"
@@ -141,9 +204,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     text.anchorX = 'center'
     text.anchorY = 'middle'
 
-    text.sync(()=>{
-      scene.add(text)
-    })
+    // text.sync(()=>{
+    //   scene.add(text)
+    // })
     return text;
   }
 
@@ -156,6 +219,30 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     } else {
       text.material.dispose();
     }
+  }
+
+  const updateInstanced3dMeshes = () => {
+    const dummy = new THREE.Object3D();
+    for (const [idx, val] of instanced3dText.current.Next.entries() ) {
+      dummy.position.set(...val.transform.position);
+      dummy.rotation.set(...val.transform.rotation);
+      dummy.scale.set(...val.transform.scale);
+      dummy.updateMatrix();
+      instanced3dTextMeshes.current.Next.setMatrixAt(idx, dummy.matrix);
+    }
+    instanced3dTextMeshes.current.Next.count = instanced3dText.current.Next.length;
+    instanced3dTextMeshes.current.Next.instanceMatrix.needsUpdate = true;
+
+
+    for (const [idx, val] of instanced3dText.current.Hold.entries() ) {
+      dummy.position.set(...val.transform.position);
+      dummy.rotation.set(...val.transform.rotation);
+      dummy.scale.set(...val.transform.scale);
+      dummy.updateMatrix();
+      instanced3dTextMeshes.current.Hold.setMatrixAt(idx, dummy.matrix);
+    }
+    instanced3dTextMeshes.current.Hold.count = instanced3dText.current.Hold.length;
+    instanced3dTextMeshes.current.Hold.instanceMatrix.needsUpdate = true;
   }
 
   const updateInstancedMeshes = () => {
@@ -285,7 +372,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       
     }
-
     if (tetris.hold) {
       console.log('meshses hold!!', tetris.hold)
       dummy.position.set(-6, -4, 0);
@@ -307,6 +393,34 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
 
     updateInstancedMeshes();
+  }
+
+  const boardDelete = (boardId: string) => {
+    const tetris = tetrisGames.current[boardId];
+    if (!tetris) {
+      console.log('tetris undefined');
+      return;
+    }
+
+    for (const [_, v] of Object.entries(tetris.texts)) {
+      removeText(v);
+    }
+    
+    const blocks = instancedBlocks.current;
+
+    for (const [k, block] of Object.entries(blocks)) {
+      const newArr = block.filter(item => item.id !== `${boardId}_Block`);
+      blocks[k as Block] = newArr
+    }
+
+    delete tetrisGames.current[boardId]
+
+    updateInstancedMeshes()
+
+
+    instanced3dText.current.Next = instanced3dText.current.Next.filter(item => item.id != `${boardId}_Next`);
+    instanced3dText.current.Hold = instanced3dText.current.Hold.filter(item => item.id != `${boardId}_Hold`);
+    updateInstanced3dMeshes();
   }
 
   useImperativeHandle(ref, ()=>({
@@ -361,6 +475,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
         scale: [1,1,1],
       });
+      // text.sync(()=>{
+      //   console.log('sync')
+        
+      // })
+      scene.add(text)
       tetris.texts = {
         ...tetris.texts,
         "nickName": text
@@ -410,33 +529,79 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           scale: [finalScale.x, finalScale.y, finalScale.z]
         }
       });
-      
+
+      for (const [idx, _] of Array(19).fill(null).entries()) {
+        dummy.position.set(4.5, -3.5 + -idx, -0.5);
+        dummy.scale.set(10, 0.05, 0.05);
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldQuaternion(finalQuat);
+        dummy.getWorldScale(finalScale)
+        finalEuler.setFromQuaternion(finalQuat);
+        blocks.C.push({
+          id: `${boardId}_Block`,
+          transform: {
+            position: [finalPos.x, finalPos.y, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        });
+      }
+
+      for (const [idx, _] of Array(9).fill(null).entries()) {
+        dummy.position.set(0.5 + idx, -13.5, -0.5);
+        dummy.scale.set(0.05, 20, 0.05);
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldQuaternion(finalQuat);
+        dummy.getWorldScale(finalScale)
+        finalEuler.setFromQuaternion(finalQuat);
+        blocks.C.push({
+          id: `${boardId}_Block`,
+          transform: {
+            position: [finalPos.x, finalPos.y, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        });
+      }
 
       updateInstancedMeshes();
+
+
+      dummy.position.set(12, -2, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldQuaternion(finalQuat);
+      dummy.getWorldScale(finalScale)
+      finalEuler.setFromQuaternion(finalQuat);
+      instanced3dText.current.Next.push({
+        id: `${boardId}_Next`,
+        transform: {
+          position: [finalPos.x, finalPos.y, finalPos.z],
+          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+          scale: [finalScale.x, finalScale.y, finalScale.z]
+        }
+      })
+
+
+      dummy.position.set(-6, -2, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldQuaternion(finalQuat);
+      dummy.getWorldScale(finalScale)
+      finalEuler.setFromQuaternion(finalQuat);
+      instanced3dText.current.Hold.push({
+        id: `${boardId}_Hold`,
+        transform: {
+          position: [finalPos.x, finalPos.y, finalPos.z],
+          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+          scale: [finalScale.x, finalScale.y, finalScale.z]
+        }
+      })
+
+      updateInstanced3dMeshes();
     },
 
-    boardDelete: (boardId) => {
-      const tetris = tetrisGames.current[boardId];
-      if (!tetris) {
-        console.log('tetris undefined');
-        return;
-      }
-
-      for (const [_, v] of Object.entries(tetris.texts)) {
-        removeText(v);
-      }
-      
-      const blocks = instancedBlocks.current;
-
-      for (const [k, block] of Object.entries(blocks)) {
-        const newArr = block.filter(item => item.id !== `${boardId}_Block`);
-        blocks[k as Block] = newArr
-      }
-
-      delete tetrisGames.current[boardId]
-
-      updateInstancedMeshes()
-    },
+    boardDelete,
     spawnFromHold(boardId, block, hold) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {

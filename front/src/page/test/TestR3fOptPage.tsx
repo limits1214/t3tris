@@ -92,6 +92,28 @@ const TestR3fOptPage = () => {
           <boxGeometry/>
         </mesh>
 
+        {/* 
+        
+        <mesh position= {[4.5, -3.5, 0]} scale={[10, 0.05, 0.05]}>
+          <boxGeometry/>
+          <meshBasicMaterial color="black" />
+        </mesh>
+        <mesh position= {[4.5, -4.5, 0]} scale={[10, 0.05, 0.05]}>
+          <boxGeometry/>
+          <meshBasicMaterial color="black" />
+        </mesh>
+
+         <mesh position= {[4.5, -13.5, 0]} scale={[0.05, 20, 0.05]}>
+          <boxGeometry/>
+          <meshBasicMaterial color="black" />
+        </mesh>
+        <mesh position= {[5.5, -13.5, 0]} scale={[0.05, 20, 0.05]}>
+          <boxGeometry/>
+          <meshBasicMaterial color="black" />
+        </mesh>
+        
+        */}
+
         <OptTetris ref={ref}/>
       </Canvas>
     </div>

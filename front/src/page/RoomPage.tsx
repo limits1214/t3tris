@@ -176,8 +176,9 @@ const GameBoard3 = () => {
     if (ref.current == null) {
       return;
     }
+    const localRef = ref.current;
     const roomUserWsId = roomUsers.map(ru => ({wsId: ru.wsId, nickName: ru.nickName}));
-    const tetrisList = {...ref.current.tetrisGameList()};
+    const tetrisList = {...localRef.tetrisGameList()};
     console.log('roomUserWsId', roomUserWsId)
     console.log('boardist', tetrisList)
 
@@ -188,7 +189,7 @@ const GameBoard3 = () => {
       } else {
         console.log('to create', wsId)
         //to create
-        ref.current.boardCreate(wsId, {
+        localRef.boardCreate(wsId, {
           position: [(Math.random() -0.5) * 30, 0, Math.random() * 30,],
           rotation: [0, 0, 0],
           scale: [1, 1, 1]
@@ -198,10 +199,10 @@ const GameBoard3 = () => {
 
     //to delete
     for (const [k, v] of Object.entries(tetrisList)) {
-      ref.current.boardDelete(k)
+      console.log('delete', k)
+      localRef.boardDelete(k)
     }
-
-  }, [ref, roomUsers])
+  }, [roomUsers])
 
   return <OptTetris ref={ref} />
 }

@@ -122,7 +122,7 @@ const GameCanvas = () => {
           <PerspectiveCamera
             makeDefault
             ref={cameraRef}
-            position={[0, 0, 10]}
+            position={[0, 0, 100]}
             near={0.1}
             far={5000}
           />
@@ -166,34 +166,30 @@ const GameBoard3 = () => {
   const setGameRef = useGameStore((s) => s.setGameRef);
 
   useEffect(() => {
-    if (ref !== null) {
-      console.log('setGameRef')
-      setGameRef(ref);
-    }
-  }, [ref]);
+    setGameRef(ref);
+  }, [setGameRef]);
 
   useEffect(()=>{
     if (ref.current == null) {
       return;
     }
+
     const localRef = ref.current;
     const roomUserWsId = roomUsers.map(ru => ({wsId: ru.wsId, nickName: ru.nickName}));
     const tetrisList = {...localRef.tetrisGameList()};
     console.log('roomUserWsId', roomUserWsId)
     console.log('boardist', tetrisList)
 
-    
-    for (const {wsId, nickName} of roomUserWsId) {
+    // const radius = 40; // 원의 반지름
+    // const angleStep = (2 * Math.PI) / roomUserWsId.length;
+    for (const [idx, {wsId, nickName}] of roomUserWsId.entries()) {
+
       if (tetrisList[wsId]) {
         delete tetrisList[wsId]
       } else {
         console.log('to create', wsId)
         //to create
-        localRef.boardCreate(wsId, {
-          position: [(Math.random() -0.5) * 30, 0, Math.random() * 30,],
-          rotation: [0, 0, 0],
-          scale: [1, 1, 1]
-        }, {nickName})
+        localRef.boardCreateBySlot(wsId,{nickName})
       }
     }
 

@@ -17,7 +17,7 @@ const TestR3fOptPage = () => {
       label: 'boardId'
     },
     boardCreate: button((get)=> {
-      ref.current?.boardCreate(get('boardId'), {position: [boardCnt.current * 30, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1]}, {nickName: 'nick_' + get('boardId')});
+      ref.current?.boardCreateBySlot(get('boardId'), {nickName: 'nick_' + get('boardId')});
       boardCnt.current += 1;
     }),
     boardDelete: button((get)=> {

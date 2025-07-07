@@ -23,6 +23,7 @@ export type OptTetrisController = {
   tetrisGameList: ()=>Partial<Record<string, TetrisGame>>,
   tetrisInfo: (boardId: string) => TetrisGame | undefined,
   boardCreate: (boardId: string, boardTransform: Transform, boardCreateInfo: BoardCreateInfo) => void,
+  boardCreateBySlot: (boardId: string, boardCreateInfo: BoardCreateInfo) => void,
   boardDelete: (boardId: string) => void,
   boardReset: (boardId: string) => void,
   nextAdd: (boardId: string, block: Tetrimino) => void,
@@ -78,17 +79,18 @@ type TetrisGame = {
 import {FontLoader} from 'three/addons/loaders/FontLoader.js'
 import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
-  const font = useLoader(FontLoader, 'https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json');
+  const typefaceUrl ='https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json';
+  const font = useLoader(FontLoader, typefaceUrl);
 
   const instanced3dTextMeshes = useRef<Record<string, THREE.InstancedMesh>>({
-    Next: new THREE.InstancedMesh(undefined, undefined, 100),
-    Hold: new THREE.InstancedMesh(undefined, undefined, 100),
+    Next: new THREE.InstancedMesh(undefined, undefined, 200),
+    Hold: new THREE.InstancedMesh(undefined, undefined, 200),
   });
   const instanced3dText =  useRef<Record<string, InstanceType[]>>({
     Next: [], Hold: []
   });
   
-  const RESERVE = 1000;
+  const RESERVE = 5000;
   const geometry = new THREE.BoxGeometry();
   const instancedBlocksMeshes = useRef<Record<Block, THREE.InstancedMesh>>({
     C: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("C") }), RESERVE),
@@ -107,8 +109,46 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   });
   const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
   const { scene } = useThree()
+  const generateBoardTransformSlot = (cnt: number): {transform: Transform, boardId: string | null}[] => {
+    const boardWidth = 26;
+    const boardSpacing = 0; // 여유 간격
+    const effectiveWidth = boardWidth + boardSpacing;
+    const boardsPerRing = (r: number) => Math.floor((2 * Math.PI * r) / effectiveWidth);
+    const getBoardPosition = (index: number) => {
+      let ring = 0;
+      let radius = 60;
+      let boardIndex = index;
+      let offset = 0;
 
-  
+      // 몇 번째 링(ring)에 들어가야 하는지 계산
+      while (true) {
+        const capacity = boardsPerRing(radius);
+        if (boardIndex < capacity) break;
+        boardIndex -= capacity;
+        radius += 60;
+        ring += 1;
+        offset += capacity;
+      }
+      const angleStep = (2 * Math.PI) / boardsPerRing(radius);
+      const angle = boardIndex * angleStep;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      const rotation = -angle + Math.PI / 2 + Math.PI ;
+      return { x, y, rotation };
+    };
+    return Array(cnt).fill(null).map((_,idx)=>{
+      const pos = getBoardPosition(idx);
+      return {
+        transform: {
+          position: [pos.x, 0, pos.y],
+          rotation: [0, pos.rotation, 0,],
+          scale: [1, 1, 1,]
+        },
+        boardId: null
+      }
+    })
+  }
+  const boardTrasnfromSlot = useRef(generateBoardTransformSlot(100))
   
   useEffect(() => {
     const keys: Block[] = ["C", "I", "O", "T", "J", "L", "S", "Z", "H"];
@@ -193,20 +233,27 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     else return "Z" // 6
   }
 
+  const textMat = new THREE.MeshBasicMaterial({color: 'black', side: THREE.DoubleSide});
+  
+  const textCol = new THREE.Color('black');
   const addText = (txt: string, transform: Transform) => {
     const text = new Text()
     text.text = `${txt}`
+    // text.font = typefaceUrl
     text.fontSize = 1
     text.position.set(transform.position[0], transform.position[1] , transform.position[2])
     text.rotation.set(...transform.rotation);
     text.scale.set(...transform.scale);
-    text.color = new THREE.Color('black')
+    
     text.anchorX = 'center'
     text.anchorY = 'middle'
+    text.material = textMat
+    
 
-    // text.sync(()=>{
-    //   scene.add(text)
-    // })
+    text.sync(()=>{
+      scene.add(text)
+    })
+
     return text;
   }
 
@@ -353,38 +400,34 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
 
     for (const [idx, next] of tetris.next.entries()) {
-      dummy.position.set(12, -4 + (-idx * 3), 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale);
-
       for (const [dx, dy] of BlockLocation[next]) {
+        dummy.position.set(12 + dx, -4 + (-idx * 3) + dy, 0);
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldQuaternion(finalQuat);
+        finalEuler.setFromQuaternion(finalQuat);
+        dummy.getWorldScale(finalScale);
         blocks[next].push({
           id: `${boardId}_Block`,
           transform: {
-            position: [finalPos.x + dx, finalPos.y + dy, finalPos.z],
+            position: [finalPos.x , finalPos.y , finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
             scale: [finalScale.x, finalScale.y, finalScale.z]
           }
         });
       }
-
-      
     }
+    
     if (tetris.hold) {
-      console.log('meshses hold!!', tetris.hold)
-      dummy.position.set(-6, -4, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale);
-
       for (const [dx, dy] of BlockLocation[tetris.hold]) {
+        dummy.position.set(-6  + dx, -4 + dy, 0);
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldQuaternion(finalQuat);
+        finalEuler.setFromQuaternion(finalQuat);
+        dummy.getWorldScale(finalScale);
         blocks[tetris.hold].push({
           id: `${boardId}_Block`,
           transform: {
-            position: [finalPos.x + dx, finalPos.y + dy, finalPos.z],
+            position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
             scale: [finalScale.x, finalScale.y, finalScale.z]
           }
@@ -421,6 +464,12 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     instanced3dText.current.Next = instanced3dText.current.Next.filter(item => item.id != `${boardId}_Next`);
     instanced3dText.current.Hold = instanced3dText.current.Hold.filter(item => item.id != `${boardId}_Hold`);
     updateInstanced3dMeshes();
+
+    boardTrasnfromSlot.current.forEach(item=>{
+      if (item.boardId === boardId) {
+        item.boardId = null
+      }
+    })
   }
 
   useImperativeHandle(ref, ()=>({
@@ -440,6 +489,19 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       tetris.hold = null;
       tetris.next = [];
       updateBoardInstancedMeshse(boardId);
+    },
+    boardCreateBySlot(boardId, boardCreateInfo) {
+      let myTransform;
+      for (const slot of boardTrasnfromSlot.current) {
+        if (slot.boardId === null) {
+          myTransform = slot.transform;
+          slot.boardId = boardId;
+          break;
+        }
+      }
+      if (myTransform) {
+        this.boardCreate(boardId, myTransform, boardCreateInfo);
+      }
     },
     boardCreate: (boardId, boardTransform, createInfo) => {
       tetrisGames.current[boardId] = {
@@ -477,9 +539,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       });
       // text.sync(()=>{
       //   console.log('sync')
-        
       // })
-      scene.add(text)
+      // scene.add(text)
       tetris.texts = {
         ...tetris.texts,
         "nickName": text

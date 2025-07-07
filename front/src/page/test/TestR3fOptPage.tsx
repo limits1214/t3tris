@@ -63,14 +63,15 @@ const TestR3fOptPage = () => {
   return (
     <div css={css`height: 100vh;`}>
       <h1 css={css`position: absolute;`}>TestR3fOptPage</h1>
-      <Canvas>
+      <Canvas onCreated={({ gl }) => {
+    // gl.setClearColor('#e6e6e6'); 
+  }}>
         <Perf position="bottom-left"/>
-        <PerspectiveCamera
-          makeDefault
-          position={ [0, 0, 50]} 
-        />
-        <OrbitControls/>
-
+        <PerspectiveCamera makeDefault position={[15, 0, 0]} />
+<OrbitControls 
+  target={[30, 0, 0]}
+/>
+{/* 
         <mesh position={[0, 0, 0]}>
           <boxGeometry/>
         </mesh>
@@ -90,7 +91,7 @@ const TestR3fOptPage = () => {
 
         <mesh position= {[-6, -4, 0]}>
           <boxGeometry/>
-        </mesh>
+        </mesh> */}
 
         {/* 
         

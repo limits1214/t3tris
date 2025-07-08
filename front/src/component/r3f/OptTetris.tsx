@@ -67,7 +67,7 @@ export const blockColorMapping = (block: Block) => {
   } else if (block === "Z") {
     return "#FF0000"
   } else if (block === "H") {
-    return "gray"
+    return "white"
   } else {
     return ""
   }
@@ -102,7 +102,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const geometry = new THREE.BoxGeometry();
   
   const instancedBlocksMeshes = useRef<Record<Block, THREE.InstancedMesh>>({
-    Cover: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Cover"), transparent: true, opacity: 0.7}), RESERVE),
+    Cover: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Cover"), transparent: true, opacity: 0.7, }), RESERVE),
     CoverLine: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("CoverLine")}), RESERVE),
     Case: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Case") }), RESERVE),
     E: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("E") }), RESERVE),
@@ -113,8 +113,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     L: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("L") }), RESERVE),
     S: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("S") }), RESERVE),
     Z: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("Z") }), RESERVE),
-    H: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("H") }), RESERVE),
+    H: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("H"), transparent: true, opacity: 0.5,  }), RESERVE),
   });
+  instancedBlocksMeshes.current.H.renderOrder = 999;
   const instancedBlocks = useRef<Record<Block, InstanceType[]>>({
     Cover: [], CoverLine:[], Case: [], E: [], I: [], O: [], T: [], J: [], L: [], S: [], Z: [], H: []
   });
@@ -349,6 +350,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     const finalEuler = new THREE.Euler();
     const finalScale = new THREE.Vector3();
 
+    showFallingHint(boardId)
+
     for (const [lineIdx, line] of board.getBoard().entries() ) {
       for (const [tileIdx, tile] of line.entries()) {
         if (tile === "Empty") {
@@ -386,6 +389,12 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
               }
           })
         } else if ("Hint" in tile) {
+          dummy.position.set(tileIdx, -lineIdx, 0);
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          dummy.getWorldScale(finalScale);
+
           blocks.H.push({
             id: `${boardId}_Block`,
             transform: {
@@ -481,6 +490,16 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         item.boardId = null
       }
     })
+  }
+
+  const showFallingHint = (boardId: string) => {
+    const tetris = tetrisGames.current[boardId];
+    if (!tetris) {
+      console.log('tetris undefined');
+      return;
+    }
+    tetris.board.removeFallingHint();
+    tetris.board.showFallingHint();
   }
 
   useImperativeHandle(ref, ()=>({

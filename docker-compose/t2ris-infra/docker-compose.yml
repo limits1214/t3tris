@@ -6,10 +6,10 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/nginx/nginx.conf:/etc/nginx/nginx.conf # default setting 사용, 만약쓴다면 파일매핑이라 미리 파일만들어놔야함
-      - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/nginx/conf.d:/etc/nginx/conf.d
-      - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/www:/var/www/certbot
-      - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/certbot/conf:/etc/letsencrypt
+      # - ${VOL_MOUNT_PATH}/t3tris-infra-docker-volume/nginx/nginx.conf:/etc/nginx/nginx.conf # default setting 사용, 만약쓴다면 파일매핑이라 미리 파일만들어놔야함
+      - ${VOL_MOUNT_PATH}/t3tris-infra-docker-volume/nginx/conf.d:/etc/nginx/conf.d
+      - ${VOL_MOUNT_PATH}/t3tris-infra-docker-volume/certbot/www:/var/www/certbot
+      - ${VOL_MOUNT_PATH}/t3tris-infra-docker-volume/certbot/conf:/etc/letsencrypt
     environment:
       TZ: Asia/Seoul
     networks:
@@ -21,7 +21,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/redis-data:/data
+      - ${VOL_MOUNT_PATH}/t3tris-infra-docker-volume/redis-data:/data
     networks:
       - shared
 
@@ -36,11 +36,11 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ${VOL_MOUNT_PATH}/t2ris-infra-docker-volume/pg-data:/var/lib/postgresql/data
+      - ${VOL_MOUNT_PATH}/t3tris-infra-docker-volume/pg-data:/var/lib/postgresql/data
     networks:
       - shared
 
 networks:
   shared:
-    name: t2ris-shared-net
+    name: t3tris-shared-net
     external: true

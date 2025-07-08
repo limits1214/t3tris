@@ -23,14 +23,14 @@ RUN cargo build --release \
     --target aarch64-unknown-linux-musl \
     --manifest-path ./api/Cargo.toml
 
-# RUN strip target/aarch64-unknown-linux-musl/release/t2ris-api
+# RUN strip target/aarch64-unknown-linux-musl/release/t3tris-api
 
 # 실행 이미지
 # FROM scratch
 FROM alpine
 
 WORKDIR /app
-COPY --from=builder /workspace/target/aarch64-unknown-linux-musl/release/t2ris-api /app/t2ris-api
+COPY --from=builder /workspace/target/aarch64-unknown-linux-musl/release/t3tris-api /app/t3tris-api
 COPY --from=builder /workspace/api/Settings.toml /app/Settings.toml
 EXPOSE 4000
-ENTRYPOINT ["/app/t2ris-api"]
+ENTRYPOINT ["/app/t3tris-api"]

@@ -3110,7 +3110,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "t2ris-api"
+name = "t3tris-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3149,11 +3149,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "t2ris-timer"
+name = "t3tris-timer"
 version = "0.1.0"
 
 [[package]]
-name = "t2ris_ws"
+name = "t3tris_ws"
 version = "0.1.0"
 dependencies = [
  "anyhow",

@@ -1,8 +1,8 @@
 services:
   front:
     # build: ../../front
-    image: ghcr.io/limits1214/t2ris-front:latest
-    container_name: t2ris-front
+    image: ghcr.io/limits1214/t3tris-front:latest
+    container_name: t3tris-front
     # restart: always
     networks:
       - shared
@@ -11,17 +11,17 @@ services:
     # build:
     #   context: ../../back
     #   dockerfile: api/Dockerfile
-    image: ghcr.io/limits1214/t2ris-back-api:latest
-    container_name: t2ris-back-api
+    image: ghcr.io/limits1214/t3tris-back-api:latest
+    container_name: t3tris-back-api
     environment:
       ENV__REDIS__REDIS_URL: ${REDIS_URL}
     # restart: always
     volumes:
-      - ${VOL_MOUNT_PATH}/t2ris-app-docker-volume/back-api/logs:/app/logs
+      - ${VOL_MOUNT_PATH}/t3tris-app-docker-volume/back-api/logs:/app/logs
     networks:
       - shared
 
 networks:
   shared:
-    name: t2ris-shared-net
+    name: t3tris-shared-net
     external: true

@@ -1,6 +1,6 @@
-t2ris
+t3tris
 
-https://t2ris.duckdns.org
+https://t3tris.duckdns.org
 
 
 

@@ -3,7 +3,7 @@ front_url = "http://localhost:5173"
 back_url = "http://localhost:4000"
 
 [database]
-database_url = "postgres://myuser:mysecretpassword@localhost/t2ris"
+database_url = "postgres://myuser:mysecretpassword@localhost/t3tris"
 
 [jwt]
 jwt_access_secret = "access_access_access_access_access_access_access_access_access_access"

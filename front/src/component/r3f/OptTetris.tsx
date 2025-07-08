@@ -139,7 +139,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const angle = boardIndex * angleStep;
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
-      const rotation = -angle + Math.PI / 2 + Math.PI ;
+      const rotation = -angle - Math.PI / 2 ;
       return { x, y, rotation };
     };
     return Array(cnt).fill(null).map((_,idx)=>{
@@ -678,7 +678,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
 
       for (const [idx, _] of Array(9).fill(null).entries()) {
-        dummy.position.set(0.5 + idx, -13.5, -0.5);
+        dummy.position.set(0.5 + idx, -12.5, -0.5);
         dummy.scale.set(0.05, 20, 0.05);
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
@@ -694,7 +694,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         });
       }
 
-      dummy.position.set(4.5 , -13.5, -0.51);
+      dummy.position.set(4.5 , -12.5, -0.51);
       dummy.scale.set(10, 20, 0.01);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);

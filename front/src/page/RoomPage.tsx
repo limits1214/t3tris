@@ -20,6 +20,7 @@ import React from "react"
 import { convertTotalInstancedTetrimino, TotalTetrisInstancedTetriminos,  } from "../component/r3f/TotalTetrisInstancedTetriminos"
 import * as THREE from 'three'
 import { OptTetris, type OptTetrisController } from "../component/r3f/OptTetris"
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 const RoomPage = () => {
   const wsReadyState = useWsStore(s=>s.readyState)
   const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
@@ -107,28 +108,20 @@ const GameCanvas = () => {
   const roomUsers = useRoomStore(s=>s.users, );
   const [isOrth] = useState(false)
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+  const controlsRef = useRef<OrbitControlsImpl>(null)
   return (
       <>
         <Perf position="bottom-left" />
-        {isOrth ? (
-          <OrthographicCamera
-            makeDefault
-            position={[0, 0, 10]}
-            zoom={40}
-            near={-100}
-            far={100}
-          />
-        ):(
-          <PerspectiveCamera
+        <PerspectiveCamera
             makeDefault
             ref={cameraRef}
             position={[0, 0, 100]}
             near={0.1}
             far={5000}
           />
-        )}
         <OrbitControls
-        target={[0, 0, 0]}
+          ref={controlsRef}
+          target={[0, 0, 0]}
           enableZoom
           enableRotate
         />
@@ -136,7 +129,7 @@ const GameCanvas = () => {
         <Suspense>
 
 
-           <GameBoard3  />
+           <GameBoard3 cameraRef={cameraRef} controlsRef={controlsRef} />
 
 {/*
            <GameBoard2  />
@@ -159,7 +152,8 @@ const GameCanvas = () => {
   )
 }
 
-const GameBoard3 = () => {
+const GameBoard3 = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.PerspectiveCamera|null>, controlsRef: React.RefObject<OrbitControlsImpl|null>}) => {
+  const myWsId = useWsUserStore(s=>s.wsId);
   const roomUsers = useRoomStore(s=>s.users);
   const ref = useRef<OptTetrisController | null>(null);
 
@@ -190,6 +184,30 @@ const GameBoard3 = () => {
         console.log('to create', wsId)
         //to create
         localRef.boardCreateBySlot(wsId,{nickName})
+        if (wsId === myWsId) {
+          console.log('###')
+          const {position, rotation} = localRef.tetrisInfo(wsId)!.boardTransform;
+          const angle = rotation[1] + Math.PI/2;
+          const distanceZ = 4.5;
+          const offsetX = Math.sin(angle) * distanceZ;
+          const offsetZ = Math.cos(angle) * distanceZ;
+          const dx = offsetX;
+          const dy = -12.5;
+          const dz = offsetZ  ;
+          const from = new THREE.Vector3(position[0], position[1] , position[2] );
+          const to = from.clone().normalize().multiplyScalar(-30).add(from);
+          const to2 = to.clone().normalize().multiplyScalar(-10).add(to);
+          // cameraRef.current.position.set(to.x + dx, to.y + dy, to.z + dz);
+          // controlsRef.current.target.set(position[0] + dx, position[1] + dy, position[2] + dz);
+
+          requestAnimationFrame(()=>{
+            console.log(cameraRef.current, controlsRef.current)
+            controlsRef.current?.target.set(to.x + dx, to.y + dy, to.z + dz);
+            cameraRef.current?.position.set(to2.x + dx, to2.y + dy, to2.z + dz);
+            controlsRef.current?.update()
+            console.log(controlsRef.current?.target, cameraRef.current?.position)
+          })
+        }
       }
     }
 
@@ -198,7 +216,7 @@ const GameBoard3 = () => {
       console.log('delete', k)
       localRef.boardDelete(k)
     }
-  }, [roomUsers])
+  }, [ myWsId, roomUsers])
 
   return <OptTetris ref={ref} />
 }

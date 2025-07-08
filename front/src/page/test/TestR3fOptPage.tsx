@@ -1,11 +1,11 @@
 /** @jsxImportSource @emotion/react */
 
-import { Canvas,  } from "@react-three/fiber"
+import { Canvas, extend,  } from "@react-three/fiber"
 import {button, useControls} from 'leva'
 import { Perf } from "r3f-perf";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera, shaderMaterial } from "@react-three/drei";
 import { css } from "@emotion/react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { OptTetris, type OptTetrisController } from "../../component/r3f/OptTetris";
 import * as THREE from 'three';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -113,6 +113,27 @@ const controlsRef = useRef<OrbitControlsImpl>(null)
           <boxGeometry/>
           <meshBasicMaterial color={"red"}/>
         </mesh>
+
+        {/* <BorderedBlock/> */}
+        {/* <BorderedStandardBox/> */}
+
+        <MyBlock/>
+
+        <ambientLight intensity={2} />
+        {/* <hemisphereLight intensity={2} position={[0, 10, 0]}/> */}
+
+
+        {[0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle, i) => {
+  const x = Math.cos(angle) * 100;
+  const z = Math.sin(angle) * 100;
+  return (
+    <directionalLight
+      key={i}
+      position={[x, 100, z]}
+      intensity={2}
+    />
+  );
+})}
 {/* 
         <mesh position={[0, 0, 0]}>
           <boxGeometry/>
@@ -164,3 +185,135 @@ const controlsRef = useRef<OrbitControlsImpl>(null)
 }
 
 export default TestR3fOptPage
+
+
+const BorderedBlockMaterial = shaderMaterial(
+  {
+    borderWidth: 0.05,
+    borderColor: new THREE.Color("black"),
+    fillColor: new THREE.Color("orange")
+  },
+  `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  `
+    varying vec2 vUv;
+    uniform float borderWidth;
+    uniform vec3 borderColor;
+    uniform vec3 fillColor;
+
+    void main() {
+      float bw = borderWidth;
+      bool isBorder = vUv.x < bw || vUv.x > 1.0 - bw || vUv.y < bw || vUv.y > 1.0 - bw;
+      vec3 color = isBorder ? borderColor : fillColor;
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `
+);
+extend({ BorderedBlockMaterial });
+
+const BorderedBlock = () => {
+  // const material = useMemo(() => new THREE.MeshStandardMaterial(), []);
+
+  return (
+    <mesh position={[0, 0, 0]}>
+      <boxGeometry args={[1, 1, 1]} />
+      {/* 👇 여기서 커스텀 머티리얼 사용 */}
+      <borderedBlockMaterial attach="material" />
+    </mesh>
+  );
+};
+
+
+export function BorderedStandardBox() {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useEffect(() => {
+    if (!meshRef.current) return;
+
+    const material = meshRef.current.material as THREE.MeshBasicMaterial;
+    material.color = new THREE.Color("red")
+
+    material.onBeforeCompile = (shader) => {
+      // vUv를 전달받기 위한 셰이더 수정
+      shader.vertexShader = `
+        varying vec2 vUv;
+        ${shader.vertexShader}
+        `;
+
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <uv_vertex>',
+          `
+          #include <uv_vertex>
+          vUv = uv;
+          `
+        );
+
+      shader.fragmentShader = `
+        varying vec2 vUv;
+        uniform float borderWidth;
+        uniform vec3 borderColor;
+        ${shader.fragmentShader}
+      `;
+
+      shader.fragmentShader = shader.fragmentShader.replace(
+        `#include <dithering_fragment>`,
+        `
+        float bw = borderWidth;
+        bool isBorder = vUv.x < bw || vUv.x > 1.0 - bw || vUv.y < bw || vUv.y > 1.0 - bw;
+        if (isBorder) {
+          gl_FragColor.rgb = borderColor;
+        }
+        #include <dithering_fragment>
+        `
+      );
+
+      shader.uniforms.borderWidth = { value: 0.05 };
+      shader.uniforms.borderColor = { value: new THREE.Color("black") };
+
+      material.userData.shader = shader;
+    };
+
+    // 머티리얼 업데이트 트리거
+    material.needsUpdate = true;
+  }, []);
+
+  return (
+    <mesh ref={meshRef} position={[0, 0, 0]}>
+      <boxGeometry args={[1, 1, 1]} />
+    </mesh>
+  );
+}
+
+
+
+import { useGLTF } from '@react-three/drei';
+
+export function MyBlock() {
+  const { nodes } = useGLTF('/public/glb/basicBlock.glb'); // public/models/my_block.glb
+  return (
+    <>
+      <mesh
+      position={[ 0, -20, 0]}
+      scale={[0.5,0.5,0.5]}
+        geometry={nodes.Cube.geometry}
+      >
+        <meshLambertMaterial color="orange" />
+      </mesh>
+
+      <mesh
+      position={[ 0, -21, 0]}
+      scale={[0.5,0.5,0.5]}
+        geometry={nodes.Cube.geometry}
+      >
+        <meshLambertMaterial color="orange" />
+      </mesh>
+
+      {/* <directionalLight position={[ 1010, -1010, 1010]} intensity={10}/> */}
+    </>
+  );
+}

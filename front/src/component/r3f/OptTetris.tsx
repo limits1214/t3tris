@@ -82,6 +82,7 @@ type TetrisGame = {
 }
 import {FontLoader} from 'three/addons/loaders/FontLoader.js'
 import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
+import { useGLTF } from "@react-three/drei";
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const typefaceUrl ='https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json';
   const font = useLoader(FontLoader, typefaceUrl);
@@ -93,22 +94,26 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const instanced3dText =  useRef<Record<string, InstanceType[]>>({
     Next: [], Hold: []
   });
-  
+  const { nodes } = useGLTF('/public/glb/basicBlock.glb');
+  const blockBasicGeometry = nodes.Cube.geometry;
+  // blockBasicGeometry.scale(0.5, 0.5, 0.5);
+  // blockBasicGeometry.scale(0.5, 0.5, 0.5)
   const RESERVE = 5000;
   const geometry = new THREE.BoxGeometry();
+  
   const instancedBlocksMeshes = useRef<Record<Block, THREE.InstancedMesh>>({
     Cover: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Cover"), transparent: true, opacity: 0.7}), RESERVE),
     CoverLine: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("CoverLine")}), RESERVE),
     Case: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Case") }), RESERVE),
     E: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("E") }), RESERVE),
-    I: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("I") }), RESERVE),
-    O: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("O") }), RESERVE),
-    T: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("T") }), RESERVE),
-    J: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("J") }), RESERVE),
-    L: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("L") }), RESERVE),
-    S: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("S") }), RESERVE),
-    Z: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Z") }), RESERVE),
-    H: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("H") }), RESERVE),
+    I: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("I") }), RESERVE),
+    O: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("O") }), RESERVE),
+    T: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("T") }), RESERVE),
+    J: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("J") }), RESERVE),
+    L: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("L") }), RESERVE),
+    S: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("S") }), RESERVE),
+    Z: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("Z") }), RESERVE),
+    H: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("H") }), RESERVE),
   });
   const instancedBlocks = useRef<Record<Block, InstanceType[]>>({
     Cover: [], CoverLine:[], Case: [], E: [], I: [], O: [], T: [], J: [], L: [], S: [], Z: [], H: []
@@ -544,79 +549,43 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         scale: [2,2,2],
       });
 
-      dummy.position.set(-6, -12, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      const elapsedText = addText("elapsed:\n11:11:11", {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
-      });
+      // dummy.position.set(-4, -15, 0);
+      // dummy.getWorldPosition(finalPos);
+      // dummy.getWorldQuaternion(finalQuat);
+      // finalEuler.setFromQuaternion(finalQuat);
+      // const txt = "elapsed:\n11:11:11\nscore:\n1\nclearline:\n3\nattacked:\n1";
+      // const infoText = addText(txt, {
+      //   position: [finalPos.x, finalPos.y, finalPos.z],
+      //   rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+      //   scale: [1,1,1],
+      // });
 
-      dummy.position.set(-6, -14, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      const someInfo1 = addText("someInfo1", {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
-      });
-
-      dummy.position.set(-6, -16, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      const someInfo2 = addText("someInfo2", {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
-      });
-
-      dummy.position.set(-6, -18, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      const someInfo3 = addText("someInfo3", {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
-      });
-
-      dummy.position.set(-6, -20, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      const someInfo4 = addText("someInfo4", {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
-      });
-
-      dummy.position.set(-6, -22, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      const someInfo5 = addText("someInfo5", {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
-      });
+      //  // info bg
+      // dummy.position.set(-4 , -15, -0.1);
+      // dummy.scale.set(5, 11, 0.01);
+      // dummy.getWorldPosition(finalPos);
+      // dummy.getWorldQuaternion(finalQuat);
+      // dummy.getWorldScale(finalScale)
+      // finalEuler.setFromQuaternion(finalQuat);
+      // blocks.Cover.push({
+      //   id: `${boardId}_Block`,
+      //   transform: {
+      //     position: [finalPos.x, finalPos.y, finalPos.z],
+      //     rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+      //     scale: [finalScale.x, finalScale.y, finalScale.z]
+      //   }
+      // });
       
       tetris.texts = {
         ...tetris.texts,
         "nickName": nickNameText,
-        "elapsedText": elapsedText,
-        "someInfo1": someInfo1,
-        "someInfo2": someInfo2,
-        "someInfo3": someInfo3,
-        "someInfo4": someInfo4,
-        "someInfo5": someInfo5,
+        // "infoText": infoText,
       }
 
-      dummy.position.set(-1, -12.5, 0);
-      dummy.scale.set(1, 20, 1);
+     
+
+      dummy.position.set(-1 + 0.4, -12.5, 0);
+      dummy.scale.set(0.2, 20, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       dummy.getWorldScale(finalScale)
@@ -630,8 +599,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       });
 
-      dummy.position.set(10, -12.5, 0);
-      dummy.scale.set(1, 20, 1);
+      dummy.position.set(10 - 0.4, -12.5, 0);
+      dummy.scale.set(0.2, 20, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       dummy.getWorldScale(finalScale)
@@ -645,8 +614,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       });
 
-      dummy.position.set(4.5, -23, 0);
-      dummy.scale.set(12, 1, 1);
+      dummy.position.set(4.5, -23 + 0.4, 0);
+      dummy.scale.set(10 +0.4, 0.2, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       dummy.getWorldScale(finalScale)
@@ -708,6 +677,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           scale: [finalScale.x, finalScale.y, finalScale.z]
         }
       });
+      
 
       updateInstancedMeshes();
 

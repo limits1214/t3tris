@@ -125,9 +125,23 @@ const GameCanvas = () => {
           enableZoom
           enableRotate
         />
-      
-        <Suspense>
 
+        <Suspense>
+{/* <hemisphereLight intensity={2} position={[0, 10, 0]}/> */}
+
+
+<ambientLight intensity={1} />
+{[0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle, i) => {
+  const x = Math.cos(angle) * 100;
+  const z = Math.sin(angle) * 100;
+  return (
+    <directionalLight
+      key={i}
+      position={[x, 100, z]}
+      intensity={1}
+    />
+  );
+})}
 
            <GameBoard3 cameraRef={cameraRef} controlsRef={controlsRef} />
 

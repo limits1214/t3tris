@@ -12,8 +12,8 @@ use crate::{
         connections::{WsConnections, WsWorldUser},
         game::tetris::TetrisGame,
         model::{
-            GameId, RoomId, WsId, WsWorldGame, WsWorldGameStatus, WsWorldRoom, WsWorldRoomStatus,
-            WsWorldRoomUser,
+            GameId, RoomId, WsId, WsWorldGame, WsWorldGameStatus, WsWorldGameType, WsWorldRoom,
+            WsWorldRoomStatus, WsWorldRoomUser,
         },
         pubsub::WsPubSub,
         util::{err_publish, gen_lobby_publish_msg, gen_room_publish_msg},
@@ -452,6 +452,7 @@ pub fn room_game_start(
     data.games.insert(
         game_id.clone(),
         WsWorldGame {
+            game_type: WsWorldGameType::MultiSolo,
             game_id: game_id,
             room_id: room_id.clone(),
             started_at: OffsetDateTime::now_utc(),

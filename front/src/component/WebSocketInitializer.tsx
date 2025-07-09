@@ -163,9 +163,10 @@ const WebSocketInitializer = () => {
                   }
                 }
               }
+
             */
             for (const [k, v] of Object.entries(data.action)) {
-              for (const action of v) {
+              for (const {action} of v) {
                 console.log('action:', action)
                 if (typeof action === "object" && action !== null && "setup" in action) {
                   gameRef?.current?.boardReset(k)

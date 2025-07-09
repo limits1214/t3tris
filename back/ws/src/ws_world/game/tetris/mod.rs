@@ -4,12 +4,12 @@ use std::{
     collections::VecDeque,
     time::{Duration, Instant},
 };
-use tetris_lib::{Board, FallingBlock, Tetrimino};
+use tetris_lib::{Board, FallingBlock, StepError, Tetrimino};
 
 use crate::ws_world::model::WsId;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum TetrisGameAction {
+pub enum TetrisGameActionType {
     Setup {
         next: Vec<Tetrimino>,
     },
@@ -42,6 +42,16 @@ pub enum TetrisGameAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TetrisGameAction {
+    elapsed: u128,
+    action: TetrisGameActionType,
+}
+
+impl TetrisGameAction {
+    //
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TetrisGame {
     pub ws_id: WsId,
     pub board: Board,
@@ -55,10 +65,17 @@ pub struct TetrisGame {
     pub is_game_over: bool,
     #[serde(skip)]
     #[serde(default = "std::time::Instant::now")]
-    pub last_step: Instant, // started: Instant,
+    pub last_step_at: Instant, // started: Instant,
     // elapsed: Duration,
     pub actions: Vec<TetrisGameAction>,
     pub actions_buffer: Vec<TetrisGameAction>,
+    pub elapsed: u128,
+
+    #[serde(skip)]
+    #[serde(default = "std::time::Instant::now")]
+    pub placing_delay_at: Instant,
+    pub is_placing_delay: bool,
+    pub placing_reset_cnt: u8,
 }
 
 impl TetrisGame {
@@ -74,14 +91,21 @@ impl TetrisGame {
             is_can_hold: true,
             is_started: false,
             is_game_over: false,
-            last_step: Instant::now(),
+            last_step_at: Instant::now(),
             actions: vec![],
             actions_buffer: vec![],
+            elapsed: 0,
+            placing_delay_at: Instant::now(),
+            is_placing_delay: false,
+            placing_reset_cnt: 10,
         }
     }
 
-    fn push_action_buffer(&mut self, action: TetrisGameAction) {
-        self.actions_buffer.push(action);
+    fn push_action_buffer(&mut self, action: TetrisGameActionType) {
+        self.actions_buffer.push(TetrisGameAction {
+            elapsed: self.elapsed,
+            action: action,
+        });
     }
 
     pub fn get_action_buffer(&mut self) -> Vec<TetrisGameAction> {
@@ -110,41 +134,80 @@ impl TetrisGame {
             let tetrimino = Self::rand_tetrimino();
             self.next.push_back(tetrimino);
         }
-        self.push_action_buffer(TetrisGameAction::Setup {
+        self.push_action_buffer(TetrisGameActionType::Setup {
             next: self.next.clone().into(),
         });
     }
 
-    pub fn step(&mut self) -> anyhow::Result<()> {
+    pub fn try_step(&mut self) -> Result<(), StepError> {
+        match self.board.try_step() {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err),
+        }
+    }
+
+    pub fn step(&mut self) -> Result<(), StepError> {
         match self.board.try_step() {
             Ok(step) => {
                 self.board.apply_step(step);
-                self.push_action_buffer(TetrisGameAction::Step);
+                self.push_action_buffer(TetrisGameActionType::Step);
             }
-            Err(err) => match err {
-                tetris_lib::StepError::OutOfBounds => self.place_falling(),
-                tetris_lib::StepError::Blocked(_) => self.place_falling(),
-                tetris_lib::StepError::InvalidShape => Err(err)?,
-            },
+            Err(err) => Err(err)?,
         };
         Ok(())
     }
 
-    fn place_falling(&mut self) {
+    pub fn delayed_place_falling(&mut self) {
+        if !self.is_placing_delay {
+            self.is_placing_delay = true;
+            self.placing_delay_at = Instant::now();
+            return;
+        }
+
+        if Instant::now() - self.placing_delay_at < Duration::from_millis(1000) {
+            // not yet
+            return;
+        }
+
+        // delay at
         self.board.place_falling();
-        self.push_action_buffer(TetrisGameAction::Placing);
+        self.push_action_buffer(TetrisGameActionType::Placing);
 
         if self.board.has_placed_above(3) {
             self.is_game_over = true;
-            self.push_action_buffer(TetrisGameAction::End {});
+            self.push_action_buffer(TetrisGameActionType::End {});
             return;
         }
 
         let clear = self.board.try_line_clear();
         if !clear.is_empty() {
-            self.push_action_buffer(TetrisGameAction::LineClear);
+            self.clear_line += clear.len() as u32;
+            self.push_action_buffer(TetrisGameActionType::LineClear);
+            self.board.apply_line_clear(clear);
         }
-        self.board.apply_line_clear(clear);
+
+        self.spawn_next();
+        self.is_can_hold = true;
+
+        self.is_placing_delay = false;
+    }
+
+    pub fn place_falling(&mut self) {
+        self.board.place_falling();
+        self.push_action_buffer(TetrisGameActionType::Placing);
+
+        if self.board.has_placed_above(3) {
+            self.is_game_over = true;
+            self.push_action_buffer(TetrisGameActionType::End {});
+            return;
+        }
+
+        let clear = self.board.try_line_clear();
+        if !clear.is_empty() {
+            self.clear_line += clear.len() as u32;
+            self.push_action_buffer(TetrisGameActionType::LineClear);
+            self.board.apply_line_clear(clear);
+        }
 
         self.spawn_next();
         self.is_can_hold = true;
@@ -156,18 +219,13 @@ impl TetrisGame {
         };
         let added_next = Self::rand_tetrimino();
         self.next.push_back(added_next);
-        self.push_action_buffer(TetrisGameAction::NextAdd { next: added_next });
+        self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
 
         let new_tile = self.board.try_spawn_falling(next_tetr)?;
         self.board.apply_spawn_falling(new_tile);
-        self.push_action_buffer(TetrisGameAction::SpawnFromNext { spawn: next_tetr });
+        self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
 
         Ok(())
-    }
-
-    fn hint(&mut self) {
-        self.board.remove_falling_hint();
-        self.board.show_falling_hint();
     }
 
     pub fn action_move_left(&mut self) -> anyhow::Result<()> {
@@ -176,7 +234,12 @@ impl TetrisGame {
             .try_move_falling(tetris_lib::MoveDirection::Left)?;
         self.board.apply_move_falling(plan);
 
-        self.push_action_buffer(TetrisGameAction::MoveLeft);
+        self.push_action_buffer(TetrisGameActionType::MoveLeft);
+
+        if self.placing_reset_cnt > 0 {
+            self.placing_delay_at = Instant::now();
+            self.placing_reset_cnt -= 1;
+        }
         Ok(())
     }
 
@@ -186,7 +249,12 @@ impl TetrisGame {
             .try_move_falling(tetris_lib::MoveDirection::Right)?;
         self.board.apply_move_falling(plan);
 
-        self.push_action_buffer(TetrisGameAction::MoveRight);
+        self.push_action_buffer(TetrisGameActionType::MoveRight);
+
+        if self.placing_reset_cnt > 0 {
+            self.placing_delay_at = Instant::now();
+            self.placing_reset_cnt -= 1;
+        }
         Ok(())
     }
 
@@ -196,7 +264,12 @@ impl TetrisGame {
             .try_rotate_falling(tetris_lib::RotateDirection::Right)?;
         self.board.apply_rotate_falling(plan);
 
-        self.push_action_buffer(TetrisGameAction::RotateRight);
+        self.push_action_buffer(TetrisGameActionType::RotateRight);
+
+        if self.placing_reset_cnt > 0 {
+            self.placing_delay_at = Instant::now();
+            self.placing_reset_cnt -= 1;
+        }
         Ok(())
     }
 
@@ -206,19 +279,26 @@ impl TetrisGame {
             .try_rotate_falling(tetris_lib::RotateDirection::Left)?;
         self.board.apply_rotate_falling(plan);
 
-        self.push_action_buffer(TetrisGameAction::RotateLeft);
+        self.push_action_buffer(TetrisGameActionType::RotateLeft);
+
+        if self.placing_reset_cnt > 0 {
+            self.placing_delay_at = Instant::now();
+            self.placing_reset_cnt -= 1;
+        }
         Ok(())
     }
 
     pub fn action_hard_drop(&mut self) -> anyhow::Result<()> {
         let _ = self.board.hard_drop();
-        self.push_action_buffer(TetrisGameAction::HardDrop);
-        self.step()?;
+        self.push_action_buffer(TetrisGameActionType::HardDrop);
+        // self.step()?;
+        self.is_placing_delay = false;
+        self.place_falling();
         Ok(())
     }
 
     pub fn action_soft_drop(&mut self) -> anyhow::Result<()> {
-        self.push_action_buffer(TetrisGameAction::SoftDrop);
+        self.push_action_buffer(TetrisGameActionType::SoftDrop);
         self.step()?;
         Ok(())
     }
@@ -234,11 +314,11 @@ impl TetrisGame {
                 self.hold = Some(f.falling.kind);
             }
             self.board.remove_falling_blocks();
-            self.push_action_buffer(TetrisGameAction::RemoveFalling);
+            self.push_action_buffer(TetrisGameActionType::RemoveFalling);
 
             let spawn = self.board.try_spawn_falling(hold_tetr).unwrap();
             self.board.apply_spawn_falling(spawn);
-            self.push_action_buffer(TetrisGameAction::SpawnFromHold {
+            self.push_action_buffer(TetrisGameActionType::SpawnFromHold {
                 spawn: hold_tetr,
                 hold: self.hold,
             });
@@ -246,12 +326,12 @@ impl TetrisGame {
             let fallings = self.board.get_falling_blocks();
             if let Some(f) = fallings.first() {
                 self.hold = Some(f.falling.kind);
-                self.push_action_buffer(TetrisGameAction::HoldFalling {
+                self.push_action_buffer(TetrisGameActionType::HoldFalling {
                     hold: f.falling.kind,
                 });
 
                 self.board.remove_falling_blocks();
-                self.push_action_buffer(TetrisGameAction::RemoveFalling);
+                self.push_action_buffer(TetrisGameActionType::RemoveFalling);
 
                 self.spawn_next();
             }
@@ -259,7 +339,7 @@ impl TetrisGame {
     }
 
     pub fn get_client_info(&mut self) -> serde_json::Value {
-        self.hint();
+        // self.hint();
         let board = self
             .board
             .board()

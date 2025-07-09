@@ -130,6 +130,8 @@ pub struct WsWorldGame {
     pub game_id: GameId,
     pub room_id: RoomId,
     //
+    pub game_type: WsWorldGameType,
+    //
     pub started_at: OffsetDateTime,
     #[serde(skip)]
     #[serde(default = "std::time::Instant::now")]
@@ -145,6 +147,13 @@ pub struct WsWorldGame {
     pub status: WsWorldGameStatus,
     //
     pub is_deleted: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum WsWorldGameType {
+    Solo,
+    MultiSolo,
+    LastManStanding,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]

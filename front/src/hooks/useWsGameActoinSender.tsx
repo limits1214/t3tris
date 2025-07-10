@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWsStore } from "../store/useWsStore";
 
 const useWsGameActoinSender = () => {
@@ -48,6 +48,15 @@ export const useKeyboardActionSender = () => {
   } = useWsGameActoinSender();
 
   const [gameId, setGameId] =  useState<string | null>(null);
+
+  const moveLRSet = useRef<Set<"left"|"right">>(new Set());
+  const moveLInterval = useRef<number>(null);
+  const moveRInterval = useRef<number>(null);
+  const moveLTimeout = useRef<number>(null);
+  const moveRTimeout = useRef<number>(null);
+
+  const softDropInterval = useRef<number>(null);
+  const rotating = useRef(false);
  
   const keydown = (e: KeyboardEvent) => {
     console.log('kd', gameId)
@@ -55,22 +64,76 @@ export const useKeyboardActionSender = () => {
       switch (e.key) {
         case 'a':
         case 'ArrowLeft':
+          if (moveLRSet.current.has("left")) {
+            return;
+          }
+          moveLRSet.current.add("left")
+          if (moveLInterval.current) {
+            window.clearInterval(moveLInterval.current)
+          }
+          if (moveLTimeout.current) {
+            window.clearTimeout(moveLTimeout.current)
+          }
+          moveLTimeout.current = window.setTimeout(()=>{
+            pressLeft(gameId);
+            moveLInterval.current = window.setInterval(()=>{
+              const lr = [...moveLRSet.current];
+              const size = moveLRSet.current.size - 1
+              if (lr[size] === "left") {
+                pressLeft(gameId);
+              }
+            }, 30)
+          }, 150)
           pressLeft(gameId);
           break;
         case 'd':
         case 'ArrowRight':
+          if (moveLRSet.current.has("right")) {
+            return;
+          }
+          moveLRSet.current.add("right")
+
+          if (moveRInterval.current) {
+            window.clearInterval(moveRInterval.current)
+          }
+          if (moveRTimeout.current) {
+            window.clearTimeout(moveRTimeout.current)
+          }
+          moveRTimeout.current = window.setTimeout(()=>{
+            pressRight(gameId);
+            moveRInterval.current = window.setInterval(()=>{
+              const lr = [...moveLRSet.current];
+              const size = moveLRSet.current.size - 1
+              if (lr[size] === "right") {
+                pressRight(gameId);
+              }
+            }, 30)
+          }, 150)
           pressRight(gameId);
           break;
         case 'w':
         case 'ArrowUp':
+          if(rotating.current) {
+            return;
+          }
+          rotating.current = true;
           pressRotateRight(gameId);
           break;
         case 'z':
+          if(rotating.current) {
+            return;
+          }
+          rotating.current = true;
           pressRotateLeft(gameId);
           break;
         case 's':
         case 'ArrowDown':
-          pressSoftDrop(gameId);
+          if (softDropInterval.current) {
+            window.clearInterval(softDropInterval.current);
+          }
+          softDropInterval.current = window.setInterval(()=>{
+            pressSoftDrop(gameId);
+          }, 50);
           break;
         case ' ':
           pressHardDrop(gameId);
@@ -84,10 +147,56 @@ export const useKeyboardActionSender = () => {
     }
   };
 
+  const keyup = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case 'a':
+      case 'ArrowLeft':
+        moveLRSet.current.delete("left")
+        if (moveLInterval.current) {
+          window.clearInterval(moveLInterval.current);
+        }
+        if (moveLTimeout.current) {
+          window.clearTimeout(moveLTimeout.current)
+        }
+        break;
+      case 'd':
+      case 'ArrowRight':
+        moveLRSet.current.delete("right")
+         if (moveRInterval.current) {
+          window.clearInterval(moveRInterval.current);
+        }
+        if (moveRTimeout.current) {
+          window.clearTimeout(moveRTimeout.current)
+        }
+        break;
+      case 'w':
+      case 'ArrowUp':
+        rotating.current = false;
+        break;
+      case 'z':
+        rotating.current = false;
+        break;
+      case 's':
+      case 'ArrowDown':
+        if (softDropInterval.current) {
+          window.clearInterval(softDropInterval.current);
+        }
+        break;
+      case ' ':
+        break;
+      case 'Shift':
+        break;
+      default:
+        break;
+    }
+  }
+
   useEffect(() => {
     window.addEventListener("keydown", keydown);
+    window.addEventListener("keyup", keyup);
     return () => {
       window.removeEventListener("keydown", keydown);
+      window.removeEventListener("keyup", keyup);
     }
   }, [gameId])
   

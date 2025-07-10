@@ -195,7 +195,585 @@ _0123456789
     assert_eq!(format!("{board}"), expted_origin);
 
     let res = board.try_rotate_falling(RotateDirection::Right);
-    assert!(matches!(res, Err(RotateError::Blocked(_, _))));
+    board.apply_rotate_falling(res.unwrap());
+    println!("O{board}");
+    // assert!(matches!(res, Err(RotateError::Blocked(_, _))));
+}
+#[test]
+fn wall_kick_j_0() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::J).unwrap());
+    *board.location_mut(0, 6) = Tile::Placed(1);
+    *board.location_mut(1, 6) = Tile::Placed(1);
+    *board.location_mut(2, 6) = Tile::Placed(1);
+    *board.location_mut(3, 6) = Tile::Placed(1);
+    *board.location_mut(4, 6) = Tile::Placed(1);
+    *board.location_mut(6, 6) = Tile::Placed(1);
+    *board.location_mut(7, 6) = Tile::Placed(1);
+    *board.location_mut(8, 6) = Tile::Placed(1);
+    *board.location_mut(9, 6) = Tile::Placed(1);
+
+    *board.location_mut(0, 5) = Tile::Placed(1);
+    *board.location_mut(1, 5) = Tile::Placed(1);
+    *board.location_mut(2, 5) = Tile::Placed(1);
+    *board.location_mut(3, 5) = Tile::Placed(1);
+    *board.location_mut(6, 5) = Tile::Placed(1);
+    *board.location_mut(7, 5) = Tile::Placed(1);
+    *board.location_mut(8, 5) = Tile::Placed(1);
+    *board.location_mut(9, 5) = Tile::Placed(1);
+
+    *board.location_mut(0, 4) = Tile::Placed(1);
+    *board.location_mut(1, 4) = Tile::Placed(1);
+    *board.location_mut(6, 4) = Tile::Placed(1);
+    *board.location_mut(7, 4) = Tile::Placed(1);
+    *board.location_mut(8, 4) = Tile::Placed(1);
+    *board.location_mut(9, 4) = Tile::Placed(1);
+
+    *board.location_mut(1, 3) = Tile::Placed(1);
+    *board.location_mut(2, 3) = Tile::Placed(1);
+    *board.location_mut(3, 3) = Tile::Placed(1);
+    *board.location_mut(7, 3) = Tile::Placed(1);
+    *board.location_mut(8, 3) = Tile::Placed(1);
+    *board.location_mut(9, 3) = Tile::Placed(1);
+
+    *board.location_mut(6, 2) = Tile::Placed(1);
+    *board.location_mut(7, 2) = Tile::Placed(1);
+    *board.location_mut(8, 2) = Tile::Placed(1);
+    *board.location_mut(9, 2) = Tile::Placed(1);
+
+    *board.location_mut(5, 1) = Tile::Placed(1);
+    *board.location_mut(6, 1) = Tile::Placed(1);
+    *board.location_mut(7, 1) = Tile::Placed(1);
+
+    *board.location_mut(4, 0) = Tile::Placed(1);
+    *board.location_mut(5, 0) = Tile::Placed(1);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0....PP....
+1...J.PPP..
+2...JJJPPPP
+3.PPP...PPP
+4PP....PPPP
+5PPPP..PPPP
+6PPPPP.PPPP
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Left).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0....PP....
+1.....PPP..
+2......PPPP
+3.PPP.J.PPP
+4PP...JPPPP
+5PPPPJJPPPP
+6PPPPP.PPPP
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_l_1() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::L).unwrap());
+    *board.location_mut(5, 3) = Tile::Placed(1);
+    *board.location_mut(2, 3) = Tile::Placed(1);
+    *board.location_mut(2, 2) = Tile::Placed(1);
+    *board.location_mut(2, 1) = Tile::Placed(1);
+    *board.location_mut(2, 0) = Tile::Placed(1);
+    *board.location_mut(3, 0) = Tile::Placed(1);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..PP......
+1..P..L....
+2..PLLL....
+3..P..P....
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..PP......
+1..PL......
+2..PL......
+3..PLLP....
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_l_2() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::L).unwrap());
+    *board.location_mut(3, 1) = Tile::Placed(1);
+    *board.location_mut(2, 1) = Tile::Placed(1);
+    *board.location_mut(2, 2) = Tile::Placed(1);
+    *board.location_mut(2, 3) = Tile::Placed(1);
+    *board.location_mut(2, 4) = Tile::Placed(1);
+    *board.location_mut(2, 5) = Tile::Placed(1);
+    *board.location_mut(5, 5) = Tile::Placed(1);
+    *board.location_mut(6, 5) = Tile::Placed(1);
+    *board.location_mut(4, 4) = Tile::Placed(1);
+    *board.location_mut(5, 4) = Tile::Placed(1);
+    *board.location_mut(6, 4) = Tile::Placed(1);
+
+    *board.location_mut(4, 3) = Tile::Placed(1);
+    *board.location_mut(5, 3) = Tile::Placed(1);
+    *board.location_mut(6, 3) = Tile::Placed(1);
+
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1..PP.L....
+2..PLLL....
+3..P.PPP...
+4..P.PPP...
+5..P..PP...
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1..PP......
+2..P.......
+3..PLPPP...
+4..PLPPP...
+5..PLLPP...
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_1() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+
+    *board.location_mut(2, 1) = Tile::Placed(1);
+    *board.location_mut(3, 1) = Tile::Placed(1);
+
+    *board.location_mut(2, 2) = Tile::Placed(1);
+
+    *board.location_mut(2, 3) = Tile::Placed(1);
+    *board.location_mut(4, 3) = Tile::Placed(1);
+    *board.location_mut(5, 3) = Tile::Placed(1);
+
+    *board.location_mut(2, 4) = Tile::Placed(1);
+    *board.location_mut(5, 4) = Tile::Placed(1);
+
+    *board.location_mut(2, 5) = Tile::Placed(1);
+    *board.location_mut(4, 5) = Tile::Placed(1);
+
+    // println!("O{board}");
+
+    let expted = r#"
+___________
+0..........
+1..PPT.....
+2..PTTT....
+3..P.PP....
+4..P..P....
+5..P.P.....
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1..PP......
+2..P.......
+3..PTPP....
+4..PTTP....
+5..PTP.....
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_2() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+
+    *board.location_mut(2, 0) = Tile::Placed(1);
+    *board.location_mut(3, 0) = Tile::Placed(1);
+
+    *board.location_mut(2, 1) = Tile::Placed(1);
+
+    *board.location_mut(2, 2) = Tile::Placed(1);
+
+    *board.location_mut(2, 3) = Tile::Placed(1);
+
+    *board.location_mut(4, 3) = Tile::Placed(1);
+    *board.location_mut(5, 3) = Tile::Placed(1);
+    *board.location_mut(6, 3) = Tile::Placed(1);
+
+    // println!("O{board}");
+
+    let expted = r#"
+___________
+0..PP......
+1..P.T.....
+2..PTTT....
+3..P.PPP...
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..PP......
+1..PT......
+2..PTT.....
+3..PTPPP...
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_3() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+
+    *board.location_mut(2, 1) = Tile::Placed(1);
+    *board.location_mut(3, 1) = Tile::Placed(1);
+
+    *board.location_mut(2, 2) = Tile::Placed(1);
+    *board.location_mut(6, 2) = Tile::Placed(1);
+
+    *board.location_mut(2, 3) = Tile::Placed(1);
+    *board.location_mut(3, 3) = Tile::Placed(1);
+    *board.location_mut(5, 3) = Tile::Placed(1);
+    *board.location_mut(6, 3) = Tile::Placed(1);
+
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1..PPT.....
+2..P.TTP...
+3..PPTPP...
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1..PP......
+2..PTTTP...
+3..PPTPP...
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_4() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+
+    *board.location_mut(3, 2) = Tile::Placed(1);
+    *board.location_mut(6, 2) = Tile::Placed(1);
+    *board.location_mut(7, 2) = Tile::Placed(1);
+
+    *board.location_mut(3, 3) = Tile::Placed(1);
+    *board.location_mut(7, 3) = Tile::Placed(1);
+
+    *board.location_mut(3, 4) = Tile::Placed(1);
+    *board.location_mut(4, 4) = Tile::Placed(1);
+    *board.location_mut(6, 4) = Tile::Placed(1);
+    *board.location_mut(7, 4) = Tile::Placed(1);
+
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1....T.....
+2...PTTPP..
+3...PT..P..
+4...PP.PP..
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1..........
+2...P..PP..
+3...PTTTP..
+4...PPTPP..
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_5() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+
+    *board.location_mut(4, 1) = Tile::Placed(1);
+    *board.location_mut(5, 1) = Tile::Placed(1);
+    *board.location_mut(6, 1) = Tile::Placed(1);
+
+    *board.location_mut(6, 2) = Tile::Placed(1);
+
+    *board.location_mut(6, 3) = Tile::Placed(1);
+
+    *board.location_mut(3, 4) = Tile::Placed(1);
+    *board.location_mut(6, 4) = Tile::Placed(1);
+
+    *board.location_mut(3, 5) = Tile::Placed(1);
+    *board.location_mut(4, 5) = Tile::Placed(1);
+    *board.location_mut(6, 5) = Tile::Placed(1);
+
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1....PPP...
+2...TTTP...
+3....T.P...
+4...P..P...
+5...PP.P...
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1....PPP...
+2......P...
+3.....TP...
+4...PTTP...
+5...PPTP...
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_6() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+
+    *board.location_mut(4, 1) = Tile::Placed(1);
+    *board.location_mut(5, 1) = Tile::Placed(1);
+    *board.location_mut(6, 1) = Tile::Placed(1);
+
+    *board.location_mut(6, 2) = Tile::Placed(1);
+
+    *board.location_mut(5, 3) = Tile::Placed(1);
+    *board.location_mut(6, 3) = Tile::Placed(1);
+
+    *board.location_mut(2, 4) = Tile::Placed(1);
+    *board.location_mut(5, 4) = Tile::Placed(1);
+    *board.location_mut(6, 4) = Tile::Placed(1);
+
+    *board.location_mut(2, 5) = Tile::Placed(1);
+    *board.location_mut(3, 5) = Tile::Placed(1);
+    *board.location_mut(5, 5) = Tile::Placed(1);
+    *board.location_mut(6, 5) = Tile::Placed(1);
+
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1....PPP...
+2...TTTP...
+3....TPP...
+4..P..PP...
+5..PP.PP...
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1....PPP...
+2......P...
+3....TPP...
+4..PTTPP...
+5..PPTPP...
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_7() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+
+    *board.location_mut(1, 2) = Tile::Placed(1);
+    *board.location_mut(2, 2) = Tile::Placed(1);
+    *board.location_mut(5, 2) = Tile::Placed(1);
+
+    *board.location_mut(1, 3) = Tile::Placed(1);
+    *board.location_mut(5, 3) = Tile::Placed(1);
+
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1....T.....
+2.PPTTP....
+3.P..TP....
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1..........
+2.PPT.P....
+3.PTTTP....
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+}
+
+#[test]
+fn wall_kick_t_8() {
+    let mut board = Board::new(10, 7);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+
+    *board.location_mut(1, 1) = Tile::Placed(1);
+    *board.location_mut(2, 1) = Tile::Placed(1);
+
+    *board.location_mut(1, 2) = Tile::Placed(1);
+    *board.location_mut(5, 2) = Tile::Placed(1);
+
+    *board.location_mut(1, 3) = Tile::Placed(1);
+    *board.location_mut(2, 3) = Tile::Placed(1);
+    *board.location_mut(3, 3) = Tile::Placed(1);
+    *board.location_mut(5, 3) = Tile::Placed(1);
+
+    // println!("O{board}");
+
+    let expted = r#"
+___________
+0..........
+1.PP.T.....
+2.P.TTP....
+3.PPPTP....
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
+    let plan = board.try_rotate_falling(RotateDirection::Right).unwrap();
+    board.apply_rotate_falling(plan);
+    // println!("O{board}");
+    let expted = r#"
+___________
+0..........
+1.PPT......
+2.PTTTP....
+3.PPP.P....
+4..........
+5..........
+6..........
+_0123456789
+"#;
+    assert_eq!(format!("{board}"), expted);
 }
 
 #[test]

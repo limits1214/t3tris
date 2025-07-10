@@ -23,7 +23,7 @@ impl MoveDirection {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
 #[cfg_attr(feature = "wasm", ts(export))]
 pub enum RotateDirection {
@@ -260,10 +260,10 @@ const RIGHT_ROTATE_TABLE: [[[(i8, i8); 4]; 4]; 7] = [
     // Tetrimino::I
     [
         // id 0, id 1, id 2, id 3
-        [(2, -1), (1, 0), (0, 1), (-1, 2)],   // D0
-        [(1, 2), (0, 1), (-1, 0), (-2, -1)],  // D90
-        [(-2, 1), (-1, 0), (0, -1), (1, -2)], // D180
-        [(-1, -2), (0, -1), (1, 0), (2, 1)],  // D270
+        [(2, -1), (1, 0), (0, 1), (-1, 2)],   // D0 (D0 -> D90)
+        [(1, 2), (0, 1), (-1, 0), (-2, -1)],  // D90 (D90 -> D180)
+        [(-2, 1), (-1, 0), (0, -1), (1, -2)], // D180 (D180 -> D270)
+        [(-1, -2), (0, -1), (1, 0), (2, 1)],  // D270 (D270 -> D0)
     ],
     // Tetrimino::O
     [
@@ -339,6 +339,22 @@ const SPAWN_TABLE: [[(i8, i8); 4]; 7] = [
     [(0, 0), (1, 0), (1, 1), (2, 1)],
 ];
 
+const WALL_KICK_JLSTZ_TABLE: [[(i8, i8); 5]; 4] = [
+    // test1 ... test5
+    [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)], // D0  (D0 -> D90)
+    [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)],   // D90 (D90 -> D180)
+    [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],    // D180 (D180 -> D270)
+    [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)], // D270 (D270 -> D0)
+];
+
+const WALL_KICK_I_TABLE: [[(i8, i8); 5]; 4] = [
+    // test1 ... test5
+    [(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)], // D0  (D0 -> D90)
+    [(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)], // D90 (D90 -> D180)
+    [(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)], // D180 (D180 -> D270)
+    [(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)], // D270 (D270 -> D0)
+];
+
 #[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
 #[cfg_attr(feature = "wasm", ts(export))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -381,6 +397,29 @@ impl Board {
 
     pub fn new(width: usize, height: usize) -> Self {
         Self(vec![vec![Tile::Empty; width]; height])
+    }
+
+    fn right_rotate_wall_kick_reference(
+        kind: &Tetrimino,
+        rotate: &Rotate,
+        test_idx: usize,
+    ) -> (i8, i8) {
+        let rot_idx = *rotate as usize;
+        if *kind == Tetrimino::I {
+            WALL_KICK_I_TABLE[rot_idx][test_idx]
+        } else {
+            WALL_KICK_JLSTZ_TABLE[rot_idx][test_idx]
+        }
+    }
+
+    fn left_rotate_wall_kick_reference(
+        kind: &Tetrimino,
+        rotate: &Rotate,
+        test_idx: usize,
+    ) -> (i8, i8) {
+        let next = rotate.next_ccw();
+        let (dx, dy) = Board::right_rotate_wall_kick_reference(kind, &next, test_idx);
+        (-dx, -dy)
     }
 
     fn right_rotate_reference(kind: &Tetrimino, rotate: &Rotate, id: u8) -> (i8, i8) {
@@ -569,14 +608,15 @@ impl Board {
         }
     }
 
-    pub fn try_rotate_falling(
+    fn try_rotate_falling_wall_kick_test(
         &self,
+        fallings: &Vec<FallingBlockAt>,
         dir: RotateDirection,
-    ) -> Result<Vec<FallingBlockPlan>, RotateError> {
-        let fallings = self.get_falling_blocks();
+        wall_kick: (i8, i8),
+    ) -> Result<Vec<Location>, RotateError> {
         let mut to_rotate = vec![];
         for FallingBlockAt {
-            mut falling,
+            falling,
             location: Location { x, y },
         } in fallings
         {
@@ -588,8 +628,8 @@ impl Board {
                     Board::right_rotate_reference(&falling.kind, &falling.rotation, falling.id)
                 }
             };
-            let new_x = usize::try_from(x as i8 + dx).ok();
-            let new_y = usize::try_from(y as i8 + dy).ok();
+            let new_x = usize::try_from(*x as i8 + dx + wall_kick.0).ok();
+            let new_y = usize::try_from(*y as i8 + dy + wall_kick.1).ok();
 
             let (Some(new_x), Some(new_y)) = (new_x, new_y) else {
                 return Err(RotateError::OutOfBounds(dir));
@@ -603,19 +643,62 @@ impl Board {
                 Tile::Falling(FallingBlock { kind, .. }) if *kind == falling.kind => {}
                 Tile::Empty => {}
                 Tile::Hint(_) => {}
-                _ => return Err(RotateError::Blocked(dir, Location::new(x, y))),
+                _ => return Err(RotateError::Blocked(dir, Location::new(*x, *y))),
             }
+            to_rotate.push(Location { x: new_x, y: new_y });
+        }
+        Ok(to_rotate)
+    }
 
+    pub fn try_rotate_falling(
+        &self,
+        dir: RotateDirection,
+    ) -> Result<Vec<FallingBlockPlan>, RotateError> {
+        let fallings = self.get_falling_blocks();
+        let mut test_idx = 0;
+        let wall_kick_tested_location = loop {
+            let wall_kick = match dir {
+                RotateDirection::Left => Board::left_rotate_wall_kick_reference(
+                    &fallings[0].falling.kind,
+                    &fallings[0].falling.rotation,
+                    test_idx,
+                ),
+                RotateDirection::Right => Board::right_rotate_wall_kick_reference(
+                    &fallings[0].falling.kind,
+                    &fallings[0].falling.rotation,
+                    test_idx,
+                ),
+            };
+            match self.try_rotate_falling_wall_kick_test(&fallings, dir.clone(), wall_kick) {
+                Ok(l) => break Ok(l),
+                Err(e) => {
+                    if test_idx >= 4 {
+                        break Err(e);
+                    }
+                }
+            }
+            test_idx += 1;
+        }?;
+
+        let mut to_rotate = vec![];
+        for (
+            idx,
+            FallingBlockAt {
+                mut falling,
+                location,
+            },
+        ) in fallings.into_iter().enumerate()
+        {
             match dir {
                 RotateDirection::Left => falling.rotation = falling.rotation.next_ccw(),
                 RotateDirection::Right => falling.rotation = falling.rotation.next_cw(),
             }
-
+            let data = &wall_kick_tested_location[idx];
             to_rotate.push(FallingBlockPlan {
-                as_is: Location::new(x, y),
+                as_is: location,
                 to_be: FallingBlockAt {
                     falling,
-                    location: Location::new(new_x, new_y),
+                    location: data.clone(),
                 },
             });
         }

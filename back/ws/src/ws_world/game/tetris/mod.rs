@@ -58,22 +58,19 @@ pub struct TetrisGame {
     pub hold: Option<Tetrimino>,
     pub score: u32,
     pub clear_line: u32,
-    pub level: u32,
+    pub level: u8,
     pub next: VecDeque<Tetrimino>,
     pub is_can_hold: bool,
     pub is_started: bool,
     pub is_game_over: bool,
-    #[serde(skip)]
-    #[serde(default = "std::time::Instant::now")]
-    pub last_step_at: Instant, // started: Instant,
-    // elapsed: Duration,
     pub actions: Vec<TetrisGameAction>,
     pub actions_buffer: Vec<TetrisGameAction>,
     pub elapsed: u128,
 
-    #[serde(skip)]
-    #[serde(default = "std::time::Instant::now")]
-    pub placing_delay_at: Instant,
+    pub tick: u32,
+    pub step_tick: u32,
+
+    pub placing_delay_tick: u32,
     pub is_placing_delay: bool,
     pub placing_reset_cnt: u8,
 }
@@ -87,15 +84,16 @@ impl TetrisGame {
             clear_line: 0,
             score: 0,
             next: VecDeque::new(),
-            level: 0,
+            level: 1,
             is_can_hold: true,
             is_started: false,
             is_game_over: false,
-            last_step_at: Instant::now(),
+            tick: 0,
+            step_tick: 0,
             actions: vec![],
             actions_buffer: vec![],
             elapsed: 0,
-            placing_delay_at: Instant::now(),
+            placing_delay_tick: 0,
             is_placing_delay: false,
             placing_reset_cnt: 10,
         }
@@ -157,41 +155,6 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn delayed_place_falling(&mut self) {
-        if !self.is_placing_delay {
-            self.is_placing_delay = true;
-            self.placing_delay_at = Instant::now();
-            return;
-        }
-
-        if Instant::now() - self.placing_delay_at < Duration::from_millis(1000) {
-            // not yet
-            return;
-        }
-
-        // delay at
-        self.board.place_falling();
-        self.push_action_buffer(TetrisGameActionType::Placing);
-
-        if self.board.has_placed_above(3) {
-            self.is_game_over = true;
-            self.push_action_buffer(TetrisGameActionType::End {});
-            return;
-        }
-
-        let clear = self.board.try_line_clear();
-        if !clear.is_empty() {
-            self.clear_line += clear.len() as u32;
-            self.push_action_buffer(TetrisGameActionType::LineClear);
-            self.board.apply_line_clear(clear);
-        }
-
-        self.spawn_next();
-        self.is_can_hold = true;
-
-        self.is_placing_delay = false;
-    }
-
     pub fn place_falling(&mut self) {
         self.board.place_falling();
         self.push_action_buffer(TetrisGameActionType::Placing);
@@ -205,6 +168,7 @@ impl TetrisGame {
         let clear = self.board.try_line_clear();
         if !clear.is_empty() {
             self.clear_line += clear.len() as u32;
+            self.level = ((self.clear_line / LEVEL_UP_LINE) as u8).clamp(1, 20);
             self.push_action_buffer(TetrisGameActionType::LineClear);
             self.board.apply_line_clear(clear);
         }
@@ -237,7 +201,7 @@ impl TetrisGame {
         self.push_action_buffer(TetrisGameActionType::MoveLeft);
 
         if self.placing_reset_cnt > 0 {
-            self.placing_delay_at = Instant::now();
+            self.placing_delay_tick = 0;
             self.placing_reset_cnt -= 1;
         }
         Ok(())
@@ -252,7 +216,7 @@ impl TetrisGame {
         self.push_action_buffer(TetrisGameActionType::MoveRight);
 
         if self.placing_reset_cnt > 0 {
-            self.placing_delay_at = Instant::now();
+            self.placing_delay_tick = 0;
             self.placing_reset_cnt -= 1;
         }
         Ok(())
@@ -267,7 +231,7 @@ impl TetrisGame {
         self.push_action_buffer(TetrisGameActionType::RotateRight);
 
         if self.placing_reset_cnt > 0 {
-            self.placing_delay_at = Instant::now();
+            self.placing_delay_tick = 0;
             self.placing_reset_cnt -= 1;
         }
         Ok(())
@@ -282,7 +246,7 @@ impl TetrisGame {
         self.push_action_buffer(TetrisGameActionType::RotateLeft);
 
         if self.placing_reset_cnt > 0 {
-            self.placing_delay_at = Instant::now();
+            self.placing_delay_tick = 0;
             self.placing_reset_cnt -= 1;
         }
         Ok(())
@@ -368,5 +332,56 @@ impl TetrisGame {
             "isCanHold": self.is_can_hold,
             "isGameOver": self.is_game_over,
         })
+    }
+}
+
+pub enum TetrisScore {
+    Single,
+    Double,
+    Triple,
+    Tetris,
+    TSpinZero,
+    TSpinSingle,
+    TSpinDouble,
+    TSpinTriple,
+}
+
+impl TetrisScore {
+    pub fn score(&self, level: u8) -> u32 {
+        self.base_score() * level as u32
+    }
+    pub fn base_score(&self) -> u32 {
+        match self {
+            TetrisScore::Single => 100,
+            TetrisScore::Double => 300,
+            TetrisScore::Triple => 500,
+            TetrisScore::Tetris => 800,
+            TetrisScore::TSpinZero => 400,
+            TetrisScore::TSpinSingle => 800,
+            TetrisScore::TSpinDouble => 1200,
+            TetrisScore::TSpinTriple => 1600,
+        }
+    }
+}
+
+const LEVEL_UP_LINE: u32 = 10;
+pub const PLACING_DELAY: u32 = 30;
+pub fn level_to_gravity_tick(level: u8) -> u32 {
+    match level {
+        1 => 48,
+        2 => 43,
+        3 => 38,
+        4 => 33,
+        5 => 28,
+        6 => 23,
+        7 => 18,
+        8 => 13,
+        9 => 8,
+        10 => 6,
+        11..=13 => 5,
+        14..=15 => 4,
+        16..=17 => 3,
+        18..=19 => 2,
+        _ => 1, // 20 이상
     }
 }

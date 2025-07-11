@@ -46,8 +46,7 @@ impl WsWorld {
 
             let mut cleanup_timer = tokio::time::interval(std::time::Duration::from_secs(10));
             let mut game_ticker_timer =
-                tokio::time::interval(std::time::Duration::from_millis(1000 / 60));
-
+                tokio::time::interval(std::time::Duration::from_secs_f32(1.0 / 60.0));
             loop {
                 tokio::select! {
                     msg = world_receiver.recv() => {

@@ -82,24 +82,27 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                         tetris.step_tick += 1;
 
                         if tetris.is_placing_delay {
-                            tetris.placing_delay_tick += 1;
-                            if tetris.placing_delay_tick >= PLACING_DELAY {
-                                match tetris.try_step() {
-                                    Ok(_) => {}
-                                    Err(err) => match err {
-                                        tetris_lib::StepError::OutOfBounds => {
+                            match tetris.try_step() {
+                                Ok(_) => {}
+                                Err(err) => match err {
+                                    tetris_lib::StepError::OutOfBounds => {
+                                        tetris.placing_delay_tick += 1;
+                                        if tetris.placing_delay_tick >= PLACING_DELAY {
                                             tetris.place_falling();
                                             tetris.is_placing_delay = false;
                                         }
-                                        tetris_lib::StepError::Blocked(location) => {
+                                    }
+                                    tetris_lib::StepError::Blocked(location) => {
+                                        tetris.placing_delay_tick += 1;
+                                        if tetris.placing_delay_tick >= PLACING_DELAY {
                                             tetris.place_falling();
                                             tetris.is_placing_delay = false;
                                         }
-                                        tetris_lib::StepError::InvalidShape => {
-                                            //
-                                        }
-                                    },
-                                }
+                                    }
+                                    tetris_lib::StepError::InvalidShape => {
+                                        //
+                                    }
+                                },
                             }
                         }
 

@@ -831,13 +831,13 @@ impl Board {
         }
     }
 
-    pub fn hard_drop(&mut self) -> Result<(), StepError> {
+    pub fn hard_drop(&mut self) -> u8 {
         let mut cnt = 0;
         loop {
-            self.apply_step(self.try_step()?);
             cnt += 1;
-            if cnt > self.y_len() {
-                return Err(StepError::InvalidShape);
+            match self.try_step() {
+                Ok(plan) => self.apply_step(plan),
+                Err(_) => return cnt,
             }
         }
     }

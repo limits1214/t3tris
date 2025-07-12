@@ -381,9 +381,17 @@ impl TetrisGame {
     }
 
     pub fn action_hard_drop(&mut self) -> anyhow::Result<()> {
-        let _ = self.board.hard_drop();
+        let dropcnt = self.board.hard_drop();
         self.push_action_buffer(TetrisGameActionType::HardDrop);
-        // self.step()?;
+
+        let soft_drop = TetrisScore::HardDrop;
+        self.score += soft_drop.score(self.level) * dropcnt as u32;
+        self.push_action_buffer(TetrisGameActionType::Score {
+            kind: soft_drop,
+            level: self.level,
+            score: self.score,
+        });
+
         self.is_placing_delay = false;
         self.place_falling();
         Ok(())
@@ -391,6 +399,14 @@ impl TetrisGame {
 
     pub fn action_soft_drop(&mut self) -> anyhow::Result<()> {
         self.push_action_buffer(TetrisGameActionType::SoftDrop);
+
+        let soft_drop = TetrisScore::SoftDrop;
+        self.score += soft_drop.score(self.level);
+        self.push_action_buffer(TetrisGameActionType::Score {
+            kind: soft_drop,
+            level: self.level,
+            score: self.score,
+        });
         self.step()?;
         Ok(())
     }

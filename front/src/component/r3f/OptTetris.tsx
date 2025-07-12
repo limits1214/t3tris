@@ -420,13 +420,13 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       T: [[0,0], [1,0], [2,0],[1,1]],
       J: [[0,1], [1,1], [2,1],[2,0]],
       L: [[0,0], [0,1], [1,1],[2,1]],
-      S: [[2,0], [1,1], [1,0],[0,1]],
-      Z: [[0,0], [1,1], [1,0],[2,1]],
+      S: [[0,0], [1,1], [1,0],[2,1]],
+      Z: [[2,0], [1,1], [1,0],[0,1]],
     }
 
     for (const [idx, next] of tetris.next.entries()) {
       for (const [dx, dy] of BlockLocation[next]) {
-        dummy.position.set(12 + dx, -4 + (-idx * 3) + dy, 0);
+        dummy.position.set(12 + dx, -7 + (-idx * 3) + dy, 0);
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
@@ -444,7 +444,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     
     if (tetris.hold) {
       for (const [dx, dy] of BlockLocation[tetris.hold]) {
-        dummy.position.set(-6  + dx, -4 + dy, 0);
+        dummy.position.set(-6  + dx, -7 + dy, 0);
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
@@ -522,7 +522,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         console.log('tetris undefined');
         return;
       }
-      tetris.board = new JsBoard(10, 23);
+      tetris.board = new JsBoard(10, 26);
       tetris.hold = null;
       tetris.next = [];
       updateBoardInstancedMeshse(boardId);
@@ -547,7 +547,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     },
     boardCreate: (boardId, boardTransform, createInfo) => {
       tetrisGames.current[boardId] = {
-        board: new JsBoard(10, 23),
+        board: new JsBoard(10, 26),
         boardTransform,
         createInfo,
         texts: {},
@@ -570,7 +570,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
-      dummy.position.set(5, -25, 0);
+      dummy.position.set(5, -28, 0);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       finalEuler.setFromQuaternion(finalQuat);
@@ -580,7 +580,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         scale: [2,2,2],
       });
 
-      dummy.position.set(-4, -15, 0);
+      dummy.position.set(-4, -18, 0);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       finalEuler.setFromQuaternion(finalQuat);
@@ -613,7 +613,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         "infoText": infoText,
       }
 
-      dummy.position.set(-1 + 0.4, -12.5, 0);
+      dummy.position.set(-1 + 0.4, -15.5, 0);
       dummy.scale.set(0.2, 20, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
@@ -628,7 +628,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       });
 
-      dummy.position.set(10 - 0.4, -12.5, 0);
+      dummy.position.set(10 - 0.4, -15.5, 0);
       dummy.scale.set(0.2, 20, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
@@ -643,7 +643,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       });
 
-      dummy.position.set(4.5, -23 + 0.4, 0);
+      dummy.position.set(4.5, -26 + 0.4, 0);
       dummy.scale.set(10 +0.4, 0.2, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
@@ -659,7 +659,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       });
 
       for (const [idx, _] of Array(19).fill(null).entries()) {
-        dummy.position.set(4.5, -3.5 + -idx, -0.5);
+        dummy.position.set(4.5, -6.5 + -idx, -0.5);
         dummy.scale.set(10, 0.05, 0.05);
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
@@ -676,7 +676,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
 
       for (const [idx, _] of Array(9).fill(null).entries()) {
-        dummy.position.set(0.5 + idx, -12.5, -0.5);
+        dummy.position.set(0.5 + idx, -15.5, -0.5);
         dummy.scale.set(0.05, 20, 0.05);
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
@@ -692,7 +692,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         });
       }
 
-      dummy.position.set(4.5 , -12.5, -0.51);
+      dummy.position.set(4.5 , -15.5, -0.51);
       dummy.scale.set(10, 20, 0.01);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
@@ -711,7 +711,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       updateInstancedMeshes();
 
 
-      dummy.position.set(12, -2, 0);
+      dummy.position.set(12, -5, 0);
       dummy.scale.set(1, 1, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
@@ -727,7 +727,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       })
 
 
-      dummy.position.set(-6, -2, 0);
+      dummy.position.set(-6, -5, 0);
       dummy.scale.set(1, 1, 1);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
@@ -982,7 +982,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
-      dummy.position.set(4.5 , -12.5, 0.71);
+      dummy.position.set(4.5 , -15.5, 0.71);
       dummy.scale.set(10, 20, 0.01);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);

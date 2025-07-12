@@ -232,8 +232,8 @@ pub enum Tile {
 #[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
 #[cfg_attr(feature = "wasm", ts(export))]
 pub struct TileAt {
-    tile: Tile,
-    location: Location,
+    pub tile: Tile,
+    pub location: Location,
 }
 
 impl std::fmt::Display for Tile {
@@ -312,7 +312,7 @@ const RIGHT_ROTATE_TABLE: [[[(i8, i8); 4]; 4]; 7] = [
 const SPAWN_TABLE: [[(i8, i8); 4]; 7] = [
     // Tetrimino::I
     // 01234
-    [(0, 0), (1, 0), (2, 0), (3, 0)],
+    [(0, 1), (1, 1), (2, 1), (3, 1)],
     // Tetrimino::O
     // 01
     // 23
@@ -388,7 +388,7 @@ impl std::fmt::Display for Board {
 }
 
 impl Board {
-    const HEIGHT: usize = 23;
+    const HEIGHT: usize = 26;
     const WIDTH: usize = 10;
 
     pub fn new_common() -> Self {
@@ -460,14 +460,19 @@ impl Board {
     }
 
     pub fn try_spawn_falling(&self, tetrimino: Tetrimino) -> Result<Vec<TileAt>, SpawnError> {
+        let y = if self.y_len() > 20 + 3 {
+            self.y_len() - (20 + 3)
+        } else {
+            1
+        };
         match tetrimino {
-            Tetrimino::I => self.try_spawn_falling_at(tetrimino, 3, 1),
-            Tetrimino::O => self.try_spawn_falling_at(tetrimino, 4, 1),
-            Tetrimino::T => self.try_spawn_falling_at(tetrimino, 4, 1),
-            Tetrimino::J => self.try_spawn_falling_at(tetrimino, 3, 1),
-            Tetrimino::L => self.try_spawn_falling_at(tetrimino, 5, 1),
-            Tetrimino::S => self.try_spawn_falling_at(tetrimino, 4, 1),
-            Tetrimino::Z => self.try_spawn_falling_at(tetrimino, 3, 1),
+            Tetrimino::I => self.try_spawn_falling_at(tetrimino, 3, y),
+            Tetrimino::O => self.try_spawn_falling_at(tetrimino, 4, y),
+            Tetrimino::T => self.try_spawn_falling_at(tetrimino, 4, y),
+            Tetrimino::J => self.try_spawn_falling_at(tetrimino, 3, y),
+            Tetrimino::L => self.try_spawn_falling_at(tetrimino, 5, y),
+            Tetrimino::S => self.try_spawn_falling_at(tetrimino, 4, y),
+            Tetrimino::Z => self.try_spawn_falling_at(tetrimino, 3, y),
         }
     }
 

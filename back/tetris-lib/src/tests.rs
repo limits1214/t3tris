@@ -13,8 +13,8 @@ fn spawn_i() {
     let expected = r#"
 ___________
 0..........
-1...IIII...
-2..........
+1..........
+2...IIII...
 _0123456789
 "#;
     assert!(format!("{board}") == expected);
@@ -49,6 +49,22 @@ _0123456789
 "#;
     assert_eq!(format!("{board}"), expected);
     assert_eq!(activated_rotation(&board), Rotate::D0);
+}
+
+#[test]
+fn spawn_t_2() {
+    let mut board = Board::new(10, 26);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    println!("{board}")
+    //     let expected = r#"
+    // ___________
+    // 0..........
+    // 1....T.....
+    // 2...TTT....
+    // _0123456789
+    // "#;
+    //     assert_eq!(format!("{board}"), expected);
+    //     assert_eq!(activated_rotation(&board), Rotate::D0);
 }
 
 #[test]
@@ -113,51 +129,58 @@ _0123456789
 
 #[test]
 fn rotate_right_i() {
-    let mut board = Board::new(10, 4);
+    let mut board = Board::new(10, 5);
     board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::I).unwrap());
 
     let expted_origin = r#"
 ___________
 0..........
-1...IIII...
-2..........
+1..........
+2...IIII...
 3..........
+4..........
 _0123456789
 "#;
     assert_eq!(format!("{board}"), expted_origin);
     assert_eq!(activated_rotation(&board), Rotate::D0);
 
     board.apply_rotate_falling(board.try_rotate_falling(RotateDirection::Right).unwrap());
+
     let expexted_to_d0_d90 = r#"
 ___________
-0.....I....
+0..........
 1.....I....
 2.....I....
 3.....I....
+4.....I....
 _0123456789
 "#;
     assert_eq!(format!("{board}"), expexted_to_d0_d90);
     assert_eq!(activated_rotation(&board), Rotate::D90);
 
     board.apply_rotate_falling(board.try_rotate_falling(RotateDirection::Right).unwrap());
+
     let expexted_to_d90_d180 = r#"
 ___________
 0..........
 1..........
-2...IIII...
-3..........
+2..........
+3...IIII...
+4..........
 _0123456789
 "#;
     assert_eq!(format!("{board}"), expexted_to_d90_d180);
     assert_eq!(activated_rotation(&board), Rotate::D180);
 
     board.apply_rotate_falling(board.try_rotate_falling(RotateDirection::Right).unwrap());
+
     let expexted_to_d180_d270 = r#"
 ___________
-0....I.....
+0..........
 1....I.....
 2....I.....
 3....I.....
+4....I.....
 _0123456789
 "#;
     assert_eq!(format!("{board}"), expexted_to_d180_d270);
@@ -167,38 +190,16 @@ _0123456789
     let expexted_to_d270_d0 = r#"
 ___________
 0..........
-1...IIII...
-2..........
+1..........
+2...IIII...
 3..........
+4..........
 _0123456789
 "#;
     assert_eq!(format!("{board}"), expexted_to_d270_d0);
     assert_eq!(activated_rotation(&board), Rotate::D0);
 }
 
-#[test]
-fn rotate_right_i_block() {
-    let mut board = Board::new(10, 4);
-    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::I).unwrap());
-
-    *board.location_mut(5, 0) = Tile::Placed(0);
-    println!("O{board}");
-
-    let expted_origin = r#"
-___________
-0.....P....
-1...IIII...
-2..........
-3..........
-_0123456789
-"#;
-    assert_eq!(format!("{board}"), expted_origin);
-
-    let res = board.try_rotate_falling(RotateDirection::Right);
-    board.apply_rotate_falling(res.unwrap());
-    println!("O{board}");
-    // assert!(matches!(res, Err(RotateError::Blocked(_, _))));
-}
 #[test]
 fn wall_kick_j_0() {
     let mut board = Board::new(10, 7);
@@ -1617,4 +1618,16 @@ fn test_t() {
     for f in board.get_falling_blocks() {
         println!("loc: {:?}, id:{:?}", f.location, f.falling.id);
     }
+}
+
+#[test]
+fn testlen() {
+    let board = Board::new(10, 4);
+    println!("{}", board.y_len());
+}
+#[test]
+fn testspawn() {
+    let mut board = Board::new(10, 26);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::L).unwrap());
+    println!("{board}");
 }

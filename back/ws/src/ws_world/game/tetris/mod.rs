@@ -4,7 +4,7 @@ use std::{
     collections::VecDeque,
     time::{Duration, Instant},
 };
-use tetris_lib::{Board, FallingBlock, StepError, Tetrimino};
+use tetris_lib::{Board, FallingBlock, SpawnError, StepError, Tetrimino, Tile, TileAt};
 
 use crate::ws_world::model::WsId;
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +89,7 @@ impl TetrisGame {
     pub fn new(ws_id: WsId) -> Self {
         Self {
             ws_id,
-            board: Board::new_common(),
+            board: Board::new(10, 26),
             hold: None,
             clear_line: 0,
             score: 0,
@@ -170,12 +170,6 @@ impl TetrisGame {
         self.board.place_falling();
         self.push_action_buffer(TetrisGameActionType::Placing);
 
-        if self.board.has_placed_above(3) {
-            self.is_game_over = true;
-            self.push_action_buffer(TetrisGameActionType::GameOver {});
-            return;
-        }
-
         let clear = self.board.try_line_clear();
         let clear_len = clear.len();
         if !clear.is_empty() {
@@ -227,10 +221,23 @@ impl TetrisGame {
         self.next.push_back(added_next);
         self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
 
-        let new_tile = self.board.try_spawn_falling(next_tetr)?;
-        self.board.apply_spawn_falling(new_tile);
+        self.spawn_with_game_over_check(next_tetr)?;
         self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
 
+        Ok(())
+    }
+
+    pub fn spawn_with_game_over_check(&mut self, tetr: Tetrimino) -> Result<(), SpawnError> {
+        let new_tiles = self.board.try_spawn_falling(tetr)?;
+        for TileAt { location, .. } in &new_tiles {
+            if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
+                self.is_game_over = true;
+                self.push_action_buffer(TetrisGameActionType::GameOver {});
+                return Ok(());
+            }
+        }
+        self.step_tick = 9999;
+        self.board.apply_spawn_falling(new_tiles);
         Ok(())
     }
 
@@ -401,8 +408,9 @@ impl TetrisGame {
             self.board.remove_falling_blocks();
             self.push_action_buffer(TetrisGameActionType::RemoveFalling);
 
-            let spawn = self.board.try_spawn_falling(hold_tetr).unwrap();
-            self.board.apply_spawn_falling(spawn);
+            // let spawn = self.board.try_spawn_falling(hold_tetr).unwrap();
+            // self.board.apply_spawn_falling(spawn);
+            self.spawn_with_game_over_check(hold_tetr).unwrap();
             self.push_action_buffer(TetrisGameActionType::SpawnFromHold {
                 spawn: hold_tetr,
                 hold: self.hold,

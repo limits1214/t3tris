@@ -98,7 +98,7 @@ const TestR3fOptPage = () => {
       const boardId = get('boardId');
 
       const txt = `level:\n1\nscore:\n21`
-      ref.current!.infoTextUpdate(boardId, txt);
+      ref.current!.infoTextUpdate(boardId, {level: 999});
     }),
     addEndCover: button((get)=>{
       const boardId = get('boardId');
@@ -108,6 +108,18 @@ const TestR3fOptPage = () => {
       const boardId = get('boardId');
 
       ref.current!.removeEndCover(boardId);
+    }),
+
+    timerOn: button((get)=>{
+      ref.current!.timerOn(get('boardId'));
+    }),
+
+    timerOff: button((get)=>{
+      ref.current!.timerOff(get('boardId'));
+    }),
+
+    timerReset: button((get)=>{
+      ref.current!.timerReset(get('boardId'));
     }),
   })
 

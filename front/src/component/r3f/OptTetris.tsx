@@ -1,9 +1,10 @@
-import { useLoader, useThree } from "@react-three/fiber"
+import { useFrame, useLoader, useThree } from "@react-three/fiber"
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
 import * as THREE from 'three';
 import {Text} from 'troika-three-text'
 import { JsBoard } from "tetris-lib";
 import type { Tetrimino } from "tetris-lib/bindings";
+import {format} from 'date-fns'
 
 export type Transform = {
   position: [number, number, number],
@@ -19,6 +20,11 @@ export type BoardInfo = {
   nickName: string
 }
 
+export type InfoData = {
+  level?: number,
+  score?: number,
+  time?: number,
+}
 export type OptTetrisController = {
   tetrisGameList: ()=>Partial<Record<string, TetrisGame>>,
   tetrisInfo: (boardId: string) => TetrisGame | undefined,
@@ -40,9 +46,12 @@ export type OptTetrisController = {
   holdFalling:(boardId: string, hold: Tetrimino ) => void,
   removeFalling:(boardId: string) => void,
   scoreEffect: (boardId: string, kind: string)=>void,
-  infoTextUpdate: (boardId: string, text: string) => void,
+  infoTextUpdate: (boardId: string, data: InfoData) => void,
   addEndCover: (boardId: string, text: string) => void
   removeEndCover: (boardId: string) => void
+  timerOn: (boardId: string) => void,
+  timerOff: (boardId: string) => void,
+  timerReset: (boardId: string) => void,
 };
 export type InstanceType = {
   id: string,
@@ -80,7 +89,10 @@ type TetrisGame = {
   board: JsBoard,
   boardTransform: Transform,
   createInfo: BoardCreateInfo,
-  texts: Record<string, Text>
+  texts: Record<string, Text>,
+  infoTextData: InfoData,
+  isTimerOn: boolean,
+  lastUpdatedTime: number,
   next: Tetrimino[],
   hold: Tetrimino | null
 }
@@ -126,6 +138,49 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   });
   const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
   const { scene } = useThree()
+
+
+  // const lastUpdateRef = useRef(0);
+
+  useFrame((state, delta)=>{
+    // info text update
+    // console.log(clock.getDelta())
+    // console.log(delta)
+
+    for (const [boardId, tetris] of Object.entries(tetrisGames.current)) {
+      if (tetris) {
+        if (tetris.isTimerOn) {
+          if (tetris.infoTextData.time !== undefined) {
+            tetris.infoTextData.time += delta;
+
+            const sinceLastUpdate = tetris.infoTextData.time - tetris.lastUpdatedTime;
+            if (sinceLastUpdate >= 0.05) {
+              tetris.lastUpdatedTime = tetris.infoTextData.time;
+              infoTextDiffUpdate(boardId);
+            }
+          }
+        }
+      }
+    }
+  })
+  const infoTextMake = ({level, score, time}:{level: number, score: number, time: number}) => {
+    return `level:\n${level}\nscore:\n${score}\ntime:\n${format(new Date(time * 1000), 'mm:ss:SS')}`;
+  }
+
+  const infoTextDiffUpdate = (boardId: string) => {
+    const tetris = tetrisGames.current[boardId]
+    if (tetris) {
+      const beforeText = tetris.texts.infoText.text;
+      const nowText = infoTextMake({
+        level: tetris.infoTextData.level,
+        score: tetris.infoTextData.score,
+        time: tetris.infoTextData.time
+      })
+      if (beforeText !== nowText) {
+        tetris.texts.infoText.text = nowText
+      }
+    }
+  }
   const generateBoardTransformSlot = (cnt: number): {transform: Transform, boardId: string | null}[] => {
     const boardWidth = 26;
     const boardSpacing = 0; // 여유 간격
@@ -267,9 +322,13 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     text.material = textMat
     
 
-    text.sync(()=>{
-      scene.add(text)
-    })
+    // text.sync(()=>{
+    //   console.log('[board]synced', txt)
+    //   scene.add(text)
+    // })
+
+    scene.add(text)
+    text.sync()
 
     return text;
   }
@@ -464,13 +523,15 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   }
 
   const boardDelete = (boardId: string) => {
+    console.log('[boardDelete]')
     const tetris = tetrisGames.current[boardId];
     if (!tetris) {
       console.log('tetris undefined');
       return;
     }
 
-    for (const [_, v] of Object.entries(tetris.texts)) {
+    for (const [s, v] of Object.entries(tetris.texts)) {
+      console.log('[boardDelete] removeText', s)
       removeText(v);
     }
     
@@ -525,12 +586,22 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       tetris.board = new JsBoard(10, 26);
       tetris.hold = null;
       tetris.next = [];
+      tetris.isTimerOn = false;
+      tetris.infoTextData = {
+        level: 1,
+        score: 0,
+        time: 0
+      };
       updateBoardInstancedMeshse(boardId);
 
       const txt = "level:\n1\nscore:\n0";
       tetris.texts.infoText.text = txt;
+      // tetris.texts.infoText.sync()
 
       this.removeEndCover(boardId)
+
+      this.timerReset(boardId)
+      this.timerOn(boardId);
     },
     boardCreateBySlot(boardId, boardCreateInfo) {
       let myTransform;
@@ -546,10 +617,18 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     },
     boardCreate: (boardId, boardTransform, createInfo) => {
+      console.log('[boardCreate]')
       tetrisGames.current[boardId] = {
         board: new JsBoard(10, 26),
         boardTransform,
         createInfo,
+        isTimerOn: false,
+        infoTextData: {
+          level: 1,
+          score: 0,
+          time: 0,
+        },
+        lastUpdatedTime: 0,
         texts: {},
         hold: null,
         next: []
@@ -584,12 +663,34 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       finalEuler.setFromQuaternion(finalQuat);
-      const txt = "level:\n1\nscore:\n0";
+      const txt = "level:\n1\nscore:\n0\ntime:\n00:00:00";
       const infoText = addText(txt, {
         position: [finalPos.x, finalPos.y, finalPos.z],
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
         scale: [1,1,1],
       });
+
+
+  //     let startTime = null;
+  // let running = true;
+  //     function formatTime(ms) {
+  //   const totalSeconds = Math.floor(ms / 1000);
+  //   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+  //   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  //   const hundredths = Math.floor((ms % 1000) / 10).toString().padStart(2, '0');
+  //   return `${minutes}:${seconds}:${hundredths}`;
+  // }
+
+  // function updateTimer(timestamp) {
+  //   if (!startTime) startTime = timestamp;
+  //   const elapsed = timestamp - startTime;
+  //   // timerDisplay.textContent = formatTime(elapsed);
+  //   const txt = "level:\n1\nscore:\n0\ntime:\n";
+  //   infoText.text = txt + formatTime(elapsed)
+  //   if (running) requestAnimationFrame(updateTimer);
+  // }
+
+  // requestAnimationFrame(updateTimer);
 
       //  // info bg
       // dummy.position.set(-4 , -15, -0.1);
@@ -951,14 +1052,22 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         removeText(scoreEffectText)
       }, 1500)
     },
-    infoTextUpdate(boardId, text) {
+    infoTextUpdate(boardId, data) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
         console.log('tetris undefined');
         return;
       }
-
-      tetris.texts.infoText.text = text;
+      if (data.level) {
+        tetris.infoTextData.level = data.level;
+      }
+      if (data.score) {
+        tetris.infoTextData.score = data.score;
+      }
+      if (data.time) {
+        tetris.infoTextData.time = data.time;
+      }
+      infoTextDiffUpdate(boardId);
     },
     addEndCover(boardId, text) {
       const tetris = tetrisGames.current[boardId];
@@ -1011,6 +1120,36 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       blocks.Cover = newArr;
 
       updateInstancedMeshes();
+    },
+
+    timerOn(boardId) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.isTimerOn = true;
+    },
+    timerOff(boardId) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.isTimerOn = false;
+    },
+    timerReset(boardId) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      tetris.lastUpdatedTime = 0;
+      tetris.infoTextData.time = 0;
+
+      tetris.isTimerOn = false;
+
+      infoTextDiffUpdate(boardId)
     },
   }));
 

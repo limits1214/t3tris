@@ -200,8 +200,8 @@ pub struct FallingBlockAt {
 #[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
 #[cfg_attr(feature = "wasm", ts(export))]
 pub struct Location {
-    x: usize,
-    y: usize,
+    pub x: usize,
+    pub y: usize,
 }
 
 impl Location {

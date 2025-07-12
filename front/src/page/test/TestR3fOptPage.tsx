@@ -88,7 +88,27 @@ const TestR3fOptPage = () => {
         // controlsRef.current.update()
       }
       cameraCnt.current += 1;
-    })
+    }),
+    scoreEffect: button((get)=>{
+      const boardId = get('boardId');
+
+      ref.current!.scoreEffect(boardId, "sdf");
+    }),
+    infoTextUpdat: button((get)=>{
+      const boardId = get('boardId');
+
+      const txt = `level:\n1\nscore:\n21`
+      ref.current!.infoTextUpdate(boardId, txt);
+    }),
+    addEndCover: button((get)=>{
+      const boardId = get('boardId');
+      ref.current!.addEndCover(boardId, "sdf");
+    }),
+    removeEndCover: button((get)=>{
+      const boardId = get('boardId');
+
+      ref.current!.removeEndCover(boardId);
+    }),
   })
 
   const tetriminos = ["I", "O", "T", "J", "L", "S", "Z"] ;

@@ -39,11 +39,17 @@ pub enum TetrisGameActionType {
     HoldFalling {
         hold: Tetrimino,
     },
+    Score {
+        kind: TetrisScore,
+        level: u8,
+        score: u32,
+    },
+    GameOver {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TetrisGameAction {
-    elapsed: u128,
+    tick: u32,
     action: TetrisGameActionType,
 }
 
@@ -73,6 +79,10 @@ pub struct TetrisGame {
     pub placing_delay_tick: u32,
     pub is_placing_delay: bool,
     pub placing_reset_cnt: u8,
+
+    pub is_tspin: bool,
+
+    pub combo_tick: u32,
 }
 
 impl TetrisGame {
@@ -96,12 +106,14 @@ impl TetrisGame {
             placing_delay_tick: 0,
             is_placing_delay: false,
             placing_reset_cnt: 10,
+            combo_tick: 0,
+            is_tspin: false,
         }
     }
 
-    fn push_action_buffer(&mut self, action: TetrisGameActionType) {
+    pub fn push_action_buffer(&mut self, action: TetrisGameActionType) {
         self.actions_buffer.push(TetrisGameAction {
-            elapsed: self.elapsed,
+            tick: self.tick,
             action: action,
         });
     }
@@ -148,7 +160,6 @@ impl TetrisGame {
         match self.board.try_step() {
             Ok(step) => {
                 self.board.apply_step(step);
-                self.push_action_buffer(TetrisGameActionType::Step);
             }
             Err(err) => Err(err)?,
         };
@@ -161,17 +172,48 @@ impl TetrisGame {
 
         if self.board.has_placed_above(3) {
             self.is_game_over = true;
-            self.push_action_buffer(TetrisGameActionType::End {});
+            self.push_action_buffer(TetrisGameActionType::GameOver {});
             return;
         }
 
         let clear = self.board.try_line_clear();
+        let clear_len = clear.len();
         if !clear.is_empty() {
-            self.clear_line += clear.len() as u32;
-            self.level = ((self.clear_line / LEVEL_UP_LINE) as u8).clamp(1, 20);
+            self.clear_line += clear_len as u32;
+            self.level = ((self.clear_line / LEVEL_UP_LINE + 1) as u8).clamp(1, 20);
+
             self.push_action_buffer(TetrisGameActionType::LineClear);
             self.board.apply_line_clear(clear);
         }
+
+        let kind = if self.is_tspin {
+            match clear_len {
+                0 => Some(TetrisScore::TSpinZero),
+                1 => Some(TetrisScore::TSpinSingle),
+                2 => Some(TetrisScore::TSpinDouble),
+                3 => Some(TetrisScore::TSpinTriple),
+                _ => None,
+            }
+        } else {
+            match clear_len {
+                1 => Some(TetrisScore::Single),
+                2 => Some(TetrisScore::Double),
+                3 => Some(TetrisScore::Triple),
+                4 => Some(TetrisScore::Tetris),
+                _ => None,
+            }
+        };
+
+        if let Some(kind) = kind {
+            self.score += kind.score(self.level);
+            self.push_action_buffer(TetrisGameActionType::Score {
+                level: self.level,
+                kind,
+                score: self.score,
+            });
+        }
+
+        self.is_tspin = false;
 
         self.spawn_next();
         self.is_can_hold = true;
@@ -192,6 +234,77 @@ impl TetrisGame {
         Ok(())
     }
 
+    fn tspin_check(&self) -> bool {
+        // check tspin
+        let fallings = self.board.get_falling_blocks();
+
+        let is_tspin = if fallings[0].falling.kind == Tetrimino::T {
+            // yes: SOFT DROP, HARD DROP, STEP
+            // no: MOVE, ,
+            let mut is_tspin = false;
+            let mut is_3_corner = false;
+
+            let center_loc = fallings
+                .into_iter()
+                .find(|f| f.falling.id == 2)
+                .map(|f| f.location);
+            let offsets = [(-1, -1), (1, -1), (-1, 1), (1, 1)];
+            let mut placed_cnt = 0;
+            if let Some(center_loc) = center_loc {
+                for (offset_x, offset_y) in offsets {
+                    let find_x = usize::try_from(center_loc.x as i8 + offset_x).ok();
+                    let find_y = usize::try_from(center_loc.y as i8 + offset_y).ok();
+                    match (find_x, find_y) {
+                        (Some(find_x), Some(find_y)) => {
+                            if find_x < self.board.x_len() && find_y < self.board.y_len() {
+                                match self.board.location(find_x, find_y) {
+                                    tetris_lib::Tile::Placed(_) => {
+                                        placed_cnt += 1;
+                                    }
+                                    _ => {}
+                                }
+                            } else {
+                                // wall
+                                placed_cnt += 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                if placed_cnt >= 3 {
+                    is_3_corner = true;
+                }
+            }
+
+            if is_3_corner {
+                for a in self.actions.iter().chain(self.actions_buffer.iter()).rev() {
+                    match a.action {
+                        TetrisGameActionType::RotateLeft => {
+                            is_tspin = true;
+                            break;
+                        }
+                        TetrisGameActionType::RotateRight => {
+                            is_tspin = true;
+                            break;
+                        }
+                        TetrisGameActionType::MoveLeft => {
+                            break;
+                        }
+                        TetrisGameActionType::MoveRight => {
+                            break;
+                        }
+                        _ => continue,
+                    }
+                }
+            }
+
+            is_tspin
+        } else {
+            false
+        };
+        is_tspin
+    }
+
     pub fn action_move_left(&mut self) -> anyhow::Result<()> {
         let plan = self
             .board
@@ -199,6 +312,8 @@ impl TetrisGame {
         self.board.apply_move_falling(plan);
 
         self.push_action_buffer(TetrisGameActionType::MoveLeft);
+
+        self.is_tspin = false;
 
         if self.placing_reset_cnt > 0 {
             self.placing_delay_tick = 0;
@@ -215,6 +330,8 @@ impl TetrisGame {
 
         self.push_action_buffer(TetrisGameActionType::MoveRight);
 
+        self.is_tspin = false;
+
         if self.placing_reset_cnt > 0 {
             self.placing_delay_tick = 0;
             self.placing_reset_cnt -= 1;
@@ -230,6 +347,8 @@ impl TetrisGame {
 
         self.push_action_buffer(TetrisGameActionType::RotateRight);
 
+        self.is_tspin = self.tspin_check();
+
         if self.placing_reset_cnt > 0 {
             self.placing_delay_tick = 0;
             self.placing_reset_cnt -= 1;
@@ -244,6 +363,8 @@ impl TetrisGame {
         self.board.apply_rotate_falling(plan);
 
         self.push_action_buffer(TetrisGameActionType::RotateLeft);
+
+        self.is_tspin = self.tspin_check();
 
         if self.placing_reset_cnt > 0 {
             self.placing_delay_tick = 0;
@@ -335,6 +456,8 @@ impl TetrisGame {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TetrisScore {
     Single,
     Double,
@@ -344,6 +467,8 @@ pub enum TetrisScore {
     TSpinSingle,
     TSpinDouble,
     TSpinTriple,
+    SoftDrop,
+    HardDrop,
 }
 
 impl TetrisScore {
@@ -360,6 +485,8 @@ impl TetrisScore {
             TetrisScore::TSpinSingle => 800,
             TetrisScore::TSpinDouble => 1200,
             TetrisScore::TSpinTriple => 1600,
+            TetrisScore::SoftDrop => 1,
+            TetrisScore::HardDrop => 2,
         }
     }
 }

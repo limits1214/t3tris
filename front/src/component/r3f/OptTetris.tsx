@@ -39,6 +39,10 @@ export type OptTetrisController = {
   lineClear:(boardId: string) => void,
   holdFalling:(boardId: string, hold: Tetrimino ) => void,
   removeFalling:(boardId: string) => void,
+  scoreEffect: (boardId: string, kind: string)=>void,
+  infoTextUpdate: (boardId: string, text: string) => void,
+  addEndCover: (boardId: string, text: string) => void
+  removeEndCover: (boardId: string) => void
 };
 export type InstanceType = {
   id: string,
@@ -100,10 +104,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   // blockBasicGeometry.scale(0.5, 0.5, 0.5)
   const RESERVE = 5000;
   const geometry = new THREE.BoxGeometry();
+  const lineGeometry = new THREE.PlaneGeometry();
   
   const instancedBlocksMeshes = useRef<Record<Block, THREE.InstancedMesh>>({
     Cover: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Cover"), transparent: true, opacity: 0.7, }), RESERVE),
-    CoverLine: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("CoverLine")}), RESERVE),
+    CoverLine: new THREE.InstancedMesh(lineGeometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("CoverLine")}), RESERVE),
     Case: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Case") }), RESERVE),
     E: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("E") }), RESERVE),
     I: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("I") }), RESERVE),
@@ -475,6 +480,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const newArr = block.filter(item => item.id !== `${boardId}_Block`);
       blocks[k as Block] = newArr
     }
+    const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`);
+    blocks.Cover = newArr;
 
     delete tetrisGames.current[boardId]
 
@@ -519,6 +526,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       tetris.hold = null;
       tetris.next = [];
       updateBoardInstancedMeshse(boardId);
+
+      const txt = "level:\n1\nscore:\n0";
+      tetris.texts.infoText.text = txt;
+
+      this.removeEndCover(boardId)
     },
     boardCreateBySlot(boardId, boardCreateInfo) {
       let myTransform;
@@ -568,16 +580,16 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         scale: [2,2,2],
       });
 
-      // dummy.position.set(-4, -15, 0);
-      // dummy.getWorldPosition(finalPos);
-      // dummy.getWorldQuaternion(finalQuat);
-      // finalEuler.setFromQuaternion(finalQuat);
-      // const txt = "elapsed:\n11:11:11\nscore:\n1\nclearline:\n3\nattacked:\n1";
-      // const infoText = addText(txt, {
-      //   position: [finalPos.x, finalPos.y, finalPos.z],
-      //   rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-      //   scale: [1,1,1],
-      // });
+      dummy.position.set(-4, -15, 0);
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldQuaternion(finalQuat);
+      finalEuler.setFromQuaternion(finalQuat);
+      const txt = "level:\n1\nscore:\n0";
+      const infoText = addText(txt, {
+        position: [finalPos.x, finalPos.y, finalPos.z],
+        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+        scale: [1,1,1],
+      });
 
       //  // info bg
       // dummy.position.set(-4 , -15, -0.1);
@@ -598,10 +610,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       tetris.texts = {
         ...tetris.texts,
         "nickName": nickNameText,
-        // "infoText": infoText,
+        "infoText": infoText,
       }
-
-     
 
       dummy.position.set(-1 + 0.4, -12.5, 0);
       dummy.scale.set(0.2, 20, 1);
@@ -905,6 +915,102 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
       tetris.board.removeFallingBlocks();
       updateBoardInstancedMeshse(boardId);
+    },
+    scoreEffect(boardId, kind) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      const group = new THREE.Group();
+      group.position.set(...tetris.boardTransform.position);
+      group.rotation.set(...tetris.boardTransform.rotation);
+      group.scale.set(...tetris.boardTransform.scale);
+
+      const dummy = new THREE.Object3D();
+      group.add(dummy)
+
+      const finalPos = new THREE.Vector3();
+      const finalQuat = new THREE.Quaternion();
+      const finalEuler = new THREE.Euler();
+      // const finalScale = new THREE.Vector3();
+
+
+      dummy.position.set(-4, -10, 0);
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldQuaternion(finalQuat);
+      finalEuler.setFromQuaternion(finalQuat);
+      const txt = `${kind}`;
+      const scoreEffectText = addText(txt, {
+        position: [finalPos.x, finalPos.y, finalPos.z],
+        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+        scale: [1,1,1],
+      });
+
+      setTimeout(()=>{
+        removeText(scoreEffectText)
+      }, 1500)
+    },
+    infoTextUpdate(boardId, text) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+
+      tetris.texts.infoText.text = text;
+    },
+    addEndCover(boardId, text) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+
+      const blocks = instancedBlocks.current;
+
+      const group = new THREE.Group();
+      group.position.set(...tetris.boardTransform.position);
+      group.rotation.set(...tetris.boardTransform.rotation);
+      group.scale.set(...tetris.boardTransform.scale);
+
+      const dummy = new THREE.Object3D();
+      group.add(dummy)
+
+      const finalPos = new THREE.Vector3();
+      const finalQuat = new THREE.Quaternion();
+      const finalEuler = new THREE.Euler();
+      const finalScale = new THREE.Vector3();
+
+      dummy.position.set(4.5 , -12.5, 0.71);
+      dummy.scale.set(10, 20, 0.01);
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldQuaternion(finalQuat);
+      dummy.getWorldScale(finalScale)
+      finalEuler.setFromQuaternion(finalQuat);
+      blocks.Cover.push({
+        id: `${boardId}_Block_EndCover`,
+        transform: {
+          position: [finalPos.x, finalPos.y, finalPos.z],
+          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+          scale: [finalScale.x, finalScale.y, finalScale.z]
+        }
+      });
+
+      updateInstancedMeshes();
+    },
+    removeEndCover(boardId) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+
+      const blocks = instancedBlocks.current;
+      const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`)
+      blocks.Cover = newArr;
+
+      updateInstancedMeshes();
     },
   }));
 

@@ -3,6 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::ws_world::game::tetris::TetrisGameActionType;
 use crate::{
     constant::TOPIC_ROOM_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
@@ -15,7 +16,6 @@ use crate::{
         pubsub::WsPubSub,
     },
 };
-
 pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSub) {
     let mut available_game = data
         .games
@@ -109,7 +109,9 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                         if tetris.step_tick >= level_to_gravity_tick(tetris.level) {
                             tetris.step_tick = 0;
                             match tetris.step() {
-                                Ok(_) => {}
+                                Ok(_) => {
+                                    tetris.push_action_buffer(TetrisGameActionType::Step);
+                                }
                                 Err(err) => match err {
                                     tetris_lib::StepError::OutOfBounds => {
                                         if !tetris.is_placing_delay {
@@ -131,9 +133,9 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                                 },
                             }
                         }
-                        tetries_push_info
-                            .insert(tetris.ws_id.clone().to_string(), tetris.get_action_buffer());
                     }
+                    tetries_push_info
+                        .insert(tetris.ws_id.clone().to_string(), tetris.get_action_buffer());
                 } else {
                     tetris.is_started = true;
                     tetris.is_game_over = false;

@@ -1585,3 +1585,36 @@ _0123456789
 "#;
     assert_eq!(format!("{board}"), expted);
 }
+#[test]
+fn test_t() {
+    let mut board = Board::new(10, 4);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::T).unwrap());
+    println!("{board}");
+    for f in board.get_falling_blocks() {
+        println!("loc: {:?}, id:{:?}", f.location, f.falling.id);
+    }
+
+    board.apply_rotate_falling(board.try_rotate_falling(RotateDirection::Right).unwrap());
+    println!("{board}");
+    for f in board.get_falling_blocks() {
+        println!("loc: {:?}, id:{:?}", f.location, f.falling.id);
+    }
+
+    board.apply_rotate_falling(board.try_rotate_falling(RotateDirection::Right).unwrap());
+    println!("{board}");
+    for f in board.get_falling_blocks() {
+        println!("loc: {:?}, id:{:?}", f.location, f.falling.id);
+    }
+
+    board.apply_rotate_falling(board.try_rotate_falling(RotateDirection::Right).unwrap());
+    println!("{board}");
+    for f in board.get_falling_blocks() {
+        println!("loc: {:?}, id:{:?}", f.location, f.falling.id);
+    }
+
+    board.apply_rotate_falling(board.try_rotate_falling(RotateDirection::Right).unwrap());
+    println!("{board}");
+    for f in board.get_falling_blocks() {
+        println!("loc: {:?}, id:{:?}", f.location, f.falling.id);
+    }
+}

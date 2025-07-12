@@ -189,6 +189,18 @@ const WebSocketInitializer = () => {
                 } else if (typeof action === "object" && action !== null && "holdFalling" in action) {
                   const t = action["holdFalling"].hold
                   gameRef?.current?.holdFalling(k, t);
+                } else if (typeof action === "object" && action !== null && "score" in action) {
+                  const kind = action["score"].kind
+                  const level = action["score"].level
+                  const score = action["score"].score
+                  gameRef?.current?.infoTextUpdate(k, `level:\n${level}\nscore:\n${score}`);
+                  if (kind === "single" || kind === "double" || kind === "triple" || kind === "tetris"
+                    || kind === "tSpinZero" || kind === "tSpinSingle" || kind === "tSpinDouble" || kind === "tSpinTriple" 
+                  ) {
+                    gameRef?.current?.scoreEffect(k, kind)
+                  }
+                } else if (typeof action === "object" && action !== null && "gameOver" in action) {
+                  gameRef?.current?.addEndCover(k, "t");
                 } else if (typeof action === "string" && action === "removeFalling") {
                   gameRef?.current?.removeFalling(k,);
                 } else if (typeof action === "string" && action === "moveLeft") {
@@ -199,6 +211,8 @@ const WebSocketInitializer = () => {
                   gameRef?.current?.rotateRight(k)
                 } else if (typeof action === "string" && action === "rotateLeft") {
                   gameRef?.current?.rotateLeft(k)
+                } else if (typeof action === "string" && action === "softDrop") {
+                  gameRef?.current?.step(k)
                 } else if (typeof action === "string" && action === "hardDrop") {
                   gameRef?.current?.hardDrop(k)
                 } else if (typeof action === "string" && action === "step") {

@@ -1631,3 +1631,40 @@ fn testspawn() {
     board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::L).unwrap());
     println!("{board}");
 }
+
+#[test]
+fn test_garbage1() {
+    let mut board = Board::new(10, 10);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::L).unwrap());
+    println!("{board}");
+    board.push_garbage_line(2);
+    println!("{board}");
+}
+
+#[test]
+fn test_garbage2() {
+    let mut board = Board::new(10, 10);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::L).unwrap());
+    board.hard_drop();
+    println!("{board}");
+    board.push_garbage_line(2);
+    println!("{board}");
+}
+
+#[test]
+fn test_garbage3() {
+    let mut board = Board::new(10, 10);
+    board.apply_spawn_falling(board.try_spawn_falling(Tetrimino::L).unwrap());
+
+    println!("{board}");
+    board.push_garbage_line(2);
+    board.push_garbage_line(2);
+    board.push_garbage_line(2);
+    board.push_garbage_line(2);
+    board.push_garbage_line(2);
+    board.push_garbage_line(2);
+    board.push_garbage_line(2);
+    println!("{}", board.push_garbage_line(2));
+    println!("{}", board.push_garbage_line(2));
+    println!("{board}");
+}

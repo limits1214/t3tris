@@ -140,7 +140,7 @@ impl From<&Tetrimino> for String {
         }
     }
 }
-pub const GARBAGE_TETRIMINO: usize = 8;
+pub const GARBAGE_TILE: u8 = 8;
 
 #[repr(usize)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -892,5 +892,54 @@ impl Board {
             }
         }
         return false;
+    }
+
+    pub fn push_garbage_line(&mut self, empty_x: usize) -> bool {
+        let mut garbage_blocks = vec![Tile::Placed(GARBAGE_TILE); 10];
+        garbage_blocks[empty_x] = Tile::Empty;
+
+        let fallings: Vec<FallingBlockAt> = self.get_falling_blocks();
+
+        for ceil_tile in self.line(0) {
+            if matches!(ceil_tile, Tile::Falling(_)) {
+                // 천장에 닿은경우
+                return false;
+            }
+        }
+
+        for FallingBlockAt { location, .. } in &fallings {
+            *self.location_mut(location.x, location.y) = Tile::Empty;
+        }
+
+        let mut is_falling_collide = false;
+        for FallingBlockAt { location, .. } in &fallings {
+            // 밑에 있는지 체크
+            if location.y + 1 >= self.y_len() {
+                is_falling_collide = true;
+                break;
+            }
+            match self.location(location.x, location.y + 1) {
+                Tile::Placed(_) => {
+                    is_falling_collide = true;
+                    break;
+                }
+                _ => {}
+            };
+        }
+
+        self.0.remove(0);
+        self.0.push(garbage_blocks);
+
+        if is_falling_collide {
+            for FallingBlockAt { location, falling } in fallings {
+                *self.location_mut(location.x, location.y - 1) = Tile::Falling(falling);
+            }
+        } else {
+            for FallingBlockAt { location, falling } in fallings {
+                *self.location_mut(location.x, location.y) = Tile::Falling(falling);
+            }
+        }
+
+        true
     }
 }

@@ -175,4 +175,9 @@ impl JsBoard {
     pub fn remove_falling_blocks(&mut self) {
         self.inner.remove_falling_blocks();
     }
+
+    #[wasm_bindgen(js_name = pushGarbageLine)]
+    pub fn push_garbage_line(&mut self, empty_x: usize) -> bool {
+        self.inner.push_garbage_line(empty_x)
+    }
 }

@@ -113,15 +113,14 @@ impl std::error::Error for MoveError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
 #[cfg_attr(feature = "wasm", ts(export))]
-
 pub enum Tetrimino {
-    I,
-    O,
-    T,
-    J,
-    L,
-    S,
-    Z,
+    I = 1,
+    O = 2,
+    T = 3,
+    J = 4,
+    L = 5,
+    S = 6,
+    Z = 7,
 }
 impl From<Tetrimino> for String {
     fn from(value: Tetrimino) -> Self {
@@ -141,16 +140,17 @@ impl From<&Tetrimino> for String {
         }
     }
 }
+pub const GARBAGE_TETRIMINO: usize = 8;
 
 #[repr(usize)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm", derive(ts_rs::TS))]
 #[cfg_attr(feature = "wasm", ts(export))]
 pub enum Rotate {
-    D0,
-    D90,
-    D180,
-    D270,
+    D0 = 0,
+    D90 = 1,
+    D180 = 2,
+    D270 = 3,
 }
 
 impl Rotate {
@@ -256,7 +256,14 @@ impl std::fmt::Display for Tile {
     }
 }
 
-const RIGHT_ROTATE_TABLE: [[[(i8, i8); 4]; 4]; 7] = [
+const RIGHT_ROTATE_TABLE: [[[(i8, i8); 4]; 4]; 8] = [
+    // Empty
+    [
+        [(0, 0), (0, 0), (0, 0), (0, 0)],
+        [(0, 0), (0, 0), (0, 0), (0, 0)],
+        [(0, 0), (0, 0), (0, 0), (0, 0)],
+        [(0, 0), (0, 0), (0, 0), (0, 0)],
+    ],
     // Tetrimino::I
     [
         // id 0, id 1, id 2, id 3
@@ -309,7 +316,9 @@ const RIGHT_ROTATE_TABLE: [[[(i8, i8); 4]; 4]; 7] = [
     ],
 ];
 
-const SPAWN_TABLE: [[(i8, i8); 4]; 7] = [
+const SPAWN_TABLE: [[(i8, i8); 4]; 8] = [
+    // Empty
+    [(0, 0), (0, 0), (0, 0), (0, 0)],
     // Tetrimino::I
     // 01234
     [(0, 1), (1, 1), (2, 1), (3, 1)],

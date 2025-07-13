@@ -152,11 +152,8 @@ impl JsBoard {
     }
 
     #[wasm_bindgen(js_name = hardDrop)]
-    pub fn hard_drop(&mut self) -> Result<(), JsValue> {
-        match self.inner.hard_drop() {
-            Ok(()) => Ok(()),
-            Err(err) => Err(to_value(&err)?),
-        }
+    pub fn hard_drop(&mut self) -> usize {
+        self.inner.hard_drop() as usize
     }
 
     #[wasm_bindgen(js_name = showFallingHint)]

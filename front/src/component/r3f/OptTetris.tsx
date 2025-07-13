@@ -298,13 +298,13 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   }, [font, scene])
 
   const placedIdMap = (placedId: number) => {
-    if (placedId === 0) return "I"
-    else if (placedId === 1) return "O"
-    else if (placedId === 2) return "T"
-    else if (placedId === 3) return "J"
-    else if (placedId === 4) return "L"
-    else if (placedId === 5) return "S"
-    else return "Z" // 6
+    if (placedId === 1) return "I"
+    else if (placedId === 2) return "O"
+    else if (placedId === 3) return "T"
+    else if (placedId === 4) return "J"
+    else if (placedId === 5) return "L"
+    else if (placedId === 6) return "S"
+    else return "Z" // 7
   }
 
   const textMat = new THREE.MeshBasicMaterial({color: 'black', side: THREE.DoubleSide});

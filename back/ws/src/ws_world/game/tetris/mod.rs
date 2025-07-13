@@ -445,6 +445,8 @@ impl TetrisGame {
                 self.spawn_next();
             }
         }
+
+        self.is_placing_delay = false;
     }
 
     pub fn get_client_info(&mut self) -> serde_json::Value {

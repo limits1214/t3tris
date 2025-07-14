@@ -73,11 +73,8 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 );
             }
         } else {
-            //
-
             let mut attack_list = vec![];
             for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
-                //
                 if tetris.is_started {
                     if !tetris.is_game_over {
                         tetris.tick += 1;
@@ -111,17 +108,8 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                             match tetris.try_step() {
                                 Ok(_) => {}
                                 Err(err) => match err {
-                                    tetris_lib::StepError::OutOfBounds => {
-                                        tetris.placing_delay_tick += 1;
-                                        if tetris.placing_delay_tick >= PLACING_DELAY {
-                                            if let Some(attack) = tetris.place_falling() {
-                                                attack_list.push((tetris.ws_id.clone(), attack));
-                                            }
-
-                                            tetris.is_placing_delay = false;
-                                        }
-                                    }
-                                    tetris_lib::StepError::Blocked(_) => {
+                                    tetris_lib::StepError::Blocked(_)
+                                    | tetris_lib::StepError::OutOfBounds => {
                                         tetris.placing_delay_tick += 1;
                                         if tetris.placing_delay_tick >= PLACING_DELAY {
                                             if let Some(attack) = tetris.place_falling() {
@@ -145,20 +133,15 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                                     tetris.push_action_buffer(TetrisGameActionType::Step);
                                 }
                                 Err(err) => match err {
-                                    tetris_lib::StepError::OutOfBounds => {
+                                    tetris_lib::StepError::Blocked(_)
+                                    | tetris_lib::StepError::OutOfBounds => {
                                         if !tetris.is_placing_delay {
                                             tetris.is_placing_delay = true;
                                             tetris.placing_delay_tick = 0;
                                             tetris.placing_reset_cnt = 15;
                                         }
                                     }
-                                    tetris_lib::StepError::Blocked(_) => {
-                                        if !tetris.is_placing_delay {
-                                            tetris.is_placing_delay = true;
-                                            tetris.placing_delay_tick = 0;
-                                            tetris.placing_reset_cnt = 15;
-                                        }
-                                    }
+
                                     tetris_lib::StepError::InvalidShape => {
                                         //
                                     }

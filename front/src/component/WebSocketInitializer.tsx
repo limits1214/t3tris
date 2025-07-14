@@ -203,6 +203,12 @@ const WebSocketInitializer = () => {
                 } else if (typeof action === "object" && action !== null && "gameOver" in action) {
                   gameRef?.current?.addEndCover(k, "t");
                   gameRef?.current?.timerOff(k);
+                } else if (typeof action === "object" && action !== null && "garbage" in action) {
+                  const queue = action["garbage"].queue;
+                  gameRef?.current?.garbageQueueSet(k, queue)
+                } else if (typeof action === "object" && action !== null && "garbageAdd" in action) {
+                  const emptyx = action["garbageAdd"].empty;
+                  gameRef?.current?.garbageAdd(k, emptyx)
                 } else if (typeof action === "string" && action === "removeFalling") {
                   gameRef?.current?.removeFalling(k,);
                 } else if (typeof action === "string" && action === "moveLeft") {
@@ -223,7 +229,7 @@ const WebSocketInitializer = () => {
                   gameRef?.current?.placing(k)
                 } else if (typeof action === "string" && action === "lineClear") {
                   gameRef?.current?.lineClear(k)
-                }
+                } 
               }
             }
             

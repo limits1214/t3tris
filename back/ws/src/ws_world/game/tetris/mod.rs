@@ -1,9 +1,6 @@
 use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::VecDeque,
-    time::{Duration, Instant},
-};
+use std::collections::VecDeque;
 use tetris_lib::{Board, FallingBlock, SpawnError, StepError, Tetrimino, Tile, TileAt};
 
 use crate::ws_world::model::WsId;
@@ -45,6 +42,12 @@ pub enum TetrisGameActionType {
         score: u32,
         combo: u32,
     },
+    Garbage {
+        queue: Vec<GarbageQueue>,
+    },
+    GarbageAdd {
+        empty: Vec<u8>,
+    },
     GameOver {},
 }
 
@@ -58,6 +61,19 @@ impl TetrisGameAction {
     //
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GarbageQueue {
+    pub from: String,
+    pub line: u8,
+    pub tick: u32,
+    pub kind: GarbageQueueKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum GarbageQueueKind {
+    Queued,
+    Ready,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TetrisGame {
     pub ws_id: WsId,
@@ -85,6 +101,8 @@ pub struct TetrisGame {
 
     pub combo: u32,
     pub combo_tick: u32,
+    //
+    pub garbage_queue: VecDeque<GarbageQueue>,
 }
 
 impl TetrisGame {
@@ -111,6 +129,7 @@ impl TetrisGame {
             combo: 0,
             combo_tick: 0,
             is_tspin: false,
+            garbage_queue: VecDeque::new(),
         }
     }
 
@@ -169,9 +188,11 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn place_falling(&mut self) {
+    pub fn place_falling(&mut self) -> Option<u8> {
         self.board.place_falling();
         self.push_action_buffer(TetrisGameActionType::Placing);
+
+        let mut is_garbage_changed = false;
 
         let clear = self.board.try_line_clear();
         let clear_len = clear.len();
@@ -187,6 +208,24 @@ impl TetrisGame {
                 self.combo += 1;
             }
             self.combo_tick = 150; // 2.5 sec
+
+            // line clear garbage remove
+            let mut temp = clear_len as u8;
+            loop {
+                let front = self.garbage_queue.pop_front();
+                if let Some(mut front) = front {
+                    is_garbage_changed = true;
+                    if let Some(v) = temp.checked_sub(front.line) {
+                        temp = v;
+                    } else {
+                        front.line = front.line - temp;
+                        self.garbage_queue.push_front(front);
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
         }
 
         let kind = if self.is_tspin {
@@ -207,7 +246,20 @@ impl TetrisGame {
             }
         };
 
+        let mut attck_line = None;
         if let Some(kind) = kind {
+            // attack
+            match kind {
+                // TetrisScore::Single => attck_line = Some(1),
+                TetrisScore::Double => attck_line = Some(1),
+                TetrisScore::Triple => attck_line = Some(2),
+                TetrisScore::Tetris => attck_line = Some(4),
+                TetrisScore::TSpinSingle => attck_line = Some(2),
+                TetrisScore::TSpinDouble => attck_line = Some(4),
+                TetrisScore::TSpinTriple => attck_line = Some(6),
+                _ => attck_line = None,
+            }
+
             self.score += kind.score(self.level) + (200 * self.combo);
             self.push_action_buffer(TetrisGameActionType::Score {
                 level: self.level,
@@ -221,6 +273,45 @@ impl TetrisGame {
 
         self.spawn_next();
         self.is_can_hold = true;
+
+        let mut add_gargabe = vec![];
+        loop {
+            if let Some(front) = self.garbage_queue.pop_front() {
+                is_garbage_changed = true;
+                if matches!(front.kind, GarbageQueueKind::Ready) {
+                    for _ in 0..front.line {
+                        let x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                            .choose(&mut rand::rng())
+                            .unwrap();
+                        add_gargabe.push(*x); // TODO random
+                    }
+                } else {
+                    self.garbage_queue.push_front(front);
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        if !add_gargabe.is_empty() {
+            for x in &add_gargabe {
+                if !self.board.push_garbage_line(*x as usize) {
+                    self.is_game_over = true;
+                    self.push_action_buffer(TetrisGameActionType::GameOver {});
+                    return attck_line;
+                };
+            }
+            self.push_action_buffer(TetrisGameActionType::GarbageAdd { empty: add_gargabe });
+        }
+
+        if is_garbage_changed {
+            self.push_action_buffer(TetrisGameActionType::Garbage {
+                queue: self.garbage_queue.clone().into(),
+            });
+        }
+
+        attck_line
     }
 
     pub fn spawn_next(&mut self) -> anyhow::Result<()> {
@@ -249,6 +340,19 @@ impl TetrisGame {
         self.step_tick = 9999;
         self.board.apply_spawn_falling(new_tiles);
         Ok(())
+    }
+
+    pub fn garbage_queueing(&mut self, attack_line: u8, from: String) {
+        self.garbage_queue.push_back(GarbageQueue {
+            from,
+            line: attack_line,
+            tick: self.tick,
+            kind: GarbageQueueKind::Queued,
+        });
+
+        self.push_action_buffer(TetrisGameActionType::Garbage {
+            queue: self.garbage_queue.clone().into(),
+        });
     }
 
     fn tspin_check(&self) -> bool {
@@ -390,7 +494,7 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn action_hard_drop(&mut self) -> anyhow::Result<()> {
+    pub fn action_hard_drop(&mut self) -> Option<u8> {
         let dropcnt = self.board.hard_drop();
         self.push_action_buffer(TetrisGameActionType::HardDrop);
 
@@ -404,8 +508,7 @@ impl TetrisGame {
         });
 
         self.is_placing_delay = false;
-        self.place_falling();
-        Ok(())
+        self.place_falling()
     }
 
     pub fn action_soft_drop(&mut self) -> anyhow::Result<()> {
@@ -419,6 +522,7 @@ impl TetrisGame {
             score: self.score,
             combo: self.combo,
         });
+
         self.step()?;
         Ok(())
     }

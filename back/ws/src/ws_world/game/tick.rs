@@ -3,7 +3,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::ws_world::game::tetris::TetrisGameActionType;
+use rand::seq::IndexedRandom;
+
+use crate::ws_world::game::tetris::{GarbageQueueKind, TetrisGameActionType};
 use crate::{
     constant::TOPIC_ROOM_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
@@ -73,7 +75,7 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
         } else {
             //
 
-            let mut tetries_push_info = HashMap::new();
+            let mut attack_list = vec![];
             for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
                 //
                 if tetris.is_started {
@@ -89,6 +91,22 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                             tetris.combo = 0;
                         }
 
+                        // garbage
+                        let mut garbage_ready = false;
+                        for gq in tetris.garbage_queue.iter_mut() {
+                            if matches!(gq.kind, GarbageQueueKind::Queued)
+                                && tetris.tick > gq.tick + 180
+                            {
+                                gq.kind = GarbageQueueKind::Ready;
+                                garbage_ready = true;
+                            }
+                        }
+                        if garbage_ready {
+                            tetris.push_action_buffer(TetrisGameActionType::Garbage {
+                                queue: tetris.garbage_queue.clone().into(),
+                            });
+                        }
+
                         if tetris.is_placing_delay {
                             match tetris.try_step() {
                                 Ok(_) => {}
@@ -96,14 +114,20 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                                     tetris_lib::StepError::OutOfBounds => {
                                         tetris.placing_delay_tick += 1;
                                         if tetris.placing_delay_tick >= PLACING_DELAY {
-                                            tetris.place_falling();
+                                            if let Some(attack) = tetris.place_falling() {
+                                                attack_list.push((tetris.ws_id.clone(), attack));
+                                            }
+
                                             tetris.is_placing_delay = false;
                                         }
                                     }
-                                    tetris_lib::StepError::Blocked(location) => {
+                                    tetris_lib::StepError::Blocked(_) => {
                                         tetris.placing_delay_tick += 1;
                                         if tetris.placing_delay_tick >= PLACING_DELAY {
-                                            tetris.place_falling();
+                                            if let Some(attack) = tetris.place_falling() {
+                                                attack_list.push((tetris.ws_id.clone(), attack));
+                                            }
+
                                             tetris.is_placing_delay = false;
                                         }
                                     }
@@ -142,8 +166,6 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                             }
                         }
                     }
-                    tetries_push_info
-                        .insert(tetris.ws_id.clone().to_string(), tetris.get_action_buffer());
                 } else {
                     tetris.is_started = true;
                     tetris.is_game_over = false;
@@ -151,10 +173,30 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                     tetris.spawn_next();
                     tetris.tick = 0;
                     tetris.step_tick = 0;
-
-                    tetries_push_info
-                        .insert(tetris.ws_id.clone().to_string(), tetris.get_action_buffer());
                 }
+            }
+
+            // attack
+            for (ws_id, attack_line) in attack_list {
+                let targets = game
+                    .tetries
+                    .iter()
+                    .filter(|(f, g)| **f != ws_id && !g.is_game_over)
+                    .map(|t| t.0)
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                if let Some(target) = targets.choose(&mut rand::rng()) {
+                    if let Some(game) = game.tetries.get_mut(&target) {
+                        game.garbage_queueing(attack_line, ws_id.to_string());
+                    }
+                }
+            }
+
+            let mut tetries_push_info = HashMap::new();
+            for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
+                tetries_push_info
+                    .insert(tetris.ws_id.clone().to_string(), tetris.get_action_buffer());
             }
 
             if !tetries_push_info.is_empty() {

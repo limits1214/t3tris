@@ -121,6 +121,26 @@ const TestR3fOptPage = () => {
     timerReset: button((get)=>{
       ref.current!.timerReset(get('boardId'));
     }),
+
+    garbageQueue: button((get)=>{
+      ref.current!.garbageQueueSet(get('boardId'), [
+        {
+          kind: "Queued",
+          line: 1
+        },
+        {
+          kind: "Ready",
+          line: 2
+        },
+         {
+          kind: "Queued",
+          line: 3
+        }
+      ]);
+    }),
+    garbageAdd: button((get)=>{
+      ref.current!.garbageAdd(get('boardId'), [1,2,3])
+    }),
   })
 
   const tetriminos = ["I", "O", "T", "J", "L", "S", "Z"] ;

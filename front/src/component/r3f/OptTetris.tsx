@@ -52,12 +52,18 @@ export type OptTetrisController = {
   timerOn: (boardId: string) => void,
   timerOff: (boardId: string) => void,
   timerReset: (boardId: string) => void,
+  garbageQueueSet: (boardId: string, garbageQueue: GarbageQueue[]) => void,
+  garbageAdd: (boardId: string, emptyx: number[]) => void,
 };
+export type GarbageQueue = {
+  kind: "Queued" | "Ready",
+  line: number
+}
 export type InstanceType = {
   id: string,
   transform: Transform
 }
-export type Block = "Cover" |"CoverLine"| "Case" | "E" | "H" | Tetrimino;
+export type Block = "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
 export const blockColorMapping = (block: Block) => {
   if (block === "Case") {
     return "black"
@@ -81,10 +87,17 @@ export const blockColorMapping = (block: Block) => {
     return "#FF0000"
   } else if (block === "H") {
     return "white"
+  } else if (block === "GarbageQueue") {
+    return "#F08080"
+  } else if (block === "GarbageReady") {
+    return "#8B0000"
+  } else if (block === "Garbage") {
+    return "gray"
   } else {
     return ""
   }
 }
+
 type TetrisGame = {
   board: JsBoard,
   boardTransform: Transform,
@@ -123,6 +136,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     CoverLine: new THREE.InstancedMesh(lineGeometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("CoverLine")}), RESERVE),
     Case: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Case") }), RESERVE),
     E: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("E") }), RESERVE),
+    GarbageQueue:new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("GarbageQueue") }), RESERVE),
+    GarbageReady:new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("GarbageReady") }), RESERVE),
+    Garbage:new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("Garbage") }), RESERVE),
     I: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("I") }), RESERVE),
     O: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("O") }), RESERVE),
     T: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("T") }), RESERVE),
@@ -134,7 +150,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   });
   instancedBlocksMeshes.current.H.renderOrder = 999;
   const instancedBlocks = useRef<Record<Block, InstanceType[]>>({
-    Cover: [], CoverLine:[], Case: [], E: [], I: [], O: [], T: [], J: [], L: [], S: [], Z: [], H: []
+    Cover: [], CoverLine:[], Case: [], E: [],
+    GarbageQueue: [],GarbageReady:[],Garbage:[],
+    I: [], O: [], T: [], J: [], L: [], S: [], Z: [], H: []
   });
   const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
   const { scene } = useThree()
@@ -223,7 +241,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const boardTrasnfromSlot = useRef(generateBoardTransformSlot(100))
   
   useEffect(() => {
-    const keys: Block[] = ["Cover", "CoverLine", "Case", "I", "O", "T", "J", "L", "S", "Z", "H"];
+    const keys: Block[] = ["Cover", "CoverLine", "Case", "I", "O", "T", "J", "L", "S", "Z", "H", "Garbage", "GarbageQueue", "GarbageReady"];
     const localRef = instancedBlocksMeshes.current; 
     for (const key of keys) {
       localRef[key].count = 0;
@@ -304,7 +322,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     else if (placedId === 4) return "J"
     else if (placedId === 5) return "L"
     else if (placedId === 6) return "S"
-    else return "Z" // 7
+    else if (placedId === 7) return "Z" 
+    else return "Garbage"
   }
 
   const textMat = new THREE.MeshBasicMaterial({color: 'black', side: THREE.DoubleSide});
@@ -396,7 +415,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     const boardTransform = tetris.boardTransform;
 
     for (const [k, block] of Object.entries(blocks)) {
-      if (k === "Case" || k === "Cover" || k === "CoverLine") continue;
+      if (k === "Case" || k === "Cover" || k === "CoverLine"
+        || k === "GarbageQueue" ||k === "GarbageReady" 
+      ) continue;
       const newArr = block.filter(item => item.id !== `${boardId}_Block`);
       blocks[k as Block] = newArr
     }
@@ -1151,6 +1172,83 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       infoTextDiffUpdate(boardId)
     },
+    garbageQueueSet(boardId, garbageQueue) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      
+      const blocks = instancedBlocks.current;
+
+      blocks.GarbageQueue = blocks.GarbageQueue.filter(item => item.id !== `${boardId}_Block`);
+      blocks.GarbageReady = blocks.GarbageReady.filter(item => item.id !== `${boardId}_Block`);
+
+      const group = new THREE.Group();
+      group.position.set(...tetris.boardTransform.position);
+      group.rotation.set(...tetris.boardTransform.rotation);
+      group.scale.set(...tetris.boardTransform.scale);
+
+      const dummy = new THREE.Object3D();
+      group.add(dummy)
+
+      const finalPos = new THREE.Vector3();
+      const finalQuat = new THREE.Quaternion();
+      const finalEuler = new THREE.Euler();
+      const finalScale = new THREE.Vector3();
+
+      const yBase = -26;
+      let y = 0;
+      for (const gq of garbageQueue) {
+        
+        for (let i = 0; i < gq.line; i++) {
+          y += 1;
+          dummy.position.set(-1.0, yBase + y, 0);
+          dummy.scale.set(0.5, 1, 1);
+
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          dummy.getWorldScale(finalScale);
+          if (gq.kind === "Queued") {
+            blocks.GarbageQueue.push({
+              id: `${boardId}_Block`,
+              transform: {
+                position: [finalPos.x, finalPos.y, finalPos.z],
+                rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+                scale: [finalScale.x, finalScale.y, finalScale.z]
+              }
+            });
+          } else if (gq.kind === "Ready") {
+            blocks.GarbageReady.push({
+              id: `${boardId}_Block`,
+              transform: {
+                position: [finalPos.x, finalPos.y, finalPos.z],
+                rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+                scale: [finalScale.x, finalScale.y, finalScale.z]
+              }
+            });
+          }
+        }
+        
+        
+      }
+      
+      updateInstancedMeshes()
+    },
+    garbageAdd(boardId, emptyx) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      for (const x of emptyx) {
+        tetris.board.pushGarbageLine(x);
+      }
+      updateBoardInstancedMeshse(boardId)
+    },
+
+      
   }));
 
   return null

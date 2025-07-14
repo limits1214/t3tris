@@ -81,6 +81,14 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                         tetris.tick += 1;
                         tetris.step_tick += 1;
 
+                        // combo
+                        if tetris.combo_tick > 0 {
+                            tetris.combo_tick -= 1;
+                        } else {
+                            tetris.combo_tick = 0;
+                            tetris.combo = 0;
+                        }
+
                         if tetris.is_placing_delay {
                             match tetris.try_step() {
                                 Ok(_) => {}

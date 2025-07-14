@@ -193,11 +193,12 @@ const WebSocketInitializer = () => {
                   const kind = action["score"].kind
                   const level = action["score"].level
                   const score = action["score"].score
+                  const combo = action["score"].combo
                   gameRef?.current?.infoTextUpdate(k, {level, score});
                   if (kind === "single" || kind === "double" || kind === "triple" || kind === "tetris"
                     || kind === "tSpinZero" || kind === "tSpinSingle" || kind === "tSpinDouble" || kind === "tSpinTriple" 
                   ) {
-                    gameRef?.current?.scoreEffect(k, kind)
+                    gameRef?.current?.scoreEffect(k, kind + combo + 'combo')
                   }
                 } else if (typeof action === "object" && action !== null && "gameOver" in action) {
                   gameRef?.current?.addEndCover(k, "t");

@@ -43,6 +43,7 @@ pub enum TetrisGameActionType {
         kind: TetrisScore,
         level: u8,
         score: u32,
+        combo: u32,
     },
     GameOver {},
 }
@@ -82,6 +83,7 @@ pub struct TetrisGame {
 
     pub is_tspin: bool,
 
+    pub combo: u32,
     pub combo_tick: u32,
 }
 
@@ -106,6 +108,7 @@ impl TetrisGame {
             placing_delay_tick: 0,
             is_placing_delay: false,
             placing_reset_cnt: 10,
+            combo: 0,
             combo_tick: 0,
             is_tspin: false,
         }
@@ -178,6 +181,12 @@ impl TetrisGame {
 
             self.push_action_buffer(TetrisGameActionType::LineClear);
             self.board.apply_line_clear(clear);
+
+            // combo
+            if self.combo_tick > 0 {
+                self.combo += 1;
+            }
+            self.combo_tick = 150; // 2.5 sec
         }
 
         let kind = if self.is_tspin {
@@ -199,11 +208,12 @@ impl TetrisGame {
         };
 
         if let Some(kind) = kind {
-            self.score += kind.score(self.level);
+            self.score += kind.score(self.level) + (200 * self.combo);
             self.push_action_buffer(TetrisGameActionType::Score {
                 level: self.level,
                 kind,
                 score: self.score,
+                combo: self.combo,
             });
         }
 
@@ -390,6 +400,7 @@ impl TetrisGame {
             kind: soft_drop,
             level: self.level,
             score: self.score,
+            combo: self.combo,
         });
 
         self.is_placing_delay = false;
@@ -406,6 +417,7 @@ impl TetrisGame {
             kind: soft_drop,
             level: self.level,
             score: self.score,
+            combo: self.combo,
         });
         self.step()?;
         Ok(())
@@ -495,6 +507,7 @@ pub enum TetrisScore {
     TSpinTriple,
     SoftDrop,
     HardDrop,
+    Combo,
 }
 
 impl TetrisScore {
@@ -513,6 +526,7 @@ impl TetrisScore {
             TetrisScore::TSpinTriple => 1600,
             TetrisScore::SoftDrop => 1,
             TetrisScore::HardDrop => 2,
+            TetrisScore::Combo => 200,
         }
     }
 }

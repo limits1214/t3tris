@@ -12,6 +12,10 @@ pub enum Game {
         game_id: String,
         action: GameActionType,
     },
+    Sync {
+        ws_id: String,
+        game_id: String,
+    },
 }
 #[derive(Debug)]
 pub enum GameActionType {

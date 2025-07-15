@@ -171,11 +171,18 @@ const GameBoard3 = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.
   const roomUsers = useRoomStore(s=>s.users);
   const ref = useRef<OptTetrisController | null>(null);
 
+  const games = useRoomStore(s=>s.games);
+
+  const {roomId} = useParams();
+  const send = useWsStore(s=>s.send);
+
   const setGameRef = useGameStore((s) => s.setGameRef);
 
   useEffect(() => {
     setGameRef(ref);
   }, [setGameRef]);
+
+
 
   useEffect(()=>{
     if (ref.current == null) {
@@ -221,7 +228,11 @@ const GameBoard3 = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.
             controlsRef.current?.update()
             console.log(controlsRef.current?.target, cameraRef.current?.position)
           })
+
+
+          handleSync()
         }
+
       }
     }
 
@@ -230,7 +241,27 @@ const GameBoard3 = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.
       console.log('delete', k)
       localRef.boardDelete(k)
     }
+
+
+    //
+    
   }, [ myWsId, roomUsers])
+  const handleSync = () => {
+      if (roomId) {
+        const nowGameId = games[games.length - 1];
+        const obj = {
+          type: 'gameSync',
+          data: {
+            gameId: nowGameId
+          }
+        };
+        send(JSON.stringify(obj));
+      }
+    }
+  useEffect(()=>{
+    
+    // handleSync()
+  }, [games, roomId, send])
 
   return <OptTetris ref={ref} />
 }
@@ -323,6 +354,18 @@ const HUD = () => {
       send(JSON.stringify(obj));
     }
   }
+  const handleSync = () => {
+    if (roomId) {
+      const nowGameId = games[games.length - 1];
+      const obj = {
+        type: 'gameSync',
+        data: {
+          gameId: nowGameId
+        }
+      };
+      send(JSON.stringify(obj));
+    }
+  }
   return (
     <>
       <Flex
@@ -353,6 +396,7 @@ const HUD = () => {
           ? (<Button onClick={handleGameStart}>GAME START</Button>)
           : (<></>)}
     
+          {/* <Button css={css`pointer-events: auto;`} onClick={handleSync}>Sync</Button> */}
         </Flex>
       </Flex>
 

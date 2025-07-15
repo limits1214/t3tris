@@ -565,35 +565,22 @@ impl TetrisGame {
         self.is_placing_delay = false;
     }
 
-    pub fn get_client_info(&mut self) -> serde_json::Value {
-        // self.hint();
-        let board = self
-            .board
-            .board()
-            .iter()
-            .map(|line| {
-                line.iter()
-                    .map(|tile| {
-                        //
-                        let i = match tile {
-                            tetris_lib::Tile::Falling(FallingBlock { kind, .. }) => {
-                                *kind as usize + 1
-                            }
-                            tetris_lib::Tile::Placed(id) => *id as usize + 1,
-                            tetris_lib::Tile::Hint(_) => 8,
-                            tetris_lib::Tile::Empty => 0,
-                        };
-                        i
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
+    // TODO: boardEmpty to 0 mapping for reduce msg size
+    pub fn game_sync_data(&self) -> serde_json::Value {
+        let next = self.next.clone();
+        let board = self.board.board().clone();
+        let hold = self.hold.clone();
+        let garbage_q = self.garbage_queue.clone();
+        let score = self.score;
+        let level = self.level;
+
         serde_json::json!({
+            "next": next,
             "board": board,
-            "next": self.next.iter().map(|t| *t as usize + 1).collect::<Vec<_>>(),
-            "hold": self.hold.map(|h| h as usize + 1),
-            "isCanHold": self.is_can_hold,
-            "isGameOver": self.is_game_over,
+            "hold": hold,
+            "garbageQueue": garbage_q,
+            "score": score,
+            "level": level
         })
     }
 }

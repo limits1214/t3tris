@@ -148,6 +148,11 @@ const WebSocketInitializer = () => {
             setServerGameMsg(data)
             console.log('s', data)
             break;
+          case 'gameSync':
+            // const data = data;
+            // console.log('data!!',data.data)
+            gameRef?.current?.gameSync(data.data);
+            break;
           case 'gameAction':
             /*
               {

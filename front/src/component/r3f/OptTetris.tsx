@@ -54,7 +54,16 @@ export type OptTetrisController = {
   timerReset: (boardId: string) => void,
   garbageQueueSet: (boardId: string, garbageQueue: GarbageQueue[]) => void,
   garbageAdd: (boardId: string, emptyx: number[]) => void,
+  gameSync: (data: Record<string, GameSyncData>) => void
 };
+export type GameSyncData = {
+  board: any,
+  garbageQueue: any,
+  hold: any,
+  level: any,
+  next: any,
+  score: any,
+}
 export type GarbageQueue = {
   kind: "Queued" | "Ready",
   line: number
@@ -1248,7 +1257,44 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       updateBoardInstancedMeshse(boardId)
     },
 
-      
+    gameSync(data) {
+        for(const [boardId, syncData] of Object.entries(data)) {
+          const tetris = tetrisGames.current[boardId];
+          if (!tetris) {
+            console.log('[gameSync] tetris undefined');
+            return;
+          }
+          // boardSet
+          for (const [lineIdx, line] of syncData.board.entries()) {
+            for (const [tileIdx, tile] of line.entries()) {
+              tetris.board.setLocation(tileIdx, lineIdx, tile)
+            }
+          }
+          // gq set
+          this.garbageQueueSet(boardId, syncData.garbageQueue)
+
+          // hold set
+          this.holdFalling(boardId, syncData.hold)
+          
+          // next set
+          // syncData.next
+          tetris.next = [];
+          for (const next of syncData.next) {
+            this.nextAdd(boardId, next)
+          }
+
+          // level set
+          // score set
+          this.infoTextUpdate(boardId, {
+            level: syncData.level,
+            score: syncData.score
+          })
+
+          // TODO: game over cover
+
+          updateBoardInstancedMeshse(boardId)
+        }
+    },
   }));
 
   return null

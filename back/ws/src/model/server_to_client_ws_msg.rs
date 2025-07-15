@@ -79,6 +79,12 @@ pub enum ServerToClientWsMsg {
         room_id: String,
         action: HashMap<String, Vec<TetrisGameAction>>,
     },
+    #[serde(rename_all = "camelCase")]
+    GameSync {
+        game_id: String,
+        room_id: String,
+        data: HashMap<String, serde_json::Value>,
+    },
 }
 impl ServerToClientWsMsg {
     pub fn to_json(&self) -> String {

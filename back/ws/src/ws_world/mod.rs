@@ -170,6 +170,9 @@ fn process(
                     action,
                 );
             }
+            Game::Sync { ws_id, game_id } => {
+                game::sync(connections, data, pubsub, WsId(ws_id), GameId(game_id));
+            }
         },
         WsWorldCommand::Pubsub(cmd) => match cmd {
             Pubsub::Subscribe { ws_id, topic } => pubsub.subscribe(&WsId(ws_id), &TopicId(topic)),

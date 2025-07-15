@@ -149,6 +149,7 @@ pub struct Room {
     pub room_users: Vec<RoomUser>,
     pub room_status: WsWorldRoomStatus,
     pub games: Vec<String>,
+    pub game_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

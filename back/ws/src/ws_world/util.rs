@@ -58,6 +58,7 @@ pub fn gen_room_publish_msg(
         room_users: room_users,
         room_status: room.room_status.clone(),
         games,
+        game_type: serde_json::to_string(&room.game_type).unwrap(),
     })
 }
 

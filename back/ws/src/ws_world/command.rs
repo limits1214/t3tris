@@ -92,6 +92,11 @@ pub enum Room {
         ws_id: String,
         room_id: String,
     },
+    GameTypeChange {
+        ws_id: String,
+        room_id: String,
+        game_type: String,
+    },
 }
 
 pub enum Lobby {

@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 
 import { css } from "@emotion/react"
-import { Box, Button, Flex, Text, TextField } from "@radix-ui/themes"
+import { Box, Button, Flex, Select, Text, TextField } from "@radix-ui/themes"
 import { Suspense, useEffect, useRef, useState } from "react"
 import { useRoomStore, type RoomUser } from "../store/useRoomStore"
 import { useWsStore } from "../store/useWsStore"
@@ -331,8 +331,9 @@ const HUD = () => {
   const navigate = useNavigate();
   const roomName = useRoomStore(s=>s.roomName);
   const roomStatus = useRoomStore(s=>s.roomStatus);
+  const roomGameType = useRoomStore(s=>s.gameType);
 
-  const myUserId = useWsUserStore(s=>s.wsUserId);
+  const myWsId = useWsUserStore(s=>s.wsId);
   const roomUsers = useRoomStore(s=>s.users);
   const hostUser = useRoomStore(s=>s.hostUser);
   const games = useRoomStore(s=>s.games);
@@ -340,7 +341,7 @@ const HUD = () => {
   const {roomId} = useParams();
   const send = useWsStore(s=>s.send);
 
-  const isHost = hostUser?.userId === myUserId;
+  const isHost = hostUser?.wsId === myWsId;
 
 
   const handleGameStart = () => {
@@ -366,8 +367,23 @@ const HUD = () => {
       send(JSON.stringify(obj));
     }
   }
+
+  const handleGameTypeChange = (gameType: string) => {
+    if (roomId) {
+      const obj = {
+        type: 'roomGameTypeChange',
+        data: {
+          roomId,
+          gameType
+        }
+      };
+      send(JSON.stringify(obj));
+    }
+  }
   return (
     <>
+
+      {/* Room */}
       <Flex
         direction="column"
         css={css`
@@ -379,7 +395,7 @@ const HUD = () => {
         `}
       >
         <Flex>
-          <Text>{roomName} ({roomStatus}) / {games[games.length - 1]}</Text>
+          <Text>{roomName} ({roomStatus}) / {roomGameType}</Text>
         </Flex>
         <Flex direction="column">
           <Text>Users</Text>
@@ -390,16 +406,48 @@ const HUD = () => {
           </Flex>
         </Flex>
         <Flex direction="column">
-          <Button css={css`pointer-events: auto;`} onClick={()=> navigate('/')}>로비로</Button>
+          
           
           {isHost && roomStatus === 'Waiting'
           ? (<Button onClick={handleGameStart}>GAME START</Button>)
           : (<></>)}
     
           {/* <Button css={css`pointer-events: auto;`} onClick={handleSync}>Sync</Button> */}
+
+          {isHost && roomStatus === 'Waiting' &&
+            <Select.Root defaultValue="MultiScore" onValueChange={handleGameTypeChange} disabled={roomStatus !== 'Waiting'}>
+              <Select.Trigger />
+              <Select.Content>
+                <Select.Group>
+                  <Select.Label>GameType</Select.Label>
+                  <Select.Item value="MultiScore">MultiScore</Select.Item>
+                  <Select.Item value="Multi40Line">Multi40Line</Select.Item>
+                  <Select.Item value="MultiBattle">MultiBattle</Select.Item>
+                </Select.Group>
+              </Select.Content>
+            </Select.Root>
+          }
+        </Flex>
+        <Flex direction="column" css={css`margin-top: 1rem`}>
+          <Button css={css`pointer-events: auto;`} onClick={()=> navigate('/')} >Exit</Button>
         </Flex>
       </Flex>
 
+      {/* Game */}
+      <Flex
+        direction="column"
+        css={css`
+          position: absolute;
+          padding: 1rem;
+          border: 1px solid black;
+          right: 0px;
+          top: 0px;
+        `}
+      >
+        <Text>{games[games.length - 1]}</Text>
+      </Flex>
+
+    {/* Chat */}
       <Flex
         direction="column"
         css={css`

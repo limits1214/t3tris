@@ -63,6 +63,7 @@ pub struct WsWorldRoom {
     pub is_deleted: bool,
     pub room_status: WsWorldRoomStatus,
     pub games: Vec<GameId>,
+    pub game_type: WsWorldGameType,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -129,9 +130,8 @@ pub enum WsWorldRoomEvent {
 pub struct WsWorldGame {
     pub game_id: GameId,
     pub room_id: RoomId,
-    //
     pub game_type: WsWorldGameType,
-    //
+
     pub started_at: OffsetDateTime,
     #[serde(skip)]
     #[serde(default = "std::time::Instant::now")]
@@ -141,19 +141,21 @@ pub struct WsWorldGame {
     pub now: Instant,
     pub elapsed: Duration,
     pub delta: Duration,
-    //
+
     pub tetries: HashMap<WsId, TetrisGame>,
     //
     pub status: WsWorldGameStatus,
-    //
+    pub result: Option<serde_json::Value>,
     pub is_deleted: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WsWorldGameType {
-    Solo,
-    MultiSolo,
-    LastManStanding,
+    SoloScore,
+    Solo40Line,
+    MultiScore,
+    Multi40Line,
+    MultiBattle,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]

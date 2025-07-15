@@ -154,6 +154,20 @@ fn process(
             Room::GameStart { ws_id, room_id } => {
                 room::room_game_start(&connections, data, pubsub, WsId(ws_id), RoomId(room_id));
             }
+            Room::GameTypeChange {
+                ws_id,
+                room_id,
+                game_type,
+            } => {
+                room::room_game_type_change(
+                    &connections,
+                    data,
+                    pubsub,
+                    WsId(ws_id),
+                    RoomId(room_id),
+                    game_type,
+                );
+            }
         },
         WsWorldCommand::Game(cmd) => match cmd {
             Game::Action {

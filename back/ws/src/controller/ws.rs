@@ -350,6 +350,13 @@ pub fn process_clinet_msg(
                         room_id,
                     }));
                 }
+                RoomGameTypeChange { room_id, game_type } => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Room(Room::GameTypeChange {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                        game_type,
+                    }));
+                }
                 //
                 GameAction {
                     action, game_id, ..

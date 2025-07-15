@@ -44,6 +44,7 @@ pub fn create(
         is_deleted: false,
         room_status: WsWorldRoomStatus::Waiting,
         games: vec![],
+        game_type: WsWorldGameType::MultiScore,
     };
     data.rooms.insert(room_id.clone(), room);
 
@@ -383,6 +384,82 @@ pub fn room_game_unready(
     }
 }
 
+pub fn room_game_type_change(
+    connections: &WsConnections,
+    data: &mut WsData,
+    pubsub: &mut WsPubSub,
+    ws_id: WsId,
+    room_id: RoomId,
+    game_type: String,
+) {
+    // === 유저 가드
+    let Some(user) = connections.get_user_by_ws_id(&ws_id) else {
+        err_publish(
+            pubsub,
+            &ws_id,
+            dbg!("[room_game_type_change] not authenticated"),
+        );
+        return;
+    };
+
+    // === 방 가드
+    let Some(room) = data.rooms.get_mut(&room_id) else {
+        err_publish(
+            pubsub,
+            &ws_id,
+            dbg!("[room_game_type_change] room is not exists"),
+        );
+        return;
+    };
+
+    // === 방 Waiting 인지 체크
+    if room.room_status != WsWorldRoomStatus::Waiting {
+        err_publish(
+            pubsub,
+            &ws_id,
+            dbg!("[room_game_type_change] room not waiting"),
+        );
+        return;
+    }
+
+    // === 유저 방장 체크
+    if room
+        .room_host_ws_id
+        .as_ref()
+        .filter(|host_id| *host_id == &ws_id)
+        .is_none()
+    {
+        err_publish(
+            pubsub,
+            &ws_id,
+            "[room_game_type_change] you're not the host",
+        );
+        return;
+    }
+
+    // === 게임 타입 체인지
+    match serde_json::from_str::<WsWorldGameType>(&format!("\"{game_type}\"")) {
+        Ok(new_game_type) => {
+            room.game_type = new_game_type;
+            if let Some(pub_room) = gen_room_publish_msg(connections, &data.rooms, &room_id) {
+                pubsub.publish(
+                    &topic!(TOPIC_ROOM_ID, room_id),
+                    ServerToClientWsMsg::RoomUpdated { room: pub_room },
+                );
+            }
+            // TODO: lobby publish
+        }
+        Err(_) => {
+            err_publish(
+                pubsub,
+                &ws_id,
+                dbg!("[room_game_type_change] game_type string err, "),
+            );
+            return;
+        }
+    }
+}
+
 /// 방장만 실행 가능
 pub fn room_game_start(
     connections: &WsConnections,
@@ -452,7 +529,7 @@ pub fn room_game_start(
     data.games.insert(
         game_id.clone(),
         WsWorldGame {
-            game_type: WsWorldGameType::MultiSolo,
+            game_type: room.game_type.clone(),
             game_id: game_id,
             room_id: room_id.clone(),
             started_at: OffsetDateTime::now_utc(),
@@ -463,6 +540,7 @@ pub fn room_game_start(
             status: WsWorldGameStatus::BeforeGameStartTimerThree,
             is_deleted: false,
             tetries,
+            result: None,
         },
     );
 

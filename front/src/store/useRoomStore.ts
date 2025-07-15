@@ -9,6 +9,7 @@ type RoomState = {
   roomStatus: string | null,
   chats: RoomChat[],
   games: string[],
+  gameType: string | null,
   leave: () => void,
   addChat: (chat: RoomChat) => void,
   update: (info: RoomInfo) => void,
@@ -28,7 +29,8 @@ export type RoomInfo = {
   roomHostUser: RoomUser,
   roomUsers: RoomUser[]
   roomStatus: string,
-  games: string[]
+  games: string[],
+  gameType: string
 }
 
 export type RoomChat = {
@@ -47,6 +49,7 @@ export const useRoomStore = create<RoomState>(
       chats: [],
       roomStatus: null,
       games: [],
+      gameType: null,
       // enter: (info) => {
       //   set({
       //     roomId: info.roomId,
@@ -76,6 +79,7 @@ export const useRoomStore = create<RoomState>(
           users: info.roomUsers,
           roomStatus: info.roomStatus,
           games: info.games,
+          gameType: info.gameType,
         })
       },
       clear: () => {

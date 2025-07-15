@@ -43,6 +43,8 @@ pub enum ClientToServerWsMsg {
     #[serde(rename_all = "camelCase")]
     RoomGameUnReady { room_id: String },
     #[serde(rename_all = "camelCase")]
+    RoomGameTypeChange { room_id: String, game_type: String },
+    #[serde(rename_all = "camelCase")]
     RoomGameStart { room_id: String },
 
     // === 게임관련 ===

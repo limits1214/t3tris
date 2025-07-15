@@ -12,6 +12,7 @@ use crate::{
     ws_world::{
         command::GameActionType,
         connections::WsConnections,
+        game::tetris::attack_line,
         model::{GameId, WsData, WsId},
         pubsub::WsPubSub,
         util::err_publish,
@@ -47,7 +48,7 @@ pub fn action(
         return;
     }
 
-    let mut attack_line = None;
+    // let mut attack_line = None;
     match action {
         GameActionType::Left => {
             tetris.action_move_left();
@@ -62,19 +63,24 @@ pub fn action(
             tetris.action_rotate_right();
         }
         GameActionType::HardDrop => {
-            attack_line = tetris.action_hard_drop();
-            if let Some(attack_line) = attack_line {
-                let targets = game
-                    .tetries
-                    .iter()
-                    .filter(|(f, g)| **f != ws_id && !g.is_game_over)
-                    .map(|t| t.0)
-                    .cloned()
-                    .collect::<Vec<_>>();
+            tetris.action_hard_drop();
+            let (clear_len, score) = tetris.place_falling();
+            tetris.garbage_add(clear_len as u8);
+            if let Some(score) = score {
+                let attack_line = attack_line(score);
+                if let Some(attack_line) = attack_line {
+                    let targets = game
+                        .tetries
+                        .iter()
+                        .filter(|(f, g)| **f != ws_id && !g.is_game_over)
+                        .map(|t| t.0)
+                        .cloned()
+                        .collect::<Vec<_>>();
 
-                if let Some(target) = targets.choose(&mut rand::rng()) {
-                    if let Some(target_game) = game.tetries.get_mut(&target) {
-                        target_game.garbage_queueing(attack_line, ws_id.to_string());
+                    if let Some(target) = targets.choose(&mut rand::rng()) {
+                        if let Some(target_game) = game.tetries.get_mut(&target) {
+                            target_game.garbage_queueing(attack_line, ws_id.to_string());
+                        }
                     }
                 }
             }

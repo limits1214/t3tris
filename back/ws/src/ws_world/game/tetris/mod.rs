@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use tetris_lib::{Board, FallingBlock, SpawnError, StepError, Tetrimino, Tile, TileAt};
 
+pub mod multi_40_line;
+pub mod multi_battle;
+pub mod multi_score;
+
 use crate::ws_world::model::WsId;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -171,13 +175,6 @@ impl TetrisGame {
         });
     }
 
-    pub fn try_step(&mut self) -> Result<(), StepError> {
-        match self.board.try_step() {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err),
-        }
-    }
-
     pub fn step(&mut self) -> Result<(), StepError> {
         match self.board.try_step() {
             Ok(step) => {
@@ -188,11 +185,72 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn place_falling(&mut self) -> Option<u8> {
+    // true: ok
+    // none: spawn issue, game over
+    pub fn try_spawn_next(&mut self) -> Option<Vec<TileAt>> {
+        let Some(next_tetr) = self.next.front().cloned() else {
+            // unreachable
+            return None;
+        };
+        let Ok(new_tiles) = self.board.try_spawn_falling(next_tetr) else {
+            // unreachable
+            return None;
+        };
+        for TileAt { location, .. } in &new_tiles {
+            // 스폰위치가 비어 있지 않으면 게임 종료
+            if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
+                // self.is_game_over = true;
+                // self.push_action_buffer(TetrisGameActionType::GameOver {});
+                return None;
+            }
+        }
+        Some(new_tiles)
+    }
+
+    pub fn apply_spawn_next(&mut self, new_tiles: Vec<TileAt>) {
+        if let Some(next_tetr) = self.next.pop_front() {
+            self.board.apply_spawn_falling(new_tiles);
+            self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
+
+            //다음틱에 바로 step 되게 9999 세팅
+            self.step_tick = 9999;
+
+            let added_next = Self::rand_tetrimino();
+            self.next.push_back(added_next);
+            self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
+        }
+    }
+
+    pub fn spawn_next(&mut self) -> anyhow::Result<()> {
+        let Some(next_tetr) = self.next.pop_front() else {
+            return Ok(());
+        };
+        let added_next = Self::rand_tetrimino();
+        self.next.push_back(added_next);
+        self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
+
+        self.spawn_with_game_over_check(next_tetr)?;
+        self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
+
+        Ok(())
+    }
+
+    fn spawn_with_game_over_check(&mut self, tetr: Tetrimino) -> Result<(), SpawnError> {
+        let new_tiles = self.board.try_spawn_falling(tetr)?;
+        for TileAt { location, .. } in &new_tiles {
+            if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
+                self.is_game_over = true;
+                self.push_action_buffer(TetrisGameActionType::GameOver {});
+                return Ok(());
+            }
+        }
+        self.step_tick = 9999;
+        self.board.apply_spawn_falling(new_tiles);
+        Ok(())
+    }
+    pub fn place_falling(&mut self) -> (usize, Option<TetrisScore>) {
         self.board.place_falling();
         self.push_action_buffer(TetrisGameActionType::Placing);
-
-        let mut is_garbage_changed = false;
 
         let clear = self.board.try_line_clear();
         let clear_len = clear.len();
@@ -208,27 +266,9 @@ impl TetrisGame {
                 self.combo += 1;
             }
             self.combo_tick = 150; // 2.5 sec
-
-            // line clear garbage remove
-            let mut temp = clear_len as u8;
-            loop {
-                let front = self.garbage_queue.pop_front();
-                if let Some(mut front) = front {
-                    is_garbage_changed = true;
-                    if let Some(v) = temp.checked_sub(front.line) {
-                        temp = v;
-                    } else {
-                        front.line = front.line - temp;
-                        self.garbage_queue.push_front(front);
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
         }
 
-        let kind = if self.is_tspin {
+        let score = if self.is_tspin {
             match clear_len {
                 0 => Some(TetrisScore::TSpinZero),
                 1 => Some(TetrisScore::TSpinSingle),
@@ -246,24 +286,11 @@ impl TetrisGame {
             }
         };
 
-        let mut attck_line = None;
-        if let Some(kind) = kind {
-            // attack
-            match kind {
-                // TetrisScore::Single => attck_line = Some(1),
-                TetrisScore::Double => attck_line = Some(1),
-                TetrisScore::Triple => attck_line = Some(2),
-                TetrisScore::Tetris => attck_line = Some(4),
-                TetrisScore::TSpinSingle => attck_line = Some(2),
-                TetrisScore::TSpinDouble => attck_line = Some(4),
-                TetrisScore::TSpinTriple => attck_line = Some(6),
-                _ => attck_line = None,
-            }
-
-            self.score += kind.score(self.level) + (200 * self.combo);
+        if let Some(score) = &score {
+            self.score += score.score(self.level) + (200 * self.combo);
             self.push_action_buffer(TetrisGameActionType::Score {
                 level: self.level,
-                kind,
+                kind: score.clone(),
                 score: self.score,
                 combo: self.combo,
             });
@@ -274,6 +301,29 @@ impl TetrisGame {
         self.spawn_next();
         self.is_can_hold = true;
 
+        (clear_len, score)
+    }
+
+    pub fn garbage_add(&mut self, clear_len: u8) {
+        let mut is_garbage_changed = false;
+
+        let mut temp = clear_len;
+        loop {
+            let front = self.garbage_queue.pop_front();
+            if let Some(mut front) = front {
+                is_garbage_changed = true;
+                if let Some(v) = temp.checked_sub(front.line) {
+                    temp = v;
+                } else {
+                    front.line = front.line - temp;
+                    self.garbage_queue.push_front(front);
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
         let mut add_gargabe = vec![];
         loop {
             if let Some(front) = self.garbage_queue.pop_front() {
@@ -283,7 +333,7 @@ impl TetrisGame {
                         let x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
                             .choose(&mut rand::rng())
                             .unwrap();
-                        add_gargabe.push(*x); // TODO random
+                        add_gargabe.push(*x);
                     }
                 } else {
                     self.garbage_queue.push_front(front);
@@ -299,7 +349,7 @@ impl TetrisGame {
                 if !self.board.push_garbage_line(*x as usize) {
                     self.is_game_over = true;
                     self.push_action_buffer(TetrisGameActionType::GameOver {});
-                    return attck_line;
+                    return;
                 };
             }
             self.push_action_buffer(TetrisGameActionType::GarbageAdd { empty: add_gargabe });
@@ -310,36 +360,6 @@ impl TetrisGame {
                 queue: self.garbage_queue.clone().into(),
             });
         }
-
-        attck_line
-    }
-
-    pub fn spawn_next(&mut self) -> anyhow::Result<()> {
-        let Some(next_tetr) = self.next.pop_front() else {
-            return Ok(());
-        };
-        let added_next = Self::rand_tetrimino();
-        self.next.push_back(added_next);
-        self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
-
-        self.spawn_with_game_over_check(next_tetr)?;
-        self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
-
-        Ok(())
-    }
-
-    pub fn spawn_with_game_over_check(&mut self, tetr: Tetrimino) -> Result<(), SpawnError> {
-        let new_tiles = self.board.try_spawn_falling(tetr)?;
-        for TileAt { location, .. } in &new_tiles {
-            if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
-                self.is_game_over = true;
-                self.push_action_buffer(TetrisGameActionType::GameOver {});
-                return Ok(());
-            }
-        }
-        self.step_tick = 9999;
-        self.board.apply_spawn_falling(new_tiles);
-        Ok(())
     }
 
     pub fn garbage_queueing(&mut self, attack_line: u8, from: String) {
@@ -494,21 +514,21 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn action_hard_drop(&mut self) -> Option<u8> {
+    pub fn action_hard_drop(&mut self) {
         let dropcnt = self.board.hard_drop();
         self.push_action_buffer(TetrisGameActionType::HardDrop);
 
-        let soft_drop = TetrisScore::HardDrop;
-        self.score += soft_drop.score(self.level) * dropcnt as u32;
+        let hard_drop = TetrisScore::HardDrop;
+        self.score += hard_drop.score(self.level) * dropcnt as u32;
         self.push_action_buffer(TetrisGameActionType::Score {
-            kind: soft_drop,
+            kind: hard_drop,
             level: self.level,
             score: self.score,
             combo: self.combo,
         });
 
         self.is_placing_delay = false;
-        self.place_falling()
+        // self.place_falling()
     }
 
     pub fn action_soft_drop(&mut self) -> anyhow::Result<()> {
@@ -641,5 +661,17 @@ pub fn level_to_gravity_tick(level: u8) -> u32 {
         16..=17 => 3,
         18..=19 => 2,
         _ => 1, // 20 이상
+    }
+}
+
+pub fn attack_line(kind: TetrisScore) -> Option<u8> {
+    match kind {
+        TetrisScore::Double => Some(1),
+        TetrisScore::Triple => Some(2),
+        TetrisScore::Tetris => Some(4),
+        TetrisScore::TSpinSingle => Some(2),
+        TetrisScore::TSpinDouble => Some(4),
+        TetrisScore::TSpinTriple => Some(6),
+        _ => None,
     }
 }

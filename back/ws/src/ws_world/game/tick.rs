@@ -5,7 +5,10 @@ use std::{
 
 use rand::seq::IndexedRandom;
 
-use crate::ws_world::game::tetris::{GarbageQueueKind, TetrisGameActionType};
+use crate::ws_world::{
+    game::tetris::{self, GarbageQueueKind, TetrisGameActionType, attack_line},
+    model::WsWorldGameType,
+};
 use crate::{
     constant::TOPIC_ROOM_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
@@ -73,6 +76,13 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 );
             }
         } else {
+            // match game.game_type {
+            //     WsWorldGameType::Multi40Line => {
+            //         tetris::multi_40_line::tick(game);
+            //     }
+            //     _ => {}
+            // }
+
             let mut attack_list = vec![];
             for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
                 if tetris.is_started {
@@ -105,17 +115,22 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                         }
 
                         if tetris.is_placing_delay {
-                            match tetris.try_step() {
+                            match tetris.board.try_step() {
                                 Ok(_) => {}
                                 Err(err) => match err {
                                     tetris_lib::StepError::Blocked(_)
                                     | tetris_lib::StepError::OutOfBounds => {
                                         tetris.placing_delay_tick += 1;
                                         if tetris.placing_delay_tick >= PLACING_DELAY {
-                                            if let Some(attack) = tetris.place_falling() {
-                                                attack_list.push((tetris.ws_id.clone(), attack));
+                                            let (clear_len, score) = tetris.place_falling();
+                                            tetris.garbage_add(clear_len as u8);
+                                            if let Some(score) = score {
+                                                let attack = attack_line(score);
+                                                if let Some(attack) = attack {
+                                                    attack_list
+                                                        .push((tetris.ws_id.clone(), attack));
+                                                }
                                             }
-
                                             tetris.is_placing_delay = false;
                                         }
                                     }
@@ -152,10 +167,10 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 } else {
                     tetris.is_started = true;
                     tetris.is_game_over = false;
-                    tetris.setup();
-                    tetris.spawn_next();
                     tetris.tick = 0;
                     tetris.step_tick = 0;
+                    tetris.setup();
+                    tetris.spawn_next();
                 }
             }
 

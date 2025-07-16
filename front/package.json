@@ -27,7 +27,7 @@
     "react-router-dom": "^7.6.2",
     "react-social-login-buttons": "^4.1.1",
     "react-use-websocket": "^4.13.0",
-    "tetris-lib": "file:../back/tetris-lib/pkg",
+    "tetris-lib": "file:./tetris-lib-pkg",
     "three": "^0.177.0",
     "three-spritetext": "^1.10.0",
     "troika-three-text": "^0.52.4",

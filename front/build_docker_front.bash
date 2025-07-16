@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+rm -rf ./tetris-lib-pkg
+cp -r ../back/tetris-lib/pkg ./tetris-lib-pkg
 
 docker build \
   -t ghcr.io/limits1214/t3tris-front:latest \

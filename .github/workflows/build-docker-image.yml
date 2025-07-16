@@ -33,8 +33,14 @@ jobs:
 
       - name: Build & Push Image
         run: |
+          chmod +x back/tetris-lib/wasm_pkg_build.bash
           chmod +x front/build_docker_front.bash
           chmod +x back/build_docker_api.bash
+          chmod +x back/build_docker_ws.bash
+
+          cd back/tetris-lib
+          ./wasm_pkg_build.bash
+          cd ../..
 
           cd front
           ./build_docker_front.bash
@@ -42,3 +48,4 @@ jobs:
 
           cd back
           ./build_docker_api.bash
+          ./build_docker_ws.bash

@@ -3149,10 +3149,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "t3tris-timer"
-version = "0.1.0"
-
-[[package]]
 name = "t3tris_ws"
 version = "0.1.0"
 dependencies = [

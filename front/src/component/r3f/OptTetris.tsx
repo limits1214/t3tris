@@ -134,7 +134,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const instanced3dText =  useRef<Record<string, InstanceType[]>>({
     Next: [], Hold: []
   });
-  const { nodes } = useGLTF('/public/glb/basicBlock2.glb');
+  const { nodes } = useGLTF('/glb/basicBlock2.glb');
   const blockBasicGeometry = (nodes.Cube as THREE.Mesh).geometry;
   // blockBasicGeometry.scale(0.5, 0.5, 0.5);
   // blockBasicGeometry.scale(0.5, 0.5, 0.5)

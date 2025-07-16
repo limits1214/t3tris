@@ -1,5 +1,5 @@
 [package]
-name = "t3tris_ws"
+name = "t3tris-ws"
 version = "0.1.0"
 edition = "2024"
 

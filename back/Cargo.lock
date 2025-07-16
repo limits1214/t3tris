@@ -2967,7 +2967,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "t3tris_ws"
+name = "t3tris-ws"
 version = "0.1.0"
 dependencies = [
  "anyhow",

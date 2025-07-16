@@ -15,6 +15,7 @@ services:
     container_name: t3tris-back-api
     environment:
       ENV__REDIS__REDIS_URL: ${REDIS_URL}
+      ENV__DATABASE__DATABASE_URL: ${DATABASE_URL}
     # restart: always
     volumes:
       - ${VOL_MOUNT_PATH}/t3tris-app-docker-volume/back-api/logs:/app/logs
@@ -29,6 +30,7 @@ services:
     container_name: t3tris-back-ws
     environment:
       ENV__REDIS__REDIS_URL: ${REDIS_URL}
+      ENV__DATABASE__DATABASE_URL: ${DATABASE_URL}
     # restart: always
     volumes:
       - ${VOL_MOUNT_PATH}/t3tris-app-docker-volume/back-ws/logs:/app/logs

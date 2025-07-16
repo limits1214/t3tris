@@ -226,13 +226,13 @@ impl TetrisGame {
     //     }
     // }
 
-    pub fn spawn_next(&mut self) -> anyhow::Result<()> {
+    pub fn spawn_next(&mut self) -> anyhow::Result<bool> {
         let Some(next_tetr) = self.next.pop_front() else {
-            return Ok(());
+            return Ok(false);
         };
 
         if !self.spawn_with_game_over_check(next_tetr)? {
-            return Ok(());
+            return Ok(false);
         }
 
         let added_next = Self::rand_tetrimino();
@@ -240,18 +240,20 @@ impl TetrisGame {
         self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
         self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
 
-        Ok(())
+        Ok(true)
     }
 
+    // false: board end
+    // true: ok
     fn spawn_with_game_over_check(&mut self, tetr: Tetrimino) -> Result<bool, SpawnError> {
         let new_tiles = self.board.try_spawn_falling(tetr)?;
         for TileAt { location, .. } in &new_tiles {
             if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
-                self.is_board_end = true;
-                self.push_action_buffer(TetrisGameActionType::BoardEnd {
-                    kind: BoardEndKind::SpawnImpossible,
-                    elapsed: self.elapsed - 3000,
-                });
+                // self.is_board_end = true;
+                // self.push_action_buffer(TetrisGameActionType::BoardEnd {
+                //     kind: BoardEndKind::SpawnImpossible,
+                //     elapsed: self.elapsed - 3000,
+                // });
                 return Ok(false);
             }
         }
@@ -314,7 +316,9 @@ impl TetrisGame {
         (clear_len, score)
     }
 
-    pub fn garbage_add(&mut self, clear_len: u8) {
+    // false: board_end
+    // true: ok
+    pub fn garbage_add(&mut self, clear_len: u8) -> bool {
         let mut is_garbage_changed = false;
 
         let mut temp = clear_len;
@@ -357,12 +361,12 @@ impl TetrisGame {
         if !add_gargabe.is_empty() {
             for x in &add_gargabe {
                 if !self.board.push_garbage_line(*x as usize) {
-                    self.is_board_end = true;
-                    self.push_action_buffer(TetrisGameActionType::BoardEnd {
-                        kind: BoardEndKind::SpawnImpossible,
-                        elapsed: self.elapsed - 3000,
-                    });
-                    return;
+                    // self.is_board_end = true;
+                    // self.push_action_buffer(TetrisGameActionType::BoardEnd {
+                    //     kind: BoardEndKind::SpawnImpossible,
+                    //     elapsed: self.elapsed - 3000,
+                    // });
+                    return false;
                 };
             }
             self.push_action_buffer(TetrisGameActionType::GarbageAdd { empty: add_gargabe });
@@ -373,6 +377,8 @@ impl TetrisGame {
                 queue: self.garbage_queue.clone().into(),
             });
         }
+
+        true
     }
 
     pub fn garbage_queueing(&mut self, attack_line: u8, from: String) {
@@ -560,9 +566,11 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn action_hold(&mut self) {
+    // true: ok
+    // false: board end
+    pub fn action_hold(&mut self) -> bool {
         if !self.is_can_hold {
-            return;
+            return true;
         }
         self.is_can_hold = false;
         if let Some(hold_tetr) = self.hold {
@@ -575,7 +583,10 @@ impl TetrisGame {
 
             // let spawn = self.board.try_spawn_falling(hold_tetr).unwrap();
             // self.board.apply_spawn_falling(spawn);
-            self.spawn_with_game_over_check(hold_tetr).unwrap();
+
+            if !self.spawn_with_game_over_check(hold_tetr).unwrap() {
+                return false;
+            }
             self.push_action_buffer(TetrisGameActionType::SpawnFromHold {
                 spawn: hold_tetr,
                 hold: self.hold,
@@ -591,11 +602,16 @@ impl TetrisGame {
                 self.board.remove_falling_blocks();
                 self.push_action_buffer(TetrisGameActionType::RemoveFalling);
 
-                self.spawn_next();
+                // self.spawn_next();
+                if !self.spawn_next().unwrap() {
+                    return false;
+                }
             }
         }
 
         self.is_placing_delay = false;
+
+        true
     }
 
     // TODO: boardEmpty to 0 mapping for reduce msg size

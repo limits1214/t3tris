@@ -12,4 +12,5 @@ sudo systemctl start docker
 sudo systemctl enable docker
 # docker compose 설치
 # https://docs.docker.com/compose/install/linux/#install-the-plugin-manually
+# x86_64 가아니라 arm에 맞게 docker-compose-linux-aarch64
 ```

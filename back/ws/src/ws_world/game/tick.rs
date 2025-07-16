@@ -153,10 +153,11 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                                                 WsWorldGameType::Multi40Line => {
                                                     if tetris.clear_line >= 40 {
                                                         tetris.is_board_end = true;
+                                                        tetris.line_40_clear = true;
 
                                                         tetris.push_action_buffer(
                                                             TetrisGameActionType::BoardEnd {
-                                                                kind: BoardEndKind::SpawnImpossible,
+                                                                kind: BoardEndKind::Line40Clear,
                                                                 elapsed: tetris.elapsed ,
                                                             },
                                                         );
@@ -218,8 +219,9 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 if not_end_boards.len() == 1 {
                     let (_, tetris) = not_end_boards.get_mut(0).unwrap();
                     tetris.is_board_end = true;
+                    tetris.battle_win = true;
                     tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
-                        kind: BoardEndKind::SpawnImpossible,
+                        kind: BoardEndKind::BattleWinner,
                         elapsed: tetris.elapsed,
                     });
                 }
@@ -277,14 +279,14 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                     },
                     WsWorldGameType::Multi40Line => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.elapsed)
+                            (t.ws_id.clone(), t.elapsed, t.line_40_clear)
                         } ).collect::<Vec<_>>();
                         res.sort_by_key(|s|s.1);
                         game.result = Some(serde_json::json!(res));
                     },
                     WsWorldGameType::MultiBattle => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.elapsed)
+                            (t.ws_id.clone(), t.elapsed, t.battle_win)
                         } ).collect::<Vec<_>>();
                         res.sort_by_key(|s|s.1);
 

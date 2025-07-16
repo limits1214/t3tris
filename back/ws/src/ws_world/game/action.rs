@@ -86,8 +86,10 @@ pub fn action(
                 WsWorldGameType::Multi40Line => {
                     if tetris.clear_line >= 40 {
                         tetris.is_board_end = true;
+                        tetris.line_40_clear = true;
+
                         tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
-                            kind: BoardEndKind::SpawnImpossible,
+                            kind: BoardEndKind::Line40Clear,
                             elapsed: tetris.elapsed,
                         });
                     }

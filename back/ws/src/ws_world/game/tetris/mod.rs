@@ -60,6 +60,8 @@ pub enum TetrisGameActionType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BoardEndKind {
     SpawnImpossible,
+    Line40Clear,
+    BattleWinner,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,6 +116,10 @@ pub struct TetrisGame {
     pub combo_tick: u32,
     //
     pub garbage_queue: VecDeque<GarbageQueue>,
+
+    //
+    pub line_40_clear: bool,
+    pub battle_win: bool,
 }
 
 impl TetrisGame {
@@ -141,6 +147,8 @@ impl TetrisGame {
             combo_tick: 0,
             is_tspin: false,
             garbage_queue: VecDeque::new(),
+            line_40_clear: false,
+            battle_win: false,
         }
     }
 

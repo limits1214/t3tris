@@ -19,8 +19,8 @@ export type TotalTetrisInstancedTetriminosParam = {
   } | null,
 };
 export const TotalTetrisInstancedTetriminos = ({ tetriminos }: TotalTetrisInstancedTetriminosParam, ) => {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-  const dummy = new THREE.Object3D();
+  // const meshRef = useRef<THREE.InstancedMesh>(null);
+  // const dummy = new THREE.Object3D();
 
 
 

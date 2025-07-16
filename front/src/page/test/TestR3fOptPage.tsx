@@ -1,12 +1,12 @@
 /** @jsxImportSource @emotion/react */
 
-import { Canvas, extend,  } from "@react-three/fiber"
+import { Canvas,   } from "@react-three/fiber"
 import {button, useControls} from 'leva'
 import { Perf } from "r3f-perf";
-import { OrbitControls, PerspectiveCamera, shaderMaterial } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera,  } from "@react-three/drei";
 import { css } from "@emotion/react";
 import { useEffect, useRef } from "react";
-import { OptTetris, type OptTetrisController } from "../../component/r3f/OptTetris";
+import { OptTetris, type GameSyncData, type OptTetrisController } from "../../component/r3f/OptTetris";
 import * as THREE from 'three';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
@@ -97,7 +97,7 @@ const TestR3fOptPage = () => {
     infoTextUpdat: button((get)=>{
       const boardId = get('boardId');
 
-      const txt = `level:\n1\nscore:\n21`
+      // const txt = `level:\n1\nscore:\n21`
       ref.current!.infoTextUpdate(boardId, {level: 999});
     }),
     addEndCover: button((get)=>{
@@ -144,23 +144,15 @@ const TestR3fOptPage = () => {
 
     gameSync: button((get)=>{
       const boardId = get('boardId');
-      const msg = {
-        "type":"gameSync",
-        "data":{
-          "gameId":"wLl0xvixxoq68ZQs5ps_e",
-          "roomId":"b5rOz_7RRJn3CpXQOxIfW",
-          "data":{
-            [boardId]:{
-              "board":[["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty",{"Falling":{"id":0,"kind":"J","rotation":"D0"}},"Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty",{"Falling":{"id":1,"kind":"J","rotation":"D0"}},{"Falling":{"id":2,"kind":"J","rotation":"D0"}},{"Falling":{"id":3,"kind":"J","rotation":"D0"}},"Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty",{"Placed":5},"Empty","Empty","Empty","Empty","Empty","Empty","Empty"],[{"Placed":5},{"Placed":5},{"Placed":5},{"Placed":1},{"Placed":1},{"Placed":1},{"Placed":1},"Empty","Empty","Empty"],["Empty",{"Placed":3},"Empty","Empty",{"Placed":3},"Empty","Empty","Empty","Empty","Empty"],[{"Placed":3},{"Placed":3},{"Placed":3},{"Placed":3},{"Placed":3},{"Placed":3},"Empty",{"Placed":3},"Empty","Empty"],["Empty","Empty",{"Placed":5},{"Placed":7},{"Placed":7},"Empty",{"Placed":3},{"Placed":3},{"Placed":3},"Empty"],[{"Placed":5},{"Placed":5},{"Placed":5},{"Placed":4},{"Placed":7},{"Placed":7},"Empty","Empty",{"Placed":3},"Empty"],["Empty",{"Placed":3},"Empty",{"Placed":4},{"Placed":4},{"Placed":4},"Empty",{"Placed":3},{"Placed":3},{"Placed":3}],[{"Placed":3},{"Placed":3},{"Placed":3},{"Placed":7},{"Placed":7},"Empty","Empty",{"Placed":4},"Empty","Empty"],["Empty",{"Placed":3},"Empty","Empty",{"Placed":7},{"Placed":7},"Empty",{"Placed":4},{"Placed":4},{"Placed":4}],[{"Placed":3},{"Placed":3},{"Placed":3},"Empty",{"Placed":6},{"Placed":6},"Empty","Empty","Empty",{"Placed":5}],[{"Placed":2},{"Placed":2},"Empty",{"Placed":6},{"Placed":6},"Empty","Empty",{"Placed":5},{"Placed":5},{"Placed":5}],[{"Placed":2},{"Placed":2},{"Placed":5},{"Placed":4},"Empty","Empty","Empty","Empty",{"Placed":6},{"Placed":6}],[{"Placed":5},{"Placed":5},{"Placed":5},{"Placed":4},{"Placed":4},{"Placed":4},"Empty",{"Placed":6},{"Placed":6},"Empty"],["Empty",{"Placed":3},"Empty",{"Placed":4},"Empty","Empty","Empty","Empty",{"Placed":6},{"Placed":6}],[{"Placed":3},{"Placed":3},{"Placed":3},{"Placed":4},{"Placed":4},{"Placed":4},"Empty",{"Placed":6},{"Placed":6},"Empty"]],"garbageQueue":[],"hold":null,"level":1,"next":["J","I","O","Z","J"],"score":654}}}}
-
+      
       const msg2 = {
         "type":"gameSync",
         "data":{
           "gameId":"-yC4Bq-OUUfx88t85IYaB",
           "roomId":"BL0Lnnp4sqvBQHWf7BulG",
           "data":{
-            [boardId]:{"board":[["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],[{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],[{"Placed":4},{"Placed":4},{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty",{"Placed":3},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":6},{"Placed":6}],[{"Placed":3},{"Placed":3},{"Placed":3},"Empty","Empty","Empty","Empty",{"Placed":6},{"Placed":6},{"Placed":3}],[{"Placed":4},{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":3},{"Placed":3}],[{"Placed":4},{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":5},{"Placed":3}],[{"Placed":4},{"Placed":4},"Empty",{"Falling":{"id":0,"kind":"J","rotation":"D0"}},"Empty","Empty","Empty","Empty",{"Placed":5},"Empty"],[{"Placed":4},{"Placed":4},{"Placed":5},{"Falling":{"id":1,"kind":"J","rotation":"D0"}},{"Falling":{"id":2,"kind":"J","rotation":"D0"}},{"Falling":{"id":3,"kind":"J","rotation":"D0"}},"Empty","Empty",{"Placed":5},{"Placed":5}],[{"Placed":5},{"Placed":5},{"Placed":5},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":1}],[{"Placed":2},{"Placed":2},"Empty","Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":1}],[{"Placed":2},{"Placed":2},"Empty",{"Placed":1},{"Placed":1},{"Placed":1},{"Placed":1},"Empty",{"Placed":5},{"Placed":1}],[{"Placed":7},{"Placed":7},"Empty","Empty",{"Placed":6},{"Placed":6},"Empty","Empty",{"Placed":5},{"Placed":1}],["Empty",{"Placed":7},{"Placed":7},{"Placed":6},{"Placed":6},"Empty","Empty","Empty",{"Placed":5},{"Placed":5}],["Empty","Empty",{"Placed":5},{"Placed":7},{"Placed":7},"Empty",{"Placed":1},{"Placed":1},{"Placed":1},{"Placed":1}],[{"Placed":5},{"Placed":5},{"Placed":5},"Empty",{"Placed":7},{"Placed":7},"Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":2},{"Placed":2},"Empty",{"Placed":7},{"Placed":7},"Empty","Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":2},{"Placed":2},"Empty","Empty",{"Placed":7},{"Placed":7},{"Placed":1},{"Placed":1},{"Placed":1},{"Placed":1}],["Empty",{"Placed":3},"Empty","Empty",{"Placed":2},{"Placed":2},"Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":3},{"Placed":3},{"Placed":3},"Empty",{"Placed":2},{"Placed":2},"Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":4},"Empty","Empty",{"Placed":2},{"Placed":2},"Empty","Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":4},{"Placed":4},{"Placed":4},{"Placed":2},{"Placed":2},"Empty","Empty","Empty",{"Placed":2},{"Placed":2}]],"garbageQueue":[{"from":"Mndei1HCZORO2gHHsg8XS","kind":"Queued","line":2,"tick":3390}],"hold":"O","level":1,"next":["L","T","T","O","L"],"score":588}}}}
-      const data = msg2.data.data;
+            [boardId]:{"board":[["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],[{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty","Empty"],[{"Placed":4},{"Placed":4},{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty","Empty"],["Empty",{"Placed":3},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":6},{"Placed":6}],[{"Placed":3},{"Placed":3},{"Placed":3},"Empty","Empty","Empty","Empty",{"Placed":6},{"Placed":6},{"Placed":3}],[{"Placed":4},{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":3},{"Placed":3}],[{"Placed":4},{"Placed":4},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":5},{"Placed":3}],[{"Placed":4},{"Placed":4},"Empty",{"Falling":{"id":0,"kind":"J","rotation":"D0"}},"Empty","Empty","Empty","Empty",{"Placed":5},"Empty"],[{"Placed":4},{"Placed":4},{"Placed":5},{"Falling":{"id":1,"kind":"J","rotation":"D0"}},{"Falling":{"id":2,"kind":"J","rotation":"D0"}},{"Falling":{"id":3,"kind":"J","rotation":"D0"}},"Empty","Empty",{"Placed":5},{"Placed":5}],[{"Placed":5},{"Placed":5},{"Placed":5},"Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":1}],[{"Placed":2},{"Placed":2},"Empty","Empty","Empty","Empty","Empty","Empty","Empty",{"Placed":1}],[{"Placed":2},{"Placed":2},"Empty",{"Placed":1},{"Placed":1},{"Placed":1},{"Placed":1},"Empty",{"Placed":5},{"Placed":1}],[{"Placed":7},{"Placed":7},"Empty","Empty",{"Placed":6},{"Placed":6},"Empty","Empty",{"Placed":5},{"Placed":1}],["Empty",{"Placed":7},{"Placed":7},{"Placed":6},{"Placed":6},"Empty","Empty","Empty",{"Placed":5},{"Placed":5}],["Empty","Empty",{"Placed":5},{"Placed":7},{"Placed":7},"Empty",{"Placed":1},{"Placed":1},{"Placed":1},{"Placed":1}],[{"Placed":5},{"Placed":5},{"Placed":5},"Empty",{"Placed":7},{"Placed":7},"Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":2},{"Placed":2},"Empty",{"Placed":7},{"Placed":7},"Empty","Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":2},{"Placed":2},"Empty","Empty",{"Placed":7},{"Placed":7},{"Placed":1},{"Placed":1},{"Placed":1},{"Placed":1}],["Empty",{"Placed":3},"Empty","Empty",{"Placed":2},{"Placed":2},"Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":3},{"Placed":3},{"Placed":3},"Empty",{"Placed":2},{"Placed":2},"Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":4},"Empty","Empty",{"Placed":2},{"Placed":2},"Empty","Empty","Empty",{"Placed":2},{"Placed":2}],[{"Placed":4},{"Placed":4},{"Placed":4},{"Placed":2},{"Placed":2},"Empty","Empty","Empty",{"Placed":2},{"Placed":2}]],"garbageQueue":[{"from":"Mndei1HCZORO2gHHsg8XS","kind":"Queued","line":2,"tick":3390}],"hold":"O","level":1,"next":["L","T","T","O","L"],"score":588, "line": 1}}}}
+      const data = msg2.data.data as Record<string, GameSyncData>; 
       ref.current!.gameSync(data);
     })
   })
@@ -174,7 +166,7 @@ const controlsRef = useRef<OrbitControlsImpl>(null)
   return (
     <div css={css`height: 100vh;`}>
       <h1 css={css`position: absolute;`}>TestR3fOptPage</h1>
-      <Canvas onCreated={({ gl }) => {
+      <Canvas onCreated={() => {
         // gl.setClearColor('#e6e6e6'); 
       }}>
         <Perf position="bottom-left"/>
@@ -261,46 +253,46 @@ const controlsRef = useRef<OrbitControlsImpl>(null)
 export default TestR3fOptPage
 
 
-const BorderedBlockMaterial = shaderMaterial(
-  {
-    borderWidth: 0.05,
-    borderColor: new THREE.Color("black"),
-    fillColor: new THREE.Color("orange")
-  },
-  `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  `
-    varying vec2 vUv;
-    uniform float borderWidth;
-    uniform vec3 borderColor;
-    uniform vec3 fillColor;
+// const BorderedBlockMaterial = shaderMaterial(
+//   {
+//     borderWidth: 0.05,
+//     borderColor: new THREE.Color("black"),
+//     fillColor: new THREE.Color("orange")
+//   },
+//   `
+//     varying vec2 vUv;
+//     void main() {
+//       vUv = uv;
+//       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+//     }
+//   `,
+//   `
+//     varying vec2 vUv;
+//     uniform float borderWidth;
+//     uniform vec3 borderColor;
+//     uniform vec3 fillColor;
 
-    void main() {
-      float bw = borderWidth;
-      bool isBorder = vUv.x < bw || vUv.x > 1.0 - bw || vUv.y < bw || vUv.y > 1.0 - bw;
-      vec3 color = isBorder ? borderColor : fillColor;
-      gl_FragColor = vec4(color, 1.0);
-    }
-  `
-);
-extend({ BorderedBlockMaterial });
+//     void main() {
+//       float bw = borderWidth;
+//       bool isBorder = vUv.x < bw || vUv.x > 1.0 - bw || vUv.y < bw || vUv.y > 1.0 - bw;
+//       vec3 color = isBorder ? borderColor : fillColor;
+//       gl_FragColor = vec4(color, 1.0);
+//     }
+//   `
+// );
+// extend({ BorderedBlockMaterial });
 
-const BorderedBlock = () => {
-  // const material = useMemo(() => new THREE.MeshStandardMaterial(), []);
+// const BorderedBlock = () => {
+//   // const material = useMemo(() => new THREE.MeshStandardMaterial(), []);
 
-  return (
-    <mesh position={[0, 0, 0]}>
-      <boxGeometry args={[1, 1, 1]} />
-      {/* 👇 여기서 커스텀 머티리얼 사용 */}
-      <borderedBlockMaterial attach="material" />
-    </mesh>
-  );
-};
+//   return (
+//     <mesh position={[0, 0, 0]}>
+//       <boxGeometry args={[1, 1, 1]} />
+//       {/* 👇 여기서 커스텀 머티리얼 사용 */}
+//       <borderedBlockMaterial attach="material" />
+//     </mesh>
+//   );
+// };
 
 
 export function BorderedStandardBox() {
@@ -374,7 +366,7 @@ export function MyBlock() {
       <mesh
       position={[ 0, -20, 0]}
       scale={[0.5,0.5,0.5]}
-        geometry={nodes.Cube.geometry}
+        geometry={(nodes.Cube as THREE.Mesh).geometry}
       >
         <meshLambertMaterial color="orange" />
       </mesh>
@@ -382,7 +374,7 @@ export function MyBlock() {
       <mesh
       position={[ 0, -21, 0]}
       scale={[0.5,0.5,0.5]}
-        geometry={nodes.Cube.geometry}
+        geometry={(nodes.Cube as THREE.Mesh).geometry}
       >
         <meshLambertMaterial color="orange" />
       </mesh>

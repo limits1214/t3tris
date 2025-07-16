@@ -3,7 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
 import * as THREE from 'three';
 import {Text} from 'troika-three-text'
 import { JsBoard } from "tetris-lib";
-import type { Tetrimino } from "tetris-lib/bindings";
+import type { Board, Tetrimino } from "tetris-lib/bindings";
 import {format} from 'date-fns'
 
 export type Transform = {
@@ -44,7 +44,7 @@ export type OptTetrisController = {
   hardDrop: (boardId: string) => void,
   placing: (boardId: string) => void,
   lineClear:(boardId: string) => void,
-  holdFalling:(boardId: string, hold: Tetrimino ) => void,
+  holdFalling:(boardId: string, hold: Tetrimino | null) => void,
   removeFalling:(boardId: string) => void,
   scoreEffect: (boardId: string, kind: string)=>void,
   infoTextUpdate: (boardId: string, data: InfoData) => void,
@@ -58,13 +58,13 @@ export type OptTetrisController = {
   gameSync: (data: Record<string, GameSyncData>) => void
 };
 export type GameSyncData = {
-  board: any,
-  garbageQueue: any,
-  hold: any,
-  level: any,
-  next: any,
-  score: any,
-  line: any
+  board: Board,
+  garbageQueue: GarbageQueue[],
+  hold: Tetrimino | null,
+  level: number,
+  next: Tetrimino[],
+  score: number,
+  line: number
 }
 export type GarbageQueue = {
   kind: "Queued" | "Ready",
@@ -135,7 +135,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     Next: [], Hold: []
   });
   const { nodes } = useGLTF('/public/glb/basicBlock2.glb');
-  const blockBasicGeometry = nodes.Cube.geometry;
+  const blockBasicGeometry = (nodes.Cube as THREE.Mesh).geometry;
   // blockBasicGeometry.scale(0.5, 0.5, 0.5);
   // blockBasicGeometry.scale(0.5, 0.5, 0.5)
   const RESERVE = 5000;
@@ -171,7 +171,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
   // const lastUpdateRef = useRef(0);
 
-  useFrame((state, delta)=>{
+  useFrame((_state, delta)=>{
     // info text update
     // console.log(clock.getDelta())
     // console.log(delta)
@@ -192,9 +192,28 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     }
   })
-  const infoTextMake = ({level, score, time, line}:{level: number, score: number, time: number, line: number}) => {
-    return `level:\n${level}\nline:\n${line}\nscore:\n${score}\ntime:\n${format(new Date(time * 1000), 'mm:ss:SS')}`;
+  const infoTextMake = ({
+  level,
+  score,
+  time,
+  line,
+}: {
+  level?: number;
+  score?: number;
+  time?: number;
+  line?: number;
+}) => {
+  const parts: string[] = [];
+
+  if (level !== undefined) parts.push(`level:\n${level}`);
+  if (line !== undefined) parts.push(`line:\n${line}`);
+  if (score !== undefined) parts.push(`score:\n${score}`);
+  if (time !== undefined) {
+    parts.push(`time:\n${format(new Date(time * 1000), 'mm:ss:SS')}`);
   }
+
+  return parts.join('\n');
+};
 
   const infoTextDiffUpdate = (boardId: string) => {
     const tetris = tetrisGames.current[boardId]
@@ -275,7 +294,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       }
 
-      for (const [k, v] of Object.entries(localRefTetrisGames)) {
+      for (const [k, _] of Object.entries(localRefTetrisGames)) {
         boardDelete(k)
       }
     };
@@ -449,7 +468,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
     showFallingHint(boardId)
 
-    for (const [lineIdx, line] of board.getBoard().entries() ) {
+    for (const [lineIdx, line] of (board.getBoard() as Board).entries() ) {
       for (const [tileIdx, tile] of line.entries()) {
         if (tile === "Empty") {
           //
@@ -1106,7 +1125,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
       infoTextDiffUpdate(boardId);
     },
-    addEndCover(boardId, text) {
+    addEndCover(boardId, _text) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
         console.log('tetris undefined');

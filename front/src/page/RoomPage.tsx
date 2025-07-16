@@ -3,7 +3,7 @@
 import { css } from "@emotion/react"
 import { Box, Button, Flex, Select, Text, TextField } from "@radix-ui/themes"
 import { Suspense, useEffect, useRef, useState } from "react"
-import { useRoomStore, type RoomUser } from "../store/useRoomStore"
+import { useRoomStore } from "../store/useRoomStore"
 import { useWsStore } from "../store/useWsStore"
 import { useNavigate, useParams } from "react-router-dom"
 import { format } from "date-fns"
@@ -12,12 +12,9 @@ import { useWsUserStore } from "../store/useWsUserStore"
 import { useKeyboardActionSender } from "../hooks/useWsGameActoinSender"
 import { Canvas } from "@react-three/fiber"
 import { Perf } from "r3f-perf"
-import { OrbitControls, OrthographicCamera, PerspectiveCamera, Text as R3fText } from "@react-three/drei"
-import { TetrisBoardCase, type TimeController } from "../component/r3f/TetrisBoardCase"
-import { convertInstancedTetrimino, TetrisInstancedTetriminos } from "../component/r3f/TetrisInstancedTetriminos"
+import { OrbitControls,  PerspectiveCamera } from "@react-three/drei"
 import { useGameStore } from "../store/useGameStore"
 import React from "react"
-import { convertTotalInstancedTetrimino, TotalTetrisInstancedTetriminos,  } from "../component/r3f/TotalTetrisInstancedTetriminos"
 import * as THREE from 'three'
 import { OptTetris, type OptTetrisController } from "../component/r3f/OptTetris"
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -105,8 +102,8 @@ const RoomPage = () => {
 export default RoomPage
 
 const GameCanvas = () => {
-  const roomUsers = useRoomStore(s=>s.users, );
-  const [isOrth] = useState(false)
+  // const roomUsers = useRoomStore(s=>s.users, );
+  // const [isOrth] = useState(false)
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null)
   return (
@@ -197,7 +194,7 @@ const GameBoard3 = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.
 
     // const radius = 40; // 원의 반지름
     // const angleStep = (2 * Math.PI) / roomUserWsId.length;
-    for (const [idx, {wsId, nickName}] of roomUserWsId.entries()) {
+    for (const [_idx, {wsId, nickName}] of roomUserWsId.entries()) {
 
       if (tetrisList[wsId]) {
         delete tetrisList[wsId]
@@ -237,7 +234,7 @@ const GameBoard3 = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.
     }
 
     //to delete
-    for (const [k, v] of Object.entries(tetrisList)) {
+    for (const [k, _] of Object.entries(tetrisList)) {
       console.log('delete', k)
       localRef.boardDelete(k)
     }
@@ -266,32 +263,32 @@ const GameBoard3 = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.
   return <OptTetris ref={ref} />
 }
 
-const GameBoard2 = () => {
-    const serverGameMsg = useGameStore(s=>s.serverGameMsg);
-    if (!serverGameMsg){
-      return null
-    }
-    // console.log(serverGameMsg)
-    const a = Object.entries(serverGameMsg.tetries).map(([wsId, tetris], idx)=>{
-      return {
-        boardPosition: [idx * 30 , 0, idx * 30 ],
-        boardRotatoin: [0, 0, 0],
-        board: tetris.board,
-        next: tetris.next,
-        hold: tetris.hold
-      }
-    })
-    console.log('abc', a)
-  return (
-    <TotalTetrisInstancedTetriminos tetriminos={convertTotalInstancedTetrimino(a)} />
-  )
-}
+// const GameBoard2 = () => {
+//     const serverGameMsg = useGameStore(s=>s.serverGameMsg);
+//     if (!serverGameMsg){
+//       return null
+//     }
+//     // console.log(serverGameMsg)
+//     const a = Object.entries(serverGameMsg.tetries).map(([wsId, tetris], idx)=>{
+//       return {
+//         boardPosition: [idx * 30 , 0, idx * 30 ],
+//         boardRotatoin: [0, 0, 0],
+//         board: tetris.board,
+//         next: tetris.next,
+//         hold: tetris.hold
+//       }
+//     })
+//     console.log('abc', a)
+//   return (
+//     <TotalTetrisInstancedTetriminos tetriminos={convertTotalInstancedTetrimino(a)} />
+//   )
+// }
 
 
 
-type GameBoardParam = {
-  roomUser: RoomUser
-}
+// type GameBoardParam = {
+//   roomUser: RoomUser
+// }
 // const GameBoard = ({roomUser}: GameBoardParam) => {
 
 //   const serverTetris = useGameStore(s=>s.serverGameMsg?.tetries[roomUser.wsId])
@@ -305,27 +302,27 @@ type GameBoardParam = {
     
 //   </>
 // }
-const GameBoard = React.memo(
-  ({ roomUser }: GameBoardParam) => {
-    const serverTetris = useGameStore(s=>s.serverGameMsg?.tetries[roomUser.wsId])
-  const timerRef = useRef<TimeController>(null);
-  return <>
-    <TetrisBoardCase ref={timerRef} isOver={serverTetris?.isGameOver ?? null}/>
+// const GameBoard = React.memo(
+//   ({ roomUser }: GameBoardParam) => {
+//     const serverTetris = useGameStore(s=>s.serverGameMsg?.tetries[roomUser.wsId])
+//   const timerRef = useRef<TimeController>(null);
+//   return <>
+//     <TetrisBoardCase ref={timerRef} isOver={serverTetris?.isGameOver ?? null}/>
     
-    <R3fText position={[ 0, 5, 0]} color="black" scale={1}>{roomUser.nickName}</R3fText>
-    {serverTetris
-      && <TetrisInstancedTetriminos tetriminos={convertInstancedTetrimino(serverTetris.board, serverTetris.next, serverTetris.hold)} isOver={serverTetris?.isGameOver ?? null} />}
+//     <R3fText position={[ 0, 5, 0]} color="black" scale={1}>{roomUser.nickName}</R3fText>
+//     {serverTetris
+//       && <TetrisInstancedTetriminos tetriminos={convertInstancedTetrimino(serverTetris.board, serverTetris.next, serverTetris.hold)} isOver={serverTetris?.isGameOver ?? null} />}
     
-  </>
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.roomUser.userId === nextProps.roomUser.userId &&
-      prevProps.roomUser.wsId === nextProps.roomUser.wsId &&
-      prevProps.roomUser.nickName === nextProps.roomUser.nickName
-    );
-  }
-);
+//   </>
+//   },
+//   (prevProps, nextProps) => {
+//     return (
+//       prevProps.roomUser.userId === nextProps.roomUser.userId &&
+//       prevProps.roomUser.wsId === nextProps.roomUser.wsId &&
+//       prevProps.roomUser.nickName === nextProps.roomUser.nickName
+//     );
+//   }
+// );
 
 const HUD = () => {
   const navigate = useNavigate();
@@ -355,18 +352,18 @@ const HUD = () => {
       send(JSON.stringify(obj));
     }
   }
-  const handleSync = () => {
-    if (roomId) {
-      const nowGameId = games[games.length - 1];
-      const obj = {
-        type: 'gameSync',
-        data: {
-          gameId: nowGameId
-        }
-      };
-      send(JSON.stringify(obj));
-    }
-  }
+  // const handleSync = () => {
+  //   if (roomId) {
+  //     const nowGameId = games[games.length - 1];
+  //     const obj = {
+  //       type: 'gameSync',
+  //       data: {
+  //         gameId: nowGameId
+  //       }
+  //     };
+  //     send(JSON.stringify(obj));
+  //   }
+  // }
 
   const handleGameTypeChange = (gameType: string) => {
     if (roomId) {

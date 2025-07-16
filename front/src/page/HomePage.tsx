@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 
 import { css } from "@emotion/react"
-import { Text, Avatar, Flex, Grid, TextField, Button, Dialog } from "@radix-ui/themes"
+import { Text,  Flex, Grid, TextField, Button, Dialog } from "@radix-ui/themes"
 import { useAuthStore } from "../store/useAuthStore";
 import { useEffect, useRef, useState } from "react";
 import { getUserInfo, type UserInfo } from "../api/user";

@@ -35,9 +35,9 @@ const MyCanvas = () => {
     /* rigidBodies.current.at(100).applyImpulse({ x: 0, y: 10, z: 0 }, true); */
 
     // Or update all instances
-    rigidBodies.current.forEach((api) => {
+    /* rigidBodies.current.forEach((api) => { */
       /* api.applyImpulse({ x: 0, y: 10, z: 0 }, true); */
-    });
+    /* }); */
   }, []);
   const instances = useMemo(() => {
     const instances: InstancedRigidBodyProps[] = [];

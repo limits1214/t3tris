@@ -10,6 +10,7 @@ import * as THREE from 'three'
 import { Multiline } from '../../component/r3f/Multiline'
 import { Flex } from '@radix-ui/themes'
 import { CuboidCollider, InstancedRigidBodies, Physics, RapierRigidBody, type InstancedRigidBodyProps } from '@react-three/rapier'
+import type { Board } from 'tetris-lib/bindings'
 const TestR3fPage = () => {
   
   return (
@@ -661,7 +662,7 @@ const useTetrisMockServer = () => {
 
     hint();
 
-    const board = jsBoard.current.getBoard();
+    const board = jsBoard.current.getBoard() as Board;
     const convertedBoard = board.map(line=>line.map(tile=>{
         if (tile === "Empty") {
           return tetriminoClientMap["E"];

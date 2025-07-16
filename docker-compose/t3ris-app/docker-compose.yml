@@ -21,6 +21,20 @@ services:
     networks:
       - shared
 
+  back-ws:
+    # build:
+    #   context: ../../back
+    #   dockerfile: api/Dockerfile
+    image: ghcr.io/limits1214/t3tris-back-ws:latest
+    container_name: t3tris-back-ws
+    environment:
+      ENV__REDIS__REDIS_URL: ${REDIS_URL}
+    # restart: always
+    volumes:
+      - ${VOL_MOUNT_PATH}/t3tris-app-docker-volume/back-ws/logs:/app/logs
+    networks:
+      - shared
+
 networks:
   shared:
     name: t3tris-shared-net

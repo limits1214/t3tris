@@ -140,6 +140,8 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                                             tetris.is_placing_delay = false;
 
                                             let (clear_len, score) = tetris.place_falling();
+
+                                            tetris.spawn_next();
                                             match game.game_type {
                                                 WsWorldGameType::MultiBattle => {
                                                     tetris.garbage_add(clear_len as u8);

@@ -71,7 +71,7 @@ pub fn action(
         GameActionType::HardDrop => {
             tetris.action_hard_drop();
             let (clear_len, score) = tetris.place_falling();
-
+            tetris.spawn_next();
             if matches!(
                 game.game_type,
                 crate::ws_world::model::WsWorldGameType::MultiBattle

@@ -309,7 +309,6 @@ impl TetrisGame {
 
         self.is_tspin = false;
 
-        self.spawn_next();
         self.is_can_hold = true;
 
         (clear_len, score)

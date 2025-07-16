@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO tb_session\n            (\n                id, user_id, ip, user_agent, expires_at,\n                created_by, updated_by\n            )\n            VALUES\n            (\n                $1, $2, $3, $4, $5,\n                $6, $7\n            )\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Timestamptz",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "475bb8e8670fc92b56d9497a61c95fbe44448b6c19c8d7f6a916c47f8b37b255"
+}

@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                tu.id,\n                tu.nick_name,\n                tu.avatar_url ,\n                tu.email ,\n                tu.password, \n                tu.user_stt AS \"user_stt: UserStatus\",\n                tu.user_role AS \"user_role: UserRole\",\n                tu.provider AS \"provider: Provider\",\n                tu.provider_user_id ,\n                --\n                tu.created_at ,\n                tu.created_by ,\n                tu.updated_at,\n                tu.updated_by,\n                tu.is_deleted\n            FROM\n                tb_user tu\n            WHERE\n                tu.is_deleted = FALSE \n                AND tu.provider = 'Email'\n                AND tu.email = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "nick_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "password",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "user_stt: UserStatus",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_role: UserRole",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "provider: Provider",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "provider_user_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_by",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "9a54d0a13bc616a60a96ace5504c9f546ff1e1ed367ff0682c5ac639408cbc20"
+}

@@ -175,7 +175,7 @@ fn process(
                 game_id,
                 action,
             } => {
-                game::action(
+                game::action::action(
                     connections,
                     data,
                     pubsub,

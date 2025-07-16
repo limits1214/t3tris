@@ -3,10 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use tetris_lib::{Board, FallingBlock, SpawnError, StepError, Tetrimino, Tile, TileAt};
 
-pub mod multi_40_line;
-pub mod multi_battle;
-pub mod multi_score;
-
 use crate::ws_world::model::WsId;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,7 +48,17 @@ pub enum TetrisGameActionType {
     GarbageAdd {
         empty: Vec<u8>,
     },
-    GameOver {},
+    BoardEnd {
+        // msg: Option<String>,
+        kind: BoardEndKind,
+        elapsed: u128,
+        // end_th: u8,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum BoardEndKind {
+    SpawnImpossible,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +95,7 @@ pub struct TetrisGame {
     pub next: VecDeque<Tetrimino>,
     pub is_can_hold: bool,
     pub is_started: bool,
-    pub is_game_over: bool,
+    pub is_board_end: bool,
     pub actions: Vec<TetrisGameAction>,
     pub actions_buffer: Vec<TetrisGameAction>,
     pub elapsed: u128,
@@ -121,7 +127,7 @@ impl TetrisGame {
             level: 1,
             is_can_hold: true,
             is_started: false,
-            is_game_over: false,
+            is_board_end: false,
             tick: 0,
             step_tick: 0,
             actions: vec![],
@@ -187,66 +193,71 @@ impl TetrisGame {
 
     // true: ok
     // none: spawn issue, game over
-    pub fn try_spawn_next(&mut self) -> Option<Vec<TileAt>> {
-        let Some(next_tetr) = self.next.front().cloned() else {
-            // unreachable
-            return None;
-        };
-        let Ok(new_tiles) = self.board.try_spawn_falling(next_tetr) else {
-            // unreachable
-            return None;
-        };
-        for TileAt { location, .. } in &new_tiles {
-            // 스폰위치가 비어 있지 않으면 게임 종료
-            if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
-                // self.is_game_over = true;
-                // self.push_action_buffer(TetrisGameActionType::GameOver {});
-                return None;
-            }
-        }
-        Some(new_tiles)
-    }
+    // pub fn try_spawn_next(&mut self) -> Option<Vec<TileAt>> {
+    //     let Some(next_tetr) = self.next.front().cloned() else {
+    //         // unreachable
+    //         return None;
+    //     };
+    //     let Ok(new_tiles) = self.board.try_spawn_falling(next_tetr) else {
+    //         // unreachable
+    //         return None;
+    //     };
+    //     for TileAt { location, .. } in &new_tiles {
+    //         // 스폰위치가 비어 있지 않으면 게임 종료
+    //         if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
+    //             // self.is_game_over = true;
+    //             // self.push_action_buffer(TetrisGameActionType::GameOver {});
+    //             return None;
+    //         }
+    //     }
+    //     Some(new_tiles)
+    // }
+    // pub fn apply_spawn_next(&mut self, new_tiles: Vec<TileAt>) {
+    //     if let Some(next_tetr) = self.next.pop_front() {
+    //         self.board.apply_spawn_falling(new_tiles);
+    //         self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
 
-    pub fn apply_spawn_next(&mut self, new_tiles: Vec<TileAt>) {
-        if let Some(next_tetr) = self.next.pop_front() {
-            self.board.apply_spawn_falling(new_tiles);
-            self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
+    //         //다음틱에 바로 step 되게 9999 세팅
+    //         self.step_tick = 9999;
 
-            //다음틱에 바로 step 되게 9999 세팅
-            self.step_tick = 9999;
-
-            let added_next = Self::rand_tetrimino();
-            self.next.push_back(added_next);
-            self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
-        }
-    }
+    //         let added_next = Self::rand_tetrimino();
+    //         self.next.push_back(added_next);
+    //         self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
+    //     }
+    // }
 
     pub fn spawn_next(&mut self) -> anyhow::Result<()> {
         let Some(next_tetr) = self.next.pop_front() else {
             return Ok(());
         };
+
+        if !self.spawn_with_game_over_check(next_tetr)? {
+            return Ok(());
+        }
+
         let added_next = Self::rand_tetrimino();
         self.next.push_back(added_next);
         self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
-
-        self.spawn_with_game_over_check(next_tetr)?;
         self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });
 
         Ok(())
     }
 
-    fn spawn_with_game_over_check(&mut self, tetr: Tetrimino) -> Result<(), SpawnError> {
+    fn spawn_with_game_over_check(&mut self, tetr: Tetrimino) -> Result<bool, SpawnError> {
         let new_tiles = self.board.try_spawn_falling(tetr)?;
         for TileAt { location, .. } in &new_tiles {
             if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
-                self.is_game_over = true;
-                self.push_action_buffer(TetrisGameActionType::GameOver {});
-                return Ok(());
+                self.is_board_end = true;
+                self.push_action_buffer(TetrisGameActionType::BoardEnd {
+                    kind: BoardEndKind::SpawnImpossible,
+                    elapsed: self.elapsed - 3000,
+                });
+                return Ok(false);
             }
         }
         self.step_tick = 9999;
         self.board.apply_spawn_falling(new_tiles);
-        Ok(())
+        Ok(true)
     }
     pub fn place_falling(&mut self) -> (usize, Option<TetrisScore>) {
         self.board.place_falling();
@@ -347,8 +358,11 @@ impl TetrisGame {
         if !add_gargabe.is_empty() {
             for x in &add_gargabe {
                 if !self.board.push_garbage_line(*x as usize) {
-                    self.is_game_over = true;
-                    self.push_action_buffer(TetrisGameActionType::GameOver {});
+                    self.is_board_end = true;
+                    self.push_action_buffer(TetrisGameActionType::BoardEnd {
+                        kind: BoardEndKind::SpawnImpossible,
+                        elapsed: self.elapsed - 3000,
+                    });
                     return;
                 };
             }

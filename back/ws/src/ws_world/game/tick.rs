@@ -6,7 +6,7 @@ use std::{
 use rand::seq::IndexedRandom;
 
 use crate::ws_world::{
-    game::tetris::{self, GarbageQueueKind, TetrisGameActionType, attack_line},
+    game::tetris::{BoardEndKind, GarbageQueueKind, TetrisGameActionType, attack_line},
     model::WsWorldGameType,
 };
 use crate::{
@@ -76,21 +76,34 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 );
             }
         } else {
-            // match game.game_type {
-            //     WsWorldGameType::Multi40Line => {
-            //         tetris::multi_40_line::tick(game);
-            //     }
-            //     _ => {}
-            // }
+            // battle last check
+            if matches!(game.game_type, WsWorldGameType::MultiBattle) {
+                let mut not_end_boards = game
+                    .tetries
+                    .iter_mut()
+                    .filter(|f| !f.1.is_board_end)
+                    .collect::<Vec<_>>();
+                if not_end_boards.len() == 1 {
+                    let (_, tetris) = not_end_boards.get_mut(0).unwrap();
+                    tetris.is_board_end = true;
+                    tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                        kind: BoardEndKind::SpawnImpossible,
+                        elapsed: tetris.elapsed - 3000,
+                    });
+                }
+            }
 
             let mut attack_list = vec![];
             for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
                 if tetris.is_started {
-                    if !tetris.is_game_over {
+                    if !tetris.is_board_end {
+                        // tick
                         tetris.tick += 1;
+
+                        // step tick
                         tetris.step_tick += 1;
 
-                        // combo
+                        // combo tick
                         if tetris.combo_tick > 0 {
                             tetris.combo_tick -= 1;
                         } else {
@@ -98,20 +111,22 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                             tetris.combo = 0;
                         }
 
-                        // garbage
-                        let mut garbage_ready = false;
-                        for gq in tetris.garbage_queue.iter_mut() {
-                            if matches!(gq.kind, GarbageQueueKind::Queued)
-                                && tetris.tick > gq.tick + 180
-                            {
-                                gq.kind = GarbageQueueKind::Ready;
-                                garbage_ready = true;
+                        // garbage queue->ready tick
+                        if matches!(game.game_type, WsWorldGameType::MultiBattle) {
+                            let mut garbage_ready = false;
+                            for gq in tetris.garbage_queue.iter_mut() {
+                                if matches!(gq.kind, GarbageQueueKind::Queued)
+                                    && tetris.tick > gq.tick + 180
+                                {
+                                    gq.kind = GarbageQueueKind::Ready;
+                                    garbage_ready = true;
+                                }
                             }
-                        }
-                        if garbage_ready {
-                            tetris.push_action_buffer(TetrisGameActionType::Garbage {
-                                queue: tetris.garbage_queue.clone().into(),
-                            });
+                            if garbage_ready {
+                                tetris.push_action_buffer(TetrisGameActionType::Garbage {
+                                    queue: tetris.garbage_queue.clone().into(),
+                                });
+                            }
                         }
 
                         if tetris.is_placing_delay {
@@ -122,21 +137,39 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                                     | tetris_lib::StepError::OutOfBounds => {
                                         tetris.placing_delay_tick += 1;
                                         if tetris.placing_delay_tick >= PLACING_DELAY {
-                                            let (clear_len, score) = tetris.place_falling();
-                                            tetris.garbage_add(clear_len as u8);
-                                            if let Some(score) = score {
-                                                let attack = attack_line(score);
-                                                if let Some(attack) = attack {
-                                                    attack_list
-                                                        .push((tetris.ws_id.clone(), attack));
-                                                }
-                                            }
                                             tetris.is_placing_delay = false;
+
+                                            let (clear_len, score) = tetris.place_falling();
+                                            match game.game_type {
+                                                WsWorldGameType::MultiBattle => {
+                                                    tetris.garbage_add(clear_len as u8);
+                                                    if let Some(score) = score {
+                                                        let attack = attack_line(score);
+                                                        if let Some(attack) = attack {
+                                                            attack_list.push((
+                                                                tetris.ws_id.clone(),
+                                                                attack,
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                                WsWorldGameType::Multi40Line => {
+                                                    if tetris.clear_line >= 40 {
+                                                        tetris.is_board_end = true;
+
+                                                        tetris.push_action_buffer(
+                                                            TetrisGameActionType::BoardEnd {
+                                                                kind: BoardEndKind::SpawnImpossible,
+                                                                elapsed: tetris.elapsed - 3000,
+                                                            },
+                                                        );
+                                                    }
+                                                }
+                                                _ => {}
+                                            }
                                         }
                                     }
-                                    tetris_lib::StepError::InvalidShape => {
-                                        //
-                                    }
+                                    tetris_lib::StepError::InvalidShape => {}
                                 },
                             }
                         }
@@ -156,37 +189,43 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                                             tetris.placing_reset_cnt = 15;
                                         }
                                     }
-
-                                    tetris_lib::StepError::InvalidShape => {
-                                        //
-                                    }
+                                    tetris_lib::StepError::InvalidShape => {}
                                 },
                             }
                         }
+
+                        // if tetris.is_board_end {
+                        //     tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                        //         kind: BoardEndKind::SpawnImpossible,
+                        //         elapsed: tetris.elapsed - 3000,
+                        //     });
+                        // }
                     }
                 } else {
                     tetris.is_started = true;
-                    tetris.is_game_over = false;
+                    tetris.is_board_end = false;
                     tetris.tick = 0;
                     tetris.step_tick = 0;
                     tetris.setup();
-                    tetris.spawn_next();
+                    _ = tetris.spawn_next();
                 }
             }
 
             // attack
-            for (ws_id, attack_line) in attack_list {
-                let targets = game
-                    .tetries
-                    .iter()
-                    .filter(|(f, g)| **f != ws_id && !g.is_game_over)
-                    .map(|t| t.0)
-                    .cloned()
-                    .collect::<Vec<_>>();
+            if matches!(game.game_type, WsWorldGameType::MultiBattle) {
+                for (ws_id, attack_line) in attack_list {
+                    let targets = game
+                        .tetries
+                        .iter()
+                        .filter(|(f, g)| **f != ws_id && !g.is_board_end)
+                        .map(|t| t.0)
+                        .cloned()
+                        .collect::<Vec<_>>();
 
-                if let Some(target) = targets.choose(&mut rand::rng()) {
-                    if let Some(game) = game.tetries.get_mut(&target) {
-                        game.garbage_queueing(attack_line, ws_id.to_string());
+                    if let Some(target) = targets.choose(&mut rand::rng()) {
+                        if let Some(game) = game.tetries.get_mut(&target) {
+                            game.garbage_queueing(attack_line, ws_id.to_string());
+                        }
                     }
                 }
             }
@@ -210,8 +249,8 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 }
             }
 
-            let is_game_over = game.tetries.iter_mut().all(|(_, game)| game.is_game_over);
-            if is_game_over {
+            let is_game_end = game.tetries.iter_mut().all(|(_, game)| game.is_board_end);
+            if is_game_end {
                 game.status = WsWorldGameStatus::GameEnd;
 
                 if let Some(room) = data.rooms.get_mut(&game.room_id) {
@@ -236,8 +275,10 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
 
                 pubsub.publish(
                     &topic!(TOPIC_ROOM_ID, game.room_id),
-                    &ServerToClientWsMsg::Echo {
-                        msg: format!("GameEnd"),
+                    &ServerToClientWsMsg::GameEnd {
+                        game_id: game.game_id.to_string(),
+                        room_id: game.room_id.to_string(),
+                        result: game.result.clone().unwrap_or_default(),
                     }
                     .to_json(),
                 );

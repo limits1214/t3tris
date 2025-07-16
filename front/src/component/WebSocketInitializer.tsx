@@ -205,9 +205,11 @@ const WebSocketInitializer = () => {
                   ) {
                     gameRef?.current?.scoreEffect(k, kind + combo + 'combo')
                   }
-                } else if (typeof action === "object" && action !== null && "gameOver" in action) {
+                } else if (typeof action === "object" && action !== null && "boardEnd" in action) {
+                  const elapsed = action["boardEnd"].elapsed;
                   gameRef?.current?.addEndCover(k, "t");
                   gameRef?.current?.timerOff(k);
+                  gameRef?.current?.infoTextUpdate(k, {time: elapsed/1000});
                 } else if (typeof action === "object" && action !== null && "garbage" in action) {
                   const queue = action["garbage"].queue;
                   gameRef?.current?.garbageQueueSet(k, queue)

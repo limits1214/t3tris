@@ -626,7 +626,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       const txt = "level:\n1\nscore:\n0";
       tetris.texts.infoText.text = txt;
-      // tetris.texts.infoText.sync()
 
       this.removeEndCover(boardId)
 

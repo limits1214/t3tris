@@ -53,4 +53,7 @@ oauth2 = "5.0.0"
 deadpool-redis = "0.21"
 redis = { version = "0.31.0", features = ["tokio-comp"] }
 
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", features = [
+    "json",
+    "rustls-tls",
+], default-features = false }

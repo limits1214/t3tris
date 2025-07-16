@@ -33,20 +33,20 @@ jobs:
 
       - name: Build & Push Image
         run: |
-          cargo install wasm-pack
+          #cargo install wasm-pack
 
           chmod +x back/tetris-lib/wasm_pkg_build.bash
           chmod +x front/build_docker_front.bash
           chmod +x back/build_docker_api.bash
           chmod +x back/build_docker_ws.bash
 
-          cd back/tetris-lib
-          ./wasm_pkg_build.bash
-          cd ../..
+          #cd back/tetris-lib
+          #./wasm_pkg_build.bash
+          #cd ../..
 
-          cd front
-          ./build_docker_front.bash
-          cd ..
+          #cd front
+          #./build_docker_front.bash
+          #cd ..
 
           cd back
           ./build_docker_api.bash

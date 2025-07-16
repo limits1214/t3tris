@@ -41,6 +41,7 @@ pub enum TetrisGameActionType {
         level: u8,
         score: u32,
         combo: u32,
+        line: u32,
     },
     Garbage {
         queue: Vec<GarbageQueue>,
@@ -306,6 +307,7 @@ impl TetrisGame {
                 kind: score.clone(),
                 score: self.score,
                 combo: self.combo,
+                line: self.clear_line,
             });
         }
 
@@ -544,6 +546,7 @@ impl TetrisGame {
             level: self.level,
             score: self.score,
             combo: self.combo,
+            line: self.clear_line,
         });
 
         self.is_placing_delay = false;
@@ -560,6 +563,7 @@ impl TetrisGame {
             level: self.level,
             score: self.score,
             combo: self.combo,
+            line: self.clear_line,
         });
 
         self.step()?;
@@ -622,6 +626,7 @@ impl TetrisGame {
         let garbage_q = self.garbage_queue.clone();
         let score = self.score;
         let level = self.level;
+        let line = self.clear_line;
 
         serde_json::json!({
             "next": next,
@@ -629,7 +634,8 @@ impl TetrisGame {
             "hold": hold,
             "garbageQueue": garbage_q,
             "score": score,
-            "level": level
+            "level": level,
+            "line": line,
         })
     }
 }

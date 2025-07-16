@@ -24,6 +24,7 @@ export type InfoData = {
   level?: number,
   score?: number,
   time?: number,
+  line?: number
 }
 export type OptTetrisController = {
   tetrisGameList: ()=>Partial<Record<string, TetrisGame>>,
@@ -63,6 +64,7 @@ export type GameSyncData = {
   level: any,
   next: any,
   score: any,
+  line: any
 }
 export type GarbageQueue = {
   kind: "Queued" | "Ready",
@@ -190,8 +192,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     }
   })
-  const infoTextMake = ({level, score, time}:{level: number, score: number, time: number}) => {
-    return `level:\n${level}\nscore:\n${score}\ntime:\n${format(new Date(time * 1000), 'mm:ss:SS')}`;
+  const infoTextMake = ({level, score, time, line}:{level: number, score: number, time: number, line: number}) => {
+    return `level:\n${level}\nline:\n${line}\nscore:\n${score}\ntime:\n${format(new Date(time * 1000), 'mm:ss:SS')}`;
   }
 
   const infoTextDiffUpdate = (boardId: string) => {
@@ -201,7 +203,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const nowText = infoTextMake({
         level: tetris.infoTextData.level,
         score: tetris.infoTextData.score,
-        time: tetris.infoTextData.time
+        time: tetris.infoTextData.time,
+        line: tetris.infoTextData.line,
       })
       if (beforeText !== nowText) {
         tetris.texts.infoText.text = nowText
@@ -620,7 +623,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       tetris.infoTextData = {
         level: 1,
         score: 0,
-        time: 0
+        time: 0,
+        line: 0,
       };
       updateBoardInstancedMeshse(boardId);
 
@@ -656,6 +660,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           level: 1,
           score: 0,
           time: 0,
+          line: 0,
         },
         lastUpdatedTime: 0,
         texts: {},
@@ -1095,6 +1100,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
       if (data.time) {
         tetris.infoTextData.time = data.time;
+      }
+      if (data.line) {
+        tetris.infoTextData.line = data.line;
       }
       infoTextDiffUpdate(boardId);
     },

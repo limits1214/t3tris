@@ -414,7 +414,7 @@ const HUD = () => {
     
           {/* <Button css={css`pointer-events: auto;`} onClick={handleSync}>Sync</Button> */}
 
-          {isHost && roomStatus === 'Waiting' &&
+          {isHost && 
             <Select.Root defaultValue="MultiScore" onValueChange={handleGameTypeChange} disabled={roomStatus !== 'Waiting'}>
               <Select.Trigger />
               <Select.Content>

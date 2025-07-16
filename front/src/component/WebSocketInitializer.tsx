@@ -198,8 +198,9 @@ const WebSocketInitializer = () => {
                   const kind = action["score"].kind
                   const level = action["score"].level
                   const score = action["score"].score
+                  const line = action["score"].line
                   const combo = action["score"].combo
-                  gameRef?.current?.infoTextUpdate(k, {level, score});
+                  gameRef?.current?.infoTextUpdate(k, {level, score, line});
                   if (kind === "single" || kind === "double" || kind === "triple" || kind === "tetris"
                     || kind === "tSpinZero" || kind === "tSpinSingle" || kind === "tSpinDouble" || kind === "tSpinTriple" 
                   ) {

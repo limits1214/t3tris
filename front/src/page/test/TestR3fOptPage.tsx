@@ -2,13 +2,15 @@
 
 import { Canvas,   } from "@react-three/fiber"
 import {button, useControls} from 'leva'
-import { Perf } from "r3f-perf";
 import { OrbitControls, PerspectiveCamera,  } from "@react-three/drei";
 import { css } from "@emotion/react";
 import { useEffect, useRef } from "react";
 import { OptTetris, type GameSyncData, type OptTetrisController } from "../../component/r3f/OptTetris";
 import * as THREE from 'three';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import React from "react";
+
+const LazyPerf = React.lazy(()=>import('../../component/r3f/Perf'));
 
 const TestR3fOptPage = () => {
   const ref = useRef<OptTetrisController>(null);
@@ -162,14 +164,13 @@ const TestR3fOptPage = () => {
     return tetriminos[Math.floor(Math.random() * tetriminos.length)] as  "I" | "O" | "T" | "J" | "L" | "S" | "Z";
   }
   const cameraRef = useRef<THREE.PerspectiveCamera>(null)
-const controlsRef = useRef<OrbitControlsImpl>(null)
+  const controlsRef = useRef<OrbitControlsImpl>(null)
   return (
     <div css={css`height: 100vh;`}>
       <h1 css={css`position: absolute;`}>TestR3fOptPage</h1>
       <Canvas onCreated={() => {
         // gl.setClearColor('#e6e6e6'); 
       }}>
-        <Perf position="bottom-left"/>
         <PerspectiveCamera ref={cameraRef} makeDefault position={[0, 0, 0]} />
         <OrbitControls 
           ref={controlsRef}
@@ -179,11 +180,11 @@ const controlsRef = useRef<OrbitControlsImpl>(null)
           <boxGeometry/>
           <meshBasicMaterial color={"red"}/>
         </mesh>
-
+        <LazyPerf position="bottom-left"/>
         {/* <BorderedBlock/> */}
         {/* <BorderedStandardBox/> */}
 
-        <MyBlock/>
+        
 
         <ambientLight intensity={2} />
         {/* <hemisphereLight intensity={2} position={[0, 10, 0]}/> */}
@@ -357,29 +358,28 @@ export function BorderedStandardBox() {
 
 
 
-import { useGLTF } from '@react-three/drei';
 
-export function MyBlock() {
-  const { nodes } = useGLTF('/public/glb/basicBlock.glb'); // public/models/my_block.glb
-  return (
-    <>
-      <mesh
-      position={[ 0, -20, 0]}
-      scale={[0.5,0.5,0.5]}
-        geometry={(nodes.Cube as THREE.Mesh).geometry}
-      >
-        <meshLambertMaterial color="orange" />
-      </mesh>
+// export function MyBlock() {
+//   const { nodes } = useGLTF('/glb/basicBlock.glb'); // public/models/my_block.glb
+//   return (
+//     <>
+//       <mesh
+//       position={[ 0, -20, 0]}
+//       scale={[0.5,0.5,0.5]}
+//         geometry={(nodes.Cube as THREE.Mesh).geometry}
+//       >
+//         <meshLambertMaterial color="orange" />
+//       </mesh>
 
-      <mesh
-      position={[ 0, -21, 0]}
-      scale={[0.5,0.5,0.5]}
-        geometry={(nodes.Cube as THREE.Mesh).geometry}
-      >
-        <meshLambertMaterial color="orange" />
-      </mesh>
+//       <mesh
+//       position={[ 0, -21, 0]}
+//       scale={[0.5,0.5,0.5]}
+//         geometry={(nodes.Cube as THREE.Mesh).geometry}
+//       >
+//         <meshLambertMaterial color="orange" />
+//       </mesh>
 
-      {/* <directionalLight position={[ 1010, -1010, 1010]} intensity={10}/> */}
-    </>
-  );
-}
+//       {/* <directionalLight position={[ 1010, -1010, 1010]} intensity={10}/> */}
+//     </>
+//   );
+// }

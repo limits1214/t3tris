@@ -11,13 +11,17 @@ import { ReadyState } from "react-use-websocket"
 import { useWsUserStore } from "../store/useWsUserStore"
 import { useKeyboardActionSender } from "../hooks/useWsGameActoinSender"
 import { Canvas } from "@react-three/fiber"
-import { Perf } from "r3f-perf"
 import { OrbitControls,  PerspectiveCamera } from "@react-three/drei"
 import { useGameStore } from "../store/useGameStore"
 import React from "react"
 import * as THREE from 'three'
 import { OptTetris, type OptTetrisController } from "../component/r3f/OptTetris"
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+
+const LazyPerf = React.lazy(()=>import('../component/r3f/Perf'));
+
+
+
 const RoomPage = () => {
   const wsReadyState = useWsStore(s=>s.readyState)
   const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
@@ -26,11 +30,8 @@ const RoomPage = () => {
   const roomClear = useRoomStore(s=>s.clear);
   const games = useRoomStore(s=>s.games);
   const roomStatus = useRoomStore(s=>s.roomStatus);
-;
   const setGameId = useKeyboardActionSender();
-
   const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
-
 
   useEffect(() => {
     if (roomStatus === 'Gaming') {
@@ -92,10 +93,8 @@ const RoomPage = () => {
           <GameCanvas/>
         </Canvas>
       </Box>
-
       <HUD/>
     </Flex>
-
   )
 }
 
@@ -108,7 +107,7 @@ const GameCanvas = () => {
   const controlsRef = useRef<OrbitControlsImpl>(null)
   return (
       <>
-        <Perf position="bottom-left" />
+        <LazyPerf position="bottom-left" />
         <PerspectiveCamera
             makeDefault
             ref={cameraRef}

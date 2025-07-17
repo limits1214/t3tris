@@ -4,7 +4,7 @@ import DefaultLayout from './layout/DefaultLayout.tsx'
 import HomePage from './page/HomePage.tsx'
 import SinglePlayPage from './page/SinglePlayPage.tsx'
 // import RoomPage from './page/RoomPage.tsx'
-import React, { Suspense } from 'react'
+import React from 'react'
 
 const LazyRoomPage = React.lazy(() => import('./page/RoomPage.tsx'));
 

@@ -193,27 +193,27 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
   })
   const infoTextMake = ({
-  level,
-  score,
-  time,
-  line,
-}: {
-  level?: number;
-  score?: number;
-  time?: number;
-  line?: number;
-}) => {
-  const parts: string[] = [];
+      level,
+      score,
+      time,
+      line,
+    }: {
+        level?: number;
+        score?: number;
+        time?: number;
+        line?: number;
+      }) => {
+      const parts: string[] = [];
 
-  if (level !== undefined) parts.push(`level:\n${level}`);
-  if (line !== undefined) parts.push(`line:\n${line}`);
-  if (score !== undefined) parts.push(`score:\n${score}`);
-  if (time !== undefined) {
-    parts.push(`time:\n${format(new Date(time * 1000), 'mm:ss:SS')}`);
-  }
+      if (level !== undefined) parts.push(`level:\n${level}`);
+      if (line !== undefined) parts.push(`line:\n${line}`);
+      if (score !== undefined) parts.push(`score:\n${score}`);
+      if (time !== undefined) {
+        parts.push(`time:\n${format(new Date(time * 1000), 'mm:ss:SS')}`);
+    }
 
-  return parts.join('\n');
-};
+    return parts.join('\n');
+  };
 
   const infoTextDiffUpdate = (boardId: string) => {
     const tetris = tetrisGames.current[boardId]
@@ -230,16 +230,17 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     }
   }
+
   const generateBoardTransformSlot = (cnt: number): {transform: Transform, boardId: string | null}[] => {
     const boardWidth = 26;
     const boardSpacing = 0; // 여유 간격
     const effectiveWidth = boardWidth + boardSpacing;
     const boardsPerRing = (r: number) => Math.floor((2 * Math.PI * r) / effectiveWidth);
     const getBoardPosition = (index: number) => {
-      let ring = 0;
+      // let ring = 0;
       let radius = 60;
       let boardIndex = index;
-      let offset = 0;
+      // let offset = 0;
 
       // 몇 번째 링(ring)에 들어가야 하는지 계산
       while (true) {
@@ -247,8 +248,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         if (boardIndex < capacity) break;
         boardIndex -= capacity;
         radius += 60;
-        ring += 1;
-        offset += capacity;
+        // ring += 1;
+        // offset += capacity;
       }
       const angleStep = (2 * Math.PI) / boardsPerRing(radius);
       const angle = boardIndex * angleStep;
@@ -294,8 +295,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       }
 
-      for (const [k, _] of Object.entries(localRefTetrisGames)) {
-        boardDelete(k)
+      for (const [k] of Object.entries(localRefTetrisGames)) {
+        optTetrisController.boardDelete(k);
       }
     };
   }, [scene]);
@@ -574,43 +575,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     updateInstancedMeshes();
   }
 
-  const boardDelete = (boardId: string) => {
-    console.log('[boardDelete]')
-    const tetris = tetrisGames.current[boardId];
-    if (!tetris) {
-      console.log('tetris undefined');
-      return;
-    }
-
-    for (const [s, v] of Object.entries(tetris.texts)) {
-      console.log('[boardDelete] removeText', s)
-      removeText(v);
-    }
-    
-    const blocks = instancedBlocks.current;
-
-    for (const [k, block] of Object.entries(blocks)) {
-      const newArr = block.filter(item => item.id !== `${boardId}_Block`);
-      blocks[k as Block] = newArr
-    }
-    const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`);
-    blocks.Cover = newArr;
-
-    delete tetrisGames.current[boardId]
-
-    updateInstancedMeshes()
-
-
-    instanced3dText.current.Next = instanced3dText.current.Next.filter(item => item.id != `${boardId}_Next`);
-    instanced3dText.current.Hold = instanced3dText.current.Hold.filter(item => item.id != `${boardId}_Hold`);
-    updateInstanced3dMeshes();
-
-    boardTrasnfromSlot.current.forEach(item=>{
-      if (item.boardId === boardId) {
-        item.boardId = null
-      }
-    })
-  }
 
   const showFallingHint = (boardId: string) => {
     const tetris = tetrisGames.current[boardId];
@@ -622,7 +586,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     tetris.board.showFallingHint();
   }
 
-  useImperativeHandle(ref, ()=>({
+  const optTetrisController: OptTetrisController = {
     tetrisGameList() {
         return tetrisGames.current
     },
@@ -812,7 +776,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       });
 
-      for (const [idx, _] of Array(19).fill(null).entries()) {
+      for (const [idx] of Array(19).fill(null).entries()) {
         dummy.position.set(4.5, -6.5 + -idx, -0.5);
         dummy.scale.set(10, 0.05, 0.05);
         dummy.getWorldPosition(finalPos);
@@ -829,7 +793,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         });
       }
 
-      for (const [idx, _] of Array(9).fill(null).entries()) {
+      for (const [idx] of Array(9).fill(null).entries()) {
         dummy.position.set(0.5 + idx, -15.5, -0.5);
         dummy.scale.set(0.05, 20, 0.05);
         dummy.getWorldPosition(finalPos);
@@ -899,7 +863,43 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       updateInstanced3dMeshes();
     },
 
-    boardDelete,
+    boardDelete: (boardId: string) => {
+      console.log('[boardDelete]')
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+
+      for (const [s, v] of Object.entries(tetris.texts)) {
+        console.log('[boardDelete] removeText', s)
+        removeText(v);
+      }
+      
+      const blocks = instancedBlocks.current;
+
+      for (const [k, block] of Object.entries(blocks)) {
+        const newArr = block.filter(item => item.id !== `${boardId}_Block`);
+        blocks[k as Block] = newArr
+      }
+      const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`);
+      blocks.Cover = newArr;
+
+      delete tetrisGames.current[boardId]
+
+      updateInstancedMeshes()
+
+
+      instanced3dText.current.Next = instanced3dText.current.Next.filter(item => item.id != `${boardId}_Next`);
+      instanced3dText.current.Hold = instanced3dText.current.Hold.filter(item => item.id != `${boardId}_Hold`);
+      updateInstanced3dMeshes();
+
+      boardTrasnfromSlot.current.forEach(item=>{
+        if (item.boardId === boardId) {
+          item.boardId = null
+        }
+      })
+    },
     spawnFromHold(boardId, block, hold) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
@@ -947,6 +947,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         const plan = tetris.board.tryStep();
         tetris.board.applyStep(plan)
       } catch (e) {
+        if (e instanceof Error) {
+          console.error(e.message); // OK
+        } else {
+          console.error('Unknown error', e);
+        }
         // const isStepError = (err: unknown): err is StepError => {
         //   return (
         //     err === "OutOfBounds" ||
@@ -1125,7 +1130,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
       infoTextDiffUpdate(boardId);
     },
-    addEndCover(boardId, _text) {
+    addEndCover(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
         console.log('tetris undefined');
@@ -1321,7 +1326,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           updateBoardInstancedMeshse(boardId)
         }
     },
-  }));
+  };
+
+  useImperativeHandle(ref, ()=>optTetrisController);
 
   return null
 })

@@ -258,8 +258,13 @@ const HUD = () => {
 
   const isHost = hostUser?.wsId === myWsId;
 
-
   const handleGameStart = () => {
+    if (roomGameType === "MultiBattle") {
+      if (roomUsers.length === 1) {
+        return;
+      }
+    }
+
     if (roomId) {
       const obj = {
         type: 'roomGameStart',
@@ -316,16 +321,16 @@ const HUD = () => {
           : (<></>)}
     
           {/* <Button css={css`pointer-events: auto;`} onClick={handleSync}>Sync</Button> */}
-
+          
           {isHost && 
             <Select.Root defaultValue="MultiScore" onValueChange={handleGameTypeChange} disabled={roomStatus !== 'Waiting'}>
               <Select.Trigger />
               <Select.Content>
                 <Select.Group>
                   <Select.Label>GameType</Select.Label>
-                  <Select.Item value="MultiScore">MultiScore</Select.Item>
-                  <Select.Item value="Multi40Line">Multi40Line</Select.Item>
-                  <Select.Item value="MultiBattle">MultiBattle</Select.Item>
+                  <Select.Item value="MultiScore">Score</Select.Item>
+                  <Select.Item value="Multi40Line">40Line</Select.Item>
+                  <Select.Item value="MultiBattle">Battle(최소2명 이상)</Select.Item>
                 </Select.Group>
               </Select.Content>
             </Select.Root>

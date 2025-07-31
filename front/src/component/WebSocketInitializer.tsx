@@ -3,7 +3,7 @@ import { useCallback, useEffect } from "react";
 import useWebSocket from "react-use-websocket";
 import { useWsStore } from "../store/useWsStore";
 import { beforeTokenCheckAndRefresh, getWsToken } from "../api/auth";
-import { useRoomStore } from "../store/useRoomStore";
+import { useRoomStore, type GameResult, type GameResultInfo } from "../store/useRoomStore";
 import { useLobbyStore } from "../store/useLobbyStore";
 import { useWsUserStore } from "../store/useWsUserStore";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +31,9 @@ const WebSocketInitializer = () => {
   // const roomEnter = useRoomStore(s=>s.enter);
   const roomAddChat = useRoomStore(s=>s.addChat);
   const roomUpdate = useRoomStore(s=>s.update);
+  const roomAddGameResult = useRoomStore(s=>s.addRoomGameResult)
+  const roomSetGameResult = useRoomStore(s=>s.setRoomGameResult);
+  const roomSetIsGameResultOpen = useRoomStore(s=>s.setIsGameResultOpen);
 
   const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
   const gameRef = useGameStore(s=>s.gameRef);
@@ -152,9 +155,101 @@ const WebSocketInitializer = () => {
             // const data = data;
             // console.log('data!!',data.data)
             gameRef?.current?.gameSync(data.data);
+            console.log('sync', data.roomResult)
+            {
+              
+              if (Array.isArray(data.roomResult)) {
+                const gameResult: GameResult[] = []
+                for (const rr of data.roomResult) {
+                  const gameResultInfos: GameResultInfo[] = [];
+                  if(!rr.result) {
+                    continue;
+                  }
+                  for (const r of rr.result) {
+                    if (rr.gameType === "MultiScore") {
+                      const result: GameResultInfo = {
+                        wsId: r[0],
+                        nickName: r[1],
+                        score: r[2],
+                        elapsed: r[3],
+                      };
+                      gameResultInfos.push(result);
+                    } else if (rr.gameType === "Multi40Line") {
+                      const result: GameResultInfo = {
+                        wsId: r[0],
+                        nickName: r[1],
+                        score: r[2],
+                        elapsed: r[3],
+                        isLine40Clear: r[4],
+                      };
+                      gameResultInfos.push(result);
+                    } else if (rr.gameType === "MultiBattle") {
+                      const result: GameResultInfo = {
+                        wsId: r[0],
+                        nickName: r[1],
+                        score: r[2],
+                        elapsed: r[3],
+                        isBattleWin: r[4],
+                      };
+                      gameResultInfos.push(result);
+                    }
+                  }
+                  gameResult.push({
+                    gameType: rr.gameType,
+                    gameResultInfo: gameResultInfos
+                  })
+                }
+                console.log('sync result',gameResult);
+                roomSetGameResult(gameResult)
+              }
+              
+            }
+            break;
+          case 'gameEnd':
+            {
+              const gameResultInfos: GameResultInfo[] = [];
+              if (Array.isArray(data.result)) {
+                for (const r of data.result) {
+                  if (data.gameType === "MultiScore") {
+                    const result: GameResultInfo = {
+                      wsId: r[0],
+                      nickName: r[1],
+                      score: r[2],
+                      elapsed: r[3],
+                    };
+                    gameResultInfos.push(result);
+                  } else if (data.gameType === "Multi40Line") {
+                    const result: GameResultInfo = {
+                      wsId: r[0],
+                      nickName: r[1],
+                      score: r[2],
+                      elapsed: r[3],
+                      isLine40Clear: r[4],
+                    };
+                    gameResultInfos.push(result);
+                  } else if (data.gameType === "MultiBattle") {
+                    const result: GameResultInfo = {
+                      wsId: r[0],
+                      nickName: r[1],
+                      score: r[2],
+                      elapsed: r[3],
+                      isBattleWin: r[4],
+                    };
+                    gameResultInfos.push(result);
+                  }
+                }
+              }
+
+              roomAddGameResult({
+                gameType: data.gameType,
+                gameResultInfo: gameResultInfos,
+              });
+              roomSetIsGameResultOpen(true)
+            }
+            
             break;
           case 'gameAction':
-            /*
+            /*w
               {
                 "type":"gameAction",
                 "data":{

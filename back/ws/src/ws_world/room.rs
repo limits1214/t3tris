@@ -514,9 +514,13 @@ pub fn room_game_start(
 
     for (_, room_user) in &room.room_users {
         //
+        let nick_name = connections
+            .get_user_by_ws_id(&room_user.ws_id)
+            .map(|a| a.nick_name.clone())
+            .unwrap_or("X".to_string());
         tetries.insert(
             room_user.ws_id.clone(),
-            TetrisGame::new(room_user.ws_id.clone()),
+            TetrisGame::new(room_user.ws_id.clone(), nick_name),
         );
     }
 

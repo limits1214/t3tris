@@ -10,11 +10,16 @@ type RoomState = {
   chats: RoomChat[],
   games: string[],
   gameType: string | null,
+  gameResult: GameResult[],
+  isGameResultOpen: boolean,
   leave: () => void,
   addChat: (chat: RoomChat) => void,
   update: (info: RoomInfo) => void,
   clear: () => void,
   updateIsRoomEntered: (isRoomEntered: boolean) => void
+  addRoomGameResult: (result: GameResult) => void,
+  setRoomGameResult: (result: GameResult[]) => void
+  setIsGameResultOpen: (isGameResultOpen: boolean) => void
 }
 
 export type RoomUser = {
@@ -39,6 +44,20 @@ export type RoomChat = {
   msg: string
 }
 
+export type GameResult = {
+  gameType: string,
+  gameResultInfo: GameResultInfo[],
+}
+
+export type GameResultInfo = {
+  wsId: string,
+  nickName: string,
+  score?: number,
+  elapsed?: number,
+  isLine40Clear?: boolean,
+  isBattleWin?: boolean,
+}
+
 export const useRoomStore = create<RoomState>(
     (set) => ({
       isRoomEnterd: false,
@@ -50,6 +69,8 @@ export const useRoomStore = create<RoomState>(
       roomStatus: null,
       games: [],
       gameType: null,
+      gameResult: [],
+      isGameResultOpen: false,
       // enter: (info) => {
       //   set({
       //     roomId: info.roomId,
@@ -63,7 +84,8 @@ export const useRoomStore = create<RoomState>(
           roomId: null,
           roomName: null,
           hostUser: null,
-          users: []
+          users: [],
+          gameResult: []
         })
       },
       addChat: (chat) => {
@@ -95,6 +117,21 @@ export const useRoomStore = create<RoomState>(
         set({
           isRoomEnterd
         })
-      }
+      },
+      addRoomGameResult: (result: GameResult) => {
+        set((state) => ({
+          gameResult: [...state.gameResult, result]
+        }))
+      },
+      setRoomGameResult: (result: GameResult[]) => {
+          set(()=>({
+            gameResult: result
+          }))
+      },
+      setIsGameResultOpen: (isGameResultOpen) =>{
+          set(()=>({
+            isGameResultOpen
+          }))
+      },
     }),
 )

@@ -84,12 +84,14 @@ pub enum ServerToClientWsMsg {
         game_id: String,
         room_id: String,
         data: HashMap<String, serde_json::Value>,
+        room_result: Vec<serde_json::Value>,
     },
     #[serde(rename_all = "camelCase")]
     GameEnd {
         game_id: String,
         room_id: String,
         result: serde_json::Value,
+        game_type: String,
     },
 }
 impl ServerToClientWsMsg {

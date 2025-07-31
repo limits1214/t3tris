@@ -55,7 +55,7 @@ pub enum ClientToServerWsMsg {
         action: GameActionType,
     },
     #[serde(rename_all = "camelCase")]
-    GameSync { game_id: String },
+    GameSync { game_id: String, room_id: String },
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

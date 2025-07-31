@@ -1,7 +1,6 @@
 mod app;
 mod constant;
 mod controller;
-// mod inmemory_pubsub;
 mod macros;
 mod model;
 mod util;

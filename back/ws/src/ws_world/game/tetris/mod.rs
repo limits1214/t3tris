@@ -90,6 +90,7 @@ pub enum GarbageQueueKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TetrisGame {
     pub ws_id: WsId,
+    pub nick_name: String,
     pub board: Board,
     pub hold: Option<Tetrimino>,
     pub score: u32,
@@ -123,9 +124,10 @@ pub struct TetrisGame {
 }
 
 impl TetrisGame {
-    pub fn new(ws_id: WsId) -> Self {
+    pub fn new(ws_id: WsId, nick_name: String) -> Self {
         Self {
             ws_id,
+            nick_name,
             board: Board::new(10, 26),
             hold: None,
             clear_line: 0,

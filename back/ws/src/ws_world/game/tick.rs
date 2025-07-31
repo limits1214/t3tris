@@ -192,12 +192,6 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                             }
                         }
 
-                        // if tetris.is_board_end {
-                        //     tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
-                        //         kind: BoardEndKind::SpawnImpossible,
-                        //         elapsed: tetris.elapsed - 3000,
-                        //     });
-                        // }
                     }
                 } else {
                     tetris.is_started = true;
@@ -245,7 +239,7 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                     }
                 }
             }
-
+  
             let mut tetries_push_info = HashMap::new();
             for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
                 tetries_push_info
@@ -272,28 +266,28 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 match game.game_type {
                     WsWorldGameType::MultiScore => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.score)
+                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed)
                         } ).collect::<Vec<_>>();
-                        res.sort_by_key(|s|s.1);
+                        res.sort_by(|a, b| b.2.cmp(&a.2));
                         game.result = Some(serde_json::json!(res));
                     },
                     WsWorldGameType::Multi40Line => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.elapsed, t.line_40_clear)
+                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed, t.line_40_clear)
                         } ).collect::<Vec<_>>();
-                        res.sort_by_key(|s|s.1);
+                        res.sort_by(|a, b|(!a.4).cmp(&(!b.4)).then(b.3.cmp(&a.3)));
                         game.result = Some(serde_json::json!(res));
                     },
                     WsWorldGameType::MultiBattle => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.elapsed, t.battle_win)
+                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed, t.battle_win)
                         } ).collect::<Vec<_>>();
-                        res.sort_by_key(|s|s.1);
-
+                        res.sort_by(|a, b|(!a.4).cmp(&(!b.4)).then(b.3.cmp(&a.3)));
                         game.result = Some(serde_json::json!(res));
                     },
                     _ => {}
                 }
+                
 
                 if let Some(room) = data.rooms.get_mut(&game.room_id) {
                     room.room_status = WsWorldRoomStatus::Waiting;
@@ -322,6 +316,7 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                         game_id: game.game_id.to_string(),
                         room_id: game.room_id.to_string(),
                         result: game.result.clone().unwrap_or_default(),
+                        game_type: game.game_type.to_string(),
                     }
                     .to_json(),
                 );

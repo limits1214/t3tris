@@ -184,8 +184,19 @@ fn process(
                     action,
                 );
             }
-            Game::Sync { ws_id, game_id } => {
-                game::sync(connections, data, pubsub, WsId(ws_id), GameId(game_id));
+            Game::Sync {
+                ws_id,
+                room_id,
+                game_id,
+            } => {
+                game::sync(
+                    connections,
+                    data,
+                    pubsub,
+                    WsId(ws_id),
+                    RoomId(room_id),
+                    GameId(game_id),
+                );
             }
         },
         WsWorldCommand::Pubsub(cmd) => match cmd {

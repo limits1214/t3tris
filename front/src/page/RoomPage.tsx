@@ -1,9 +1,9 @@
 /** @jsxImportSource @emotion/react */
 
 import { css } from "@emotion/react"
-import { Box, Button, Flex, Select, Text, TextField } from "@radix-ui/themes"
+import { Box, Button, Dialog, Flex, Select, Table, Text, TextField } from "@radix-ui/themes"
 import { useEffect, useRef, useState } from "react"
-import { useRoomStore } from "../store/useRoomStore"
+import { useRoomStore, type GameResult } from "../store/useRoomStore"
 import { useWsStore } from "../store/useWsStore"
 import { useNavigate, useParams } from "react-router-dom"
 import { format } from "date-fns"
@@ -26,6 +26,7 @@ const RoomPage = () => {
   const {roomId} = useParams();
   const send = useWsStore(s=>s.send);
   const roomClear = useRoomStore(s=>s.clear);
+  const roomSetGameResult = useRoomStore(s=>s.setRoomGameResult);
   const games = useRoomStore(s=>s.games);
   const roomStatus = useRoomStore(s=>s.roomStatus);
   const setGameId = useKeyboardActionSender();
@@ -61,6 +62,7 @@ const RoomPage = () => {
     }
     send(JSON.stringify(obj));
     roomClear();
+    roomSetGameResult([]);
   }
   
   useEffect(() => {
@@ -212,20 +214,21 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
       localRef.boardDelete(k)
     }
 
-
-    //
     
   }, [ myWsId, roomUsers])
   const handleSync = () => {
       if (roomId) {
         const nowGameId = games[games.length - 1];
-        const obj = {
-          type: 'gameSync',
-          data: {
-            gameId: nowGameId
-          }
-        };
-        send(JSON.stringify(obj));
+        if (nowGameId) {
+          const obj = {
+            type: 'gameSync',
+            data: {
+              gameId: nowGameId,
+              roomId,
+            }
+          };
+          send(JSON.stringify(obj));
+        }
       }
     }
   useEffect(()=>{
@@ -247,6 +250,8 @@ const HUD = () => {
   const roomUsers = useRoomStore(s=>s.users);
   const hostUser = useRoomStore(s=>s.hostUser);
   const games = useRoomStore(s=>s.games);
+
+  const roomGameResult = useRoomStore(s=>s.gameResult);
 
   const {roomId} = useParams();
   const send = useWsStore(s=>s.send);
@@ -278,9 +283,9 @@ const HUD = () => {
       send(JSON.stringify(obj));
     }
   }
+
   return (
     <>
-
       {/* Room */}
       <Flex
         direction="column"
@@ -331,7 +336,7 @@ const HUD = () => {
         </Flex>
       </Flex>
 
-      {/* Game */}
+      {/* Game Result*/}
       <Flex
         direction="column"
         css={css`
@@ -342,7 +347,13 @@ const HUD = () => {
           top: 0px;
         `}
       >
-        <Text>{games[games.length - 1]}</Text>
+      
+        {/* <Text>{games[games.length - 1]}</Text> */}
+        <Text>GameResult</Text>
+        {roomGameResult.map((r, idx)=>(
+          <GameResultDialog key={idx} idx={idx} gameResult={r} />
+        ))}
+        
       </Flex>
 
     {/* Chat */}
@@ -370,6 +381,72 @@ const HUD = () => {
   )
 }
 
+/* 
+
+MultiScore result
+[[ws_id, nick_name, score]], order score 
+
+Multi40Line result
+[[ws_id, nick_name, elapsed, is_40_clear]], order is_40_clear, elapsed
+
+MultiBattle result
+[[ws_id, nick_name, elapsed, is_battle_wind]], order elapsed
+*/
+type GameResultDialogProp = {
+  idx: number,
+  gameResult: GameResult,
+}
+const GameResultDialog = ({idx, gameResult, }:GameResultDialogProp) => {
+  const roomIsGameResultOpen = useRoomStore(s=>s.isGameResultOpen)
+  const roomSetIsGameResultOpen = useRoomStore(s=>s.setIsGameResultOpen)
+  const roomGameResult = useRoomStore(s=>s.gameResult);
+  
+  // open 제어는 최신 result만 적용되게
+  return <Dialog.Root
+    open={(roomGameResult.length === idx + 1) ? roomIsGameResultOpen : undefined}
+    onOpenChange={(roomGameResult.length === idx + 1) ? roomSetIsGameResultOpen : undefined}>
+    <Dialog.Trigger>
+      <Button onKeyDown={(e) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+        }
+      }}>{idx + 1} {gameResult.gameType}</Button>
+    </Dialog.Trigger>
+
+    <Dialog.Content maxWidth="450px">
+      <Dialog.Title>{idx + 1} {gameResult.gameType}Result</Dialog.Title>
+
+      <Table.Root css={css`max-height: 400px; overflow-y: auto `}>
+        <Table.Header>
+          <Table.Row>
+            <Table.ColumnHeaderCell>No</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>NickName</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Elapsed</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Score</Table.ColumnHeaderCell>
+          </Table.Row>
+        </Table.Header>
+
+        <Table.Body >
+          {gameResult.gameResultInfo.map((r, idx)=>(
+            <Table.Row>
+              <Table.RowHeaderCell>{idx + 1}</Table.RowHeaderCell>
+              <Table.Cell>{r.nickName}</Table.Cell>
+              <Table.Cell>{`${format(new Date((r.elapsed ?? 0) ), 'mm:ss:SS')}`}</Table.Cell>
+              <Table.Cell>{r.score}</Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table.Root>
+
+      <Flex gap="3" mt="4" justify="end">
+        <Dialog.Close>
+          <Button>Close</Button>
+        </Dialog.Close>
+      </Flex>
+    </Dialog.Content>
+  </Dialog.Root>
+}
+
 
 const ChatList = () => {
   const roomChast = useRoomStore(s=>s.chats);
@@ -393,7 +470,6 @@ const ChatList = () => {
     </Flex>
   )
 }
-
 const ChatSender = () => {
   const {roomId} = useParams();
   const [chat, setChat] = useState('');

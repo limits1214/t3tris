@@ -158,6 +158,19 @@ pub enum WsWorldGameType {
     MultiBattle,
 }
 
+impl std::fmt::Display for WsWorldGameType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            WsWorldGameType::SoloScore => "SoloScore",
+            WsWorldGameType::Solo40Line => "Solo40Line",
+            WsWorldGameType::MultiScore => "MultiScore",
+            WsWorldGameType::Multi40Line => "Multi40Line",
+            WsWorldGameType::MultiBattle => "MultiBattle",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub enum WsWorldGameStatus {
     BeforeGameStartTimerThree,

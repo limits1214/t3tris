@@ -367,9 +367,10 @@ pub fn process_clinet_msg(
                         action: action.into(),
                     }));
                 }
-                GameSync { game_id } => {
+                GameSync { game_id, room_id } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Game(Game::Sync {
                         ws_id: ws_id.to_string(),
+                        room_id,
                         game_id,
                     }));
                 }

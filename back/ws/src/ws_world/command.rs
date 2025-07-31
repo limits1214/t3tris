@@ -14,6 +14,7 @@ pub enum Game {
     },
     Sync {
         ws_id: String,
+        room_id: String,
         game_id: String,
     },
 }

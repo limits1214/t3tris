@@ -62,6 +62,7 @@ pub enum BoardEndKind {
     SpawnImpossible,
     Line40Clear,
     BattleWinner,
+    Exit,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,6 +153,9 @@ impl TetrisGame {
             line_40_clear: false,
             battle_win: false,
         }
+    }
+    pub fn board_reset(&mut self) {
+        self.board = Board::new(10, 26);
     }
 
     pub fn push_action_buffer(&mut self, action: TetrisGameActionType) {

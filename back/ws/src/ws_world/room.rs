@@ -10,7 +10,7 @@ use crate::{
     ws_world::{
         WsData,
         connections::{WsConnections, WsWorldUser},
-        game::tetris::TetrisGame,
+        game::tetris::{BoardEndKind, TetrisGame, TetrisGameActionType},
         model::{
             GameId, RoomId, WsId, WsWorldGame, WsWorldGameStatus, WsWorldGameType, WsWorldRoom,
             WsWorldRoomStatus, WsWorldRoomUser,
@@ -230,6 +230,20 @@ pub fn leave(
             msg: format!("{} 방 퇴장", user.nick_name),
         },
     );
+
+    // === 게임중이라면 나가기 처리
+    if let Some(last_game_id) = room.games.last() {
+        if let Some(game) = data.games.get_mut(last_game_id) {
+            if let Some(tetris) = game.tetries.get_mut(&ws_id) {
+                tetris.is_board_end = true;
+                tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                    kind: BoardEndKind::Exit,
+                    elapsed: tetris.elapsed,
+                });
+                tetris.board_reset();
+            }
+        }
+    }
 
     // === 방 메시지 발행
     if let Some(stc_room) = gen_room_publish_msg(connections, &data.rooms, &room_id) {

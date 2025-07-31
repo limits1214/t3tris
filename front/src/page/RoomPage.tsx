@@ -249,7 +249,8 @@ const HUD = () => {
   const myWsId = useWsUserStore(s=>s.wsId);
   const roomUsers = useRoomStore(s=>s.users);
   const hostUser = useRoomStore(s=>s.hostUser);
-  const games = useRoomStore(s=>s.games);
+  // const games = useRoomStore(s=>s.games);
+  const roomGameStartTimer = useRoomStore(s=>s.gameStartTimer);
 
   const roomGameResult = useRoomStore(s=>s.gameResult);
 
@@ -382,6 +383,28 @@ const HUD = () => {
         </Flex>
         {/* {games[games.length - 1]} */}
       </Flex>
+
+      {/* Game Timer */}
+      {(roomGameStartTimer !== 0) &&
+        <Flex css={css`
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%)
+        `}>
+          <Flex css={css`
+            border: 1px solid black;
+            width: 100px;
+            height: 100px;
+            background: white;
+            justify-content: center;
+            align-items: center;
+            font-size: 50px;
+          `}>
+            {roomGameStartTimer}
+          </Flex>
+        </Flex>}
+      
     </>
   )
 }

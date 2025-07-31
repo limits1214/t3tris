@@ -34,6 +34,7 @@ const WebSocketInitializer = () => {
   const roomAddGameResult = useRoomStore(s=>s.addRoomGameResult)
   const roomSetGameResult = useRoomStore(s=>s.setRoomGameResult);
   const roomSetIsGameResultOpen = useRoomStore(s=>s.setIsGameResultOpen);
+  const roomGameStartTimer = useRoomStore(s=>s.setGameStartTimer);
 
   const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
   const gameRef = useGameStore(s=>s.gameRef);
@@ -204,6 +205,16 @@ const WebSocketInitializer = () => {
               }
               
             }
+            break;
+          case 'gameStartTimer':
+            // if(data.time === 2) {
+            //   //
+            // } else if (data.time === 1) {
+            //   //
+            // } else {
+            //   //
+            // }
+            roomGameStartTimer(data.time)
             break;
           case 'gameEnd':
             {

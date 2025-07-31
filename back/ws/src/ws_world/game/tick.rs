@@ -36,13 +36,28 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
     });
 
     available_game.iter_mut().for_each(|(_, game)| {
-        if game.status == WsWorldGameStatus::BeforeGameStartTimerThree {
+        if game.status == WsWorldGameStatus::Wait {
+            if game.elapsed > Duration::from_millis(10) {
+                game.status = WsWorldGameStatus::BeforeGameStartTimerThree;
+                pubsub.publish(
+                    &topic!(TOPIC_ROOM_ID, game.room_id),
+                    &ServerToClientWsMsg::GameStartTimer {
+                        game_id: game.game_id.to_string(),
+                        room_id: game.room_id.to_string(),
+                        time: 3,
+                    }
+                    .to_json(),
+                );
+            }
+        } else if game.status == WsWorldGameStatus::BeforeGameStartTimerThree {
             if game.elapsed > Duration::from_secs(1) {
                 game.status = WsWorldGameStatus::BeforeGameStartTimerTwo;
                 pubsub.publish(
                     &topic!(TOPIC_ROOM_ID, game.room_id),
-                    &ServerToClientWsMsg::Echo {
-                        msg: format!("BeforeGameStartTimerTwo"),
+                    &ServerToClientWsMsg::GameStartTimer {
+                        game_id: game.game_id.to_string(),
+                        room_id: game.room_id.to_string(),
+                        time: 2,
                     }
                     .to_json(),
                 );
@@ -51,9 +66,11 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
             if game.elapsed > Duration::from_secs(2) {
                 game.status = WsWorldGameStatus::BeforeGameStartTimerOne;
                 pubsub.publish(
-                    &topic!(TOPIC_ROOM_ID, game.room_id),
-                    &ServerToClientWsMsg::Echo {
-                        msg: format!("BeforeGameStartTimerOne"),
+                     &topic!(TOPIC_ROOM_ID, game.room_id),
+                    &ServerToClientWsMsg::GameStartTimer {
+                        game_id: game.game_id.to_string(),
+                        room_id: game.room_id.to_string(),
+                        time: 1,
                     }
                     .to_json(),
                 );
@@ -62,9 +79,11 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
             if game.elapsed > Duration::from_secs(3) {
                 game.status = WsWorldGameStatus::GameStart;
                 pubsub.publish(
-                    &topic!(TOPIC_ROOM_ID, game.room_id),
-                    &ServerToClientWsMsg::Echo {
-                        msg: format!("GameStart"),
+                     &topic!(TOPIC_ROOM_ID, game.room_id),
+                    &ServerToClientWsMsg::GameStartTimer {
+                        game_id: game.game_id.to_string(),
+                        room_id: game.room_id.to_string(),
+                        time: 0,
                     }
                     .to_json(),
                 );

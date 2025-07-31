@@ -541,7 +541,7 @@ pub fn room_game_start(
             now: now,
             elapsed: now - started,
             delta: now - started,
-            status: WsWorldGameStatus::BeforeGameStartTimerThree,
+            status: WsWorldGameStatus::Wait,
             is_deleted: false,
             tetries,
             result: None,

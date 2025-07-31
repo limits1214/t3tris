@@ -93,6 +93,12 @@ pub enum ServerToClientWsMsg {
         result: serde_json::Value,
         game_type: String,
     },
+    #[serde(rename_all = "camelCase")]
+    GameStartTimer {
+        game_id: String,
+        room_id: String,
+        time: u8,
+    },
 }
 impl ServerToClientWsMsg {
     pub fn to_json(&self) -> String {

@@ -173,6 +173,7 @@ impl std::fmt::Display for WsWorldGameType {
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub enum WsWorldGameStatus {
+    Wait,
     BeforeGameStartTimerThree,
     BeforeGameStartTimerTwo,
     BeforeGameStartTimerOne,

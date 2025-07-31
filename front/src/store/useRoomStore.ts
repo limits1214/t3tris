@@ -12,6 +12,7 @@ type RoomState = {
   gameType: string | null,
   gameResult: GameResult[],
   isGameResultOpen: boolean,
+  gameStartTimer: number,
   leave: () => void,
   addChat: (chat: RoomChat) => void,
   update: (info: RoomInfo) => void,
@@ -19,7 +20,8 @@ type RoomState = {
   updateIsRoomEntered: (isRoomEntered: boolean) => void
   addRoomGameResult: (result: GameResult) => void,
   setRoomGameResult: (result: GameResult[]) => void
-  setIsGameResultOpen: (isGameResultOpen: boolean) => void
+  setIsGameResultOpen: (isGameResultOpen: boolean) => void,
+  setGameStartTimer: (time: number) => void
 }
 
 export type RoomUser = {
@@ -71,6 +73,7 @@ export const useRoomStore = create<RoomState>(
       gameType: null,
       gameResult: [],
       isGameResultOpen: false,
+      gameStartTimer: 0,
       // enter: (info) => {
       //   set({
       //     roomId: info.roomId,
@@ -131,6 +134,11 @@ export const useRoomStore = create<RoomState>(
       setIsGameResultOpen: (isGameResultOpen) =>{
           set(()=>({
             isGameResultOpen
+          }))
+      },
+      setGameStartTimer(time) {
+          set(()=>({
+            gameStartTimer: time
           }))
       },
     }),

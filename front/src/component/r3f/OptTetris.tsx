@@ -33,6 +33,7 @@ export type OptTetrisController = {
   boardCreateBySlot: (boardId: string, boardCreateInfo: BoardCreateInfo) => void,
   boardDelete: (boardId: string) => void,
   boardReset: (boardId: string) => void,
+  boardMove: (boardId: string, newTransform: Transform) => void,
   nextAdd: (boardId: string, block: Tetrimino) => void,
   spawnFromNext: (boardId: string, block: Tetrimino) => void,
   spawnFromHold: (boardId: string, block: Tetrimino, hold: Tetrimino) => void,
@@ -118,7 +119,8 @@ type TetrisGame = {
   isTimerOn: boolean,
   lastUpdatedTime: number,
   next: Tetrimino[],
-  hold: Tetrimino | null
+  hold: Tetrimino | null,
+  garbageQueue: GarbageQueue[]
 }
 import {FontLoader} from 'three/addons/loaders/FontLoader.js'
 import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
@@ -618,6 +620,67 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     tetris.board.showFallingHint();
   }
 
+
+  const boardCreateOffsetInfo = {
+    nickNameText: [{
+        position: [5, -28, 0],
+        scale: [1,1,1]
+      }],
+    infoText: [{
+        position: [-4, -18, 0],
+        scale: [1,1,1]
+      }],
+    Case: [
+      // 아래
+      {
+        position: [4.5, -26 + 0.4, 0],
+        scale: [10 +0.4, 0.2, 1],
+      },
+      // 왼쪽
+      {
+        position: [10 - 0.4, -15.5, 0],
+        scale: [0.2, 20, 1],
+      },
+      // 오른쪽
+      {
+        position: [-1 + 0.4, -15.5, 0],
+        scale: [0.2, 20, 1],
+      }
+    ],
+    CoverLineX: ()=>{
+      return Array(9).fill(null).map((_,idx)=>{
+        return {
+          position: [0.5 + idx, -15.5, -0.5],
+          scale: [0.05, 20, 0.05]
+        }
+      })
+    },
+    CoverLineY: ()=>{
+        return Array(19).fill(null).map((_,idx)=>{
+          return {
+            position: [4.5, -6.5 + -idx, -0.5],
+            scale: [10, 0.05, 0.05]
+          }
+        })
+      },
+    Cover: [{
+      position: [4.5 , -15.5, -0.51],
+      scale: [10, 20, 0.01]
+    }],
+    EndCover: [{
+      position: [4.5 , -15.5, 0.71],
+      scale: [10, 20, 0.01]
+    }],
+    Next: [{
+      position: [12, -5, 0],
+      scale: [1,1,1]
+    }],
+    Hold: [{
+      position: [-6, -5, 0],
+      scale: [1,1,1]
+    }]
+  }
+
   const optTetrisController: OptTetrisController = {
     tetrisGameList() {
         return tetrisGames.current
@@ -680,7 +743,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         lastUpdatedTime: 0,
         texts: {},
         hold: null,
-        next: []
+        next: [],
+        garbageQueue: []
       }
       const tetris = tetrisGames.current[boardId];
       const blocks = instancedBlocks.current;
@@ -698,123 +762,79 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
-      dummy.position.set(5, -28, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale);
-      const nickNameText = addText(tetris.createInfo.nickName, {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [finalScale.x * 2, finalScale.y * 2, finalScale.z * 2],
-      });
 
-      dummy.position.set(-4, -18, 0);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      finalEuler.setFromQuaternion(finalQuat);
-      const txt = "level:\n1\nscore:\n0\ntime:\n00:00:00";
-      const infoText = addText(txt, {
-        position: [finalPos.x, finalPos.y, finalPos.z],
-        rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [finalScale.x , finalScale.y, finalScale.z],
-      });
+      boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
 
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
 
-  //     let startTime = null;
-  // let running = true;
-  //     function formatTime(ms) {
-  //   const totalSeconds = Math.floor(ms / 1000);
-  //   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-  //   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-  //   const hundredths = Math.floor((ms % 1000) / 10).toString().padStart(2, '0');
-  //   return `${minutes}:${seconds}:${hundredths}`;
-  // }
-
-  // function updateTimer(timestamp) {
-  //   if (!startTime) startTime = timestamp;
-  //   const elapsed = timestamp - startTime;
-  //   // timerDisplay.textContent = formatTime(elapsed);
-  //   const txt = "level:\n1\nscore:\n0\ntime:\n";
-  //   infoText.text = txt + formatTime(elapsed)
-  //   if (running) requestAnimationFrame(updateTimer);
-  // }
-
-  // requestAnimationFrame(updateTimer);
-
-      //  // info bg
-      // dummy.position.set(-4 , -15, -0.1);
-      // dummy.scale.set(5, 11, 0.01);
-      // dummy.getWorldPosition(finalPos);
-      // dummy.getWorldQuaternion(finalQuat);
-      // dummy.getWorldScale(finalScale)
-      // finalEuler.setFromQuaternion(finalQuat);
-      // blocks.Cover.push({
-      //   id: `${boardId}_Block`,
-      //   transform: {
-      //     position: [finalPos.x, finalPos.y, finalPos.z],
-      //     rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-      //     scale: [finalScale.x, finalScale.y, finalScale.z]
-      //   }
-      // });
-      
-      tetris.texts = {
-        ...tetris.texts,
-        "nickName": nickNameText,
-        "infoText": infoText,
-      }
-
-      dummy.position.set(-1 + 0.4, -15.5, 0);
-      dummy.scale.set(0.2, 20, 1);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale)
-      finalEuler.setFromQuaternion(finalQuat);
-      blocks.Case.push({
-        id: `${boardId}_Block`,
-        transform: {
-          position: [finalPos.x, finalPos.y, finalPos.z],
-          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x, finalScale.y, finalScale.z]
-        }
-      });
-
-      dummy.position.set(10 - 0.4, -15.5, 0);
-      dummy.scale.set(0.2, 20, 1);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale)
-      finalEuler.setFromQuaternion(finalQuat);
-      blocks.Case.push({
-        id: `${boardId}_Block`,
-        transform: {
-          position: [finalPos.x, finalPos.y, finalPos.z],
-          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x, finalScale.y, finalScale.z]
-        }
-      });
-
-      dummy.position.set(4.5, -26 + 0.4, 0);
-      dummy.scale.set(10 +0.4, 0.2, 1);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale)
-      finalEuler.setFromQuaternion(finalQuat);
-      blocks.Case.push({
-        id: `${boardId}_Block`,
-        transform: {
-          position: [finalPos.x, finalPos.y, finalPos.z],
-          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x, finalScale.y, finalScale.z]
-        }
-      });
-
-      for (const [idx] of Array(19).fill(null).entries()) {
-        dummy.position.set(4.5, -6.5 + -idx, -0.5);
-        dummy.scale.set(10, 0.05, 0.05);
         dummy.getWorldPosition(finalPos);
+        dummy.getWorldScale(finalScale);
         dummy.getWorldQuaternion(finalQuat);
+        finalEuler.setFromQuaternion(finalQuat);
+        const nickNameText = addText(tetris.createInfo.nickName, {
+          position: [finalPos.x, finalPos.y, finalPos.z],
+          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+          scale: [finalScale.x , finalScale.y, finalScale.z],
+        });
+
+
+        tetris.texts.nickNameText = nickNameText;
+      })
+
+      boardCreateOffsetInfo.infoText.forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
+
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldScale(finalScale);
+        dummy.getWorldQuaternion(finalQuat);
+        finalEuler.setFromQuaternion(finalQuat);
+        const txt = "level:\n1\nscore:\n0\ntime:\n00:00:00";
+        const infoText = addText(txt, {
+          position: [finalPos.x, finalPos.y, finalPos.z],
+          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+          scale: [finalScale.x , finalScale.y, finalScale.z],
+        });
+
+
+        tetris.texts.infoText = infoText;
+      })
+
+      boardCreateOffsetInfo.Case.forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+        
+        dummy.getWorldPosition(finalPos);
         dummy.getWorldScale(finalScale)
+        dummy.getWorldQuaternion(finalQuat);
+        finalEuler.setFromQuaternion(finalQuat);
+        blocks.Case.push({
+          id: `${boardId}_Block`,
+          transform: {
+            position: [finalPos.x, finalPos.y, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        });
+      })
+
+      boardCreateOffsetInfo.CoverLineY().forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+        
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldScale(finalScale)
+        dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
         blocks.CoverLine.push({
           id: `${boardId}_Block`,
@@ -824,14 +844,17 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             scale: [finalScale.x, finalScale.y, finalScale.z]
           }
         });
-      }
+      })
 
-      for (const [idx] of Array(9).fill(null).entries()) {
-        dummy.position.set(0.5 + idx, -15.5, -0.5);
-        dummy.scale.set(0.05, 20, 0.05);
+      boardCreateOffsetInfo.CoverLineX().forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+        
         dummy.getWorldPosition(finalPos);
-        dummy.getWorldQuaternion(finalQuat);
         dummy.getWorldScale(finalScale)
+        dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
         blocks.CoverLine.push({
           id: `${boardId}_Block`,
@@ -841,57 +864,73 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             scale: [finalScale.x, finalScale.y, finalScale.z]
           }
         });
-      }
+      })
 
-      dummy.position.set(4.5 , -15.5, -0.51);
-      dummy.scale.set(10, 20, 0.01);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale)
-      finalEuler.setFromQuaternion(finalQuat);
-      blocks.Cover.push({
-        id: `${boardId}_Block`,
-        transform: {
-          position: [finalPos.x, finalPos.y, finalPos.z],
-          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x, finalScale.y, finalScale.z]
-        }
-      });
-      
+      boardCreateOffsetInfo.Cover.forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+        
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldScale(finalScale)
+        dummy.getWorldQuaternion(finalQuat);
+        finalEuler.setFromQuaternion(finalQuat);
+        blocks.Cover.push({
+          id: `${boardId}_Block`,
+          transform: {
+            position: [finalPos.x, finalPos.y, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        });
+      })
 
       updateInstancedMeshes();
 
+      boardCreateOffsetInfo.Next.forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
 
-      dummy.position.set(12, -5, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale)
-      finalEuler.setFromQuaternion(finalQuat);
-      instanced3dText.current.Next.push({
-        id: `${boardId}_Next`,
-        transform: {
-          position: [finalPos.x, finalPos.y, finalPos.z],
-          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x, finalScale.y, finalScale.z]
-        }
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+        
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldScale(finalScale)
+        dummy.getWorldQuaternion(finalQuat);
+        finalEuler.setFromQuaternion(finalQuat);
+        instanced3dText.current.Next.push({
+          id: `${boardId}_Next`,
+          transform: {
+            position: [finalPos.x, finalPos.y, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        })
+      })
+
+      boardCreateOffsetInfo.Hold.forEach((trs)=>{
+        const position = trs.position as [number, number, number]
+        const scale = trs.scale as [number, number, number]
+
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+        
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldQuaternion(finalQuat);
+        dummy.getWorldScale(finalScale)
+        finalEuler.setFromQuaternion(finalQuat);
+        instanced3dText.current.Hold.push({
+          id: `${boardId}_Hold`,
+          transform: {
+            position: [finalPos.x, finalPos.y, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        })
       })
 
 
-      dummy.position.set(-6, -5, 0);
-      dummy.scale.set(1, 1, 1);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale)
-      finalEuler.setFromQuaternion(finalQuat);
-      instanced3dText.current.Hold.push({
-        id: `${boardId}_Hold`,
-        transform: {
-          position: [finalPos.x, finalPos.y, finalPos.z],
-          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x, finalScale.y, finalScale.z]
-        }
-      })
 
       updateInstanced3dMeshes();
     },
@@ -933,6 +972,235 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       })
     },
+
+    boardMove(boardId, newTransform) {
+        //
+        // "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
+        /*
+          Cover: {}_Block_EndCover
+          CoverLine: {}_Block
+          Case: {}_Block
+          E: {}_Block
+          H: {}_Block,
+          GarbageQueue: {}_Block,
+          GarbageReady: {}_Block,
+          Garbage: 
+          Tetrimino: {}_Block,
+          {}_Next,
+          {}_Hold,
+        */
+
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('tetris undefined');
+        return;
+      }
+      const blocks = instancedBlocks.current;
+      // const text3D = instanced3dText.current;
+      tetris.boardTransform = newTransform
+
+      const group = new THREE.Group();
+      group.position.set(...tetris.boardTransform.position);
+      group.rotation.set(...tetris.boardTransform.rotation);
+      group.scale.set(...tetris.boardTransform.scale);
+
+      const dummy = new THREE.Object3D();
+      group.add(dummy)
+
+      const finalPos = new THREE.Vector3();
+      const finalQuat = new THREE.Quaternion();
+      const finalEuler = new THREE.Euler();
+      const finalScale = new THREE.Vector3();
+
+      
+      {
+        boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          tetris.texts["nickNameText"].position.set(finalPos.x, finalPos.y, finalPos.z)
+          tetris.texts["nickNameText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
+          tetris.texts["nickNameText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
+        })
+      }
+
+      {
+        boardCreateOffsetInfo.infoText.forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          tetris.texts["infoText"].position.set(finalPos.x, finalPos.y, finalPos.z)
+          tetris.texts["infoText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
+          tetris.texts["infoText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
+        })
+      }
+      
+      {
+        const newArr = instanced3dText.current.Next.filter(item => item.id !== `${boardId}_Next`);
+        instanced3dText.current.Next = newArr;
+        boardCreateOffsetInfo.Next.forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+          
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          instanced3dText.current.Next.push({
+            id: `${boardId}_Next`,
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z]
+            }
+          })
+        })
+      }
+
+      {
+        const newArr = instanced3dText.current.Hold.filter(item => item.id !== `${boardId}_Hold`);
+        instanced3dText.current.Hold = newArr;
+        boardCreateOffsetInfo.Hold.forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+          
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          instanced3dText.current.Hold.push({
+            id: `${boardId}_Hold`,
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z]
+            }
+          })
+        })
+      }
+
+
+      {
+        const newArr = blocks.Case.filter(item => item.id !== `${boardId}_Block`)
+        blocks.Case = newArr;
+        boardCreateOffsetInfo.Case.forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+          
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          blocks.Case.push({
+            id: `${boardId}_Block`,
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z]
+            }
+          });
+        })
+      }
+
+      {
+        const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block`)
+        blocks.Cover = newArr;
+        boardCreateOffsetInfo.Cover.forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+          
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          blocks.Cover.push({
+            id: `${boardId}_Block`,
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z]
+            }
+          });
+        })
+      }
+
+      {
+        const newArr = blocks.CoverLine.filter(item => item.id !== `${boardId}_Block`)
+        blocks.CoverLine = newArr;
+        boardCreateOffsetInfo.CoverLineX().forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+          
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          blocks.CoverLine.push({
+            id: `${boardId}_Block`,
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z]
+            }
+          });
+        })
+
+        boardCreateOffsetInfo.CoverLineY().forEach((trs)=>{
+          const position = trs.position as [number, number, number]
+          const scale = trs.scale as [number, number, number]
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+          
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale)
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          blocks.CoverLine.push({
+            id: `${boardId}_Block`,
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z]
+            }
+          });
+        })
+      }
+
+      this.garbageQueueSet(boardId, tetris.garbageQueue);
+
+
+
+
+
+
+
+      updateBoardInstancedMeshse(boardId);
+      updateInstancedMeshes();
+      updateInstanced3dMeshes()
+    },
+
     spawnFromHold(boardId, block, hold) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
@@ -1186,20 +1454,26 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
-      dummy.position.set(4.5 , -15.5, 0.71);
-      dummy.scale.set(10, 20, 0.01);
-      dummy.getWorldPosition(finalPos);
-      dummy.getWorldQuaternion(finalQuat);
-      dummy.getWorldScale(finalScale)
-      finalEuler.setFromQuaternion(finalQuat);
-      blocks.Cover.push({
-        id: `${boardId}_Block_EndCover`,
-        transform: {
-          position: [finalPos.x, finalPos.y, finalPos.z],
-          rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x, finalScale.y, finalScale.z]
-        }
-      });
+      boardCreateOffsetInfo.EndCover.forEach((trs)=>{
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
+
+        dummy.position.set(...position);
+        dummy.scale.set(...scale);
+
+        dummy.getWorldPosition(finalPos);
+        dummy.getWorldQuaternion(finalQuat);
+        dummy.getWorldScale(finalScale)
+        finalEuler.setFromQuaternion(finalQuat);
+        blocks.Cover.push({
+          id: `${boardId}_Block_EndCover`,
+          transform: {
+            position: [finalPos.x, finalPos.y, finalPos.z],
+            rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+            scale: [finalScale.x, finalScale.y, finalScale.z]
+          }
+        });
+      })
 
       updateInstancedMeshes();
     },
@@ -1252,6 +1526,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         console.log('tetris undefined');
         return;
       }
+
+      tetris.garbageQueue = garbageQueue;
       
       const blocks = instancedBlocks.current;
 

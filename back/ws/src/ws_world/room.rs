@@ -588,6 +588,17 @@ pub fn room_game_start(
             ServerToClientWsMsg::RoomUpdated { room: pub_room },
         );
     }
+
+    // === 로비 메시지 발행
+    let pub_lobby = gen_lobby_publish_msg(connections, &data.rooms);
+    pubsub.publish(
+        &topic!(TOPIC_LOBBY),
+        ServerToClientWsMsg::LobbyUpdated {
+            rooms: pub_lobby.rooms,
+            users: pub_lobby.users,
+            chats: vec![],
+        },
+    );
 }
 
 // 유저 없는 방 제거

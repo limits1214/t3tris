@@ -5,10 +5,10 @@ use std::{
 
 use rand::seq::IndexedRandom;
 
-use crate::ws_world::{
-    game::tetris::{BoardEndKind, GarbageQueueKind, TetrisGameActionType, attack_line},
-    model::WsWorldGameType,
-};
+use crate::{constant::TOPIC_LOBBY, ws_world::{
+    game::tetris::{attack_line, BoardEndKind, GarbageQueueKind, TetrisGameActionType},
+    model::WsWorldGameType, util::gen_lobby_publish_msg,
+}};
 use crate::{
     constant::TOPIC_ROOM_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
@@ -338,6 +338,17 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                         game_type: game.game_type.to_string(),
                     }
                     .to_json(),
+                );
+
+                 // === 로비 메시지 발행
+                let pub_lobby = gen_lobby_publish_msg(connections, &data.rooms);
+                pubsub.publish(
+                    &topic!(TOPIC_LOBBY),
+                    ServerToClientWsMsg::LobbyUpdated {
+                        rooms: pub_lobby.rooms,
+                        users: pub_lobby.users,
+                        chats: vec![],
+                    },
                 );
             }
         }

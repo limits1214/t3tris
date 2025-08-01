@@ -227,6 +227,8 @@ const RoomListItem = ({roomInfo}: {roomInfo: RoomInfo}) => {
       <Flex>
         <Text>-</Text>
         <Text>{roomInfo.gameType}</Text>
+         <Text>-</Text>
+        <Text>{roomInfo.roomStatus}</Text>
         <Text>-</Text>
         <Text>{roomInfo.roomName}</Text>
       </Flex>

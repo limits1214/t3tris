@@ -117,6 +117,11 @@ pub fn enter(
         },
     );
 
+    // 입장시 방장 없으면 내가 방장
+    if room.room_host_ws_id.is_none() {
+        room.room_host_ws_id = Some(ws_id.clone());
+    }
+
     // === 개인 메시지 발행
     pubsub.publish(
         &topic!(TOPIC_WS_ID, ws_id),
@@ -183,11 +188,17 @@ pub fn leave(
 
     // === 방 나가는데 내가 host 였다면 마지막 user의 첫번째 host로 올려주기
     let new_host_ws_id = match &room.room_host_ws_id {
-        Some(new_host_ws_id) if *new_host_ws_id == ws_id => room
-            .room_users
-            .iter()
-            .next()
-            .map(|(_, room_user)| room_user.ws_id.clone()),
+        Some(new_host_ws_id) if *new_host_ws_id == ws_id => {
+            let new_host_ws_id = room
+                .room_users
+                .iter()
+                .next()
+                .map(|(_, room_user)| room_user.ws_id.clone());
+
+            room.room_host_ws_id = new_host_ws_id.clone();
+
+            new_host_ws_id
+        }
         _ => None,
     };
 

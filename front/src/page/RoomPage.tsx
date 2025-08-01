@@ -318,7 +318,7 @@ const HUD = () => {
           <Text>Users</Text>
           <Flex direction="column">
             {roomUsers.map((roomUser) =>(
-              <Text key={roomUser.wsId}>- {roomUser.nickName} {hostUser?.userId == roomUser.userId ? '(방장)' : ''}</Text>
+              <Text key={roomUser.wsId}>- {roomUser.nickName} {roomUser.wsId == myWsId ? '(ME)' : ''} {hostUser?.wsId == roomUser.wsId ? '(방장)' : ''}</Text>
             ))}
           </Flex>
         </Flex>

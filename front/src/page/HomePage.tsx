@@ -226,6 +226,8 @@ const RoomListItem = ({roomInfo}: {roomInfo: RoomInfo}) => {
     <Flex onClick={()=>roomEnter(roomInfo.roomId)} direction="column" css={css`border: 1px solid black; flex: 1;`}>
       <Flex>
         <Text>-</Text>
+        <Text>{roomInfo.gameType}</Text>
+        <Text>-</Text>
         <Text>{roomInfo.roomName}</Text>
       </Flex>
       <Flex>

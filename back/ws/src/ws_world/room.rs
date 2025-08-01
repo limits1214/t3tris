@@ -461,7 +461,15 @@ pub fn room_game_type_change(
                     ServerToClientWsMsg::RoomUpdated { room: pub_room },
                 );
             }
-            // TODO: lobby publish
+            let pub_lobby = gen_lobby_publish_msg(connections, &data.rooms);
+            pubsub.publish(
+                &topic!(TOPIC_LOBBY),
+                ServerToClientWsMsg::LobbyUpdated {
+                    rooms: pub_lobby.rooms,
+                    users: pub_lobby.users,
+                    chats: vec![],
+                },
+            );
         }
         Err(_) => {
             err_publish(

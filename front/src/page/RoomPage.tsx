@@ -11,7 +11,7 @@ import { ReadyState } from "react-use-websocket"
 import { useWsUserStore } from "../store/useWsUserStore"
 import { useKeyboardActionSender } from "../hooks/useWsGameActoinSender"
 import { Canvas } from "@react-three/fiber"
-import { OrbitControls,  PerspectiveCamera } from "@react-three/drei"
+import { OrbitControls,  OrthographicCamera,  PerspectiveCamera } from "@react-three/drei"
 import { useGameStore } from "../store/useGameStore"
 import React from "react"
 import * as THREE from 'three'
@@ -85,13 +85,13 @@ const RoomPage = () => {
     };
   }, [wsReadyState, roomId, isInitialWsLoginEnd]);
 
-
+  
   return (
     <Flex direction="column" css={css`height: 100vh; `}>
       <Box css={css`height: 100%;`}>
-        <Canvas orthographic={false}>
+        
           <GameCanvas/>
-        </Canvas>
+        
       </Box>
       <HUD/>
     </Flex>
@@ -101,20 +101,28 @@ const RoomPage = () => {
 export default RoomPage
 
 const GameCanvas = () => {
-  // const roomUsers = useRoomStore(s=>s.users, );
-  // const [isOrth] = useState(false)
+  const [isOrth] = useState(false)
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+  const orthoCameraRef = useRef<THREE.OrthographicCamera>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null)
   return (
-      <>
+      <Canvas orthographic={isOrth}>
         <LazyPerf position="bottom-left" />
-        <PerspectiveCamera
+        {isOrth
+        ? <OrthographicCamera
+            makeDefault
+            ref={orthoCameraRef}
+            position={[0, 0, 100]}
+            near={0.1}
+            far={5000}
+          />
+        : <PerspectiveCamera
             makeDefault
             ref={cameraRef}
             position={[0, 0, 100]}
             near={0.1}
             far={5000}
-          />
+        />}
         <OrbitControls
           ref={controlsRef}
           target={[0, 0, 0]}
@@ -133,12 +141,12 @@ const GameCanvas = () => {
             />
           );
         })}
-        <GameBoard cameraRef={cameraRef} controlsRef={controlsRef} />
-      </>
+        <GameBoard cameraRef={isOrth ? orthoCameraRef : cameraRef} controlsRef={controlsRef} />
+      </Canvas>
   )
 }
 
-const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.PerspectiveCamera|null>, controlsRef: React.RefObject<OrbitControlsImpl|null>}) => {
+const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.PerspectiveCamera| THREE.OrthographicCamera |null>, controlsRef: React.RefObject<OrbitControlsImpl|null>}) => {
   const myWsId = useWsUserStore(s=>s.wsId);
   const roomUsers = useRoomStore(s=>s.users);
   const ref = useRef<OptTetrisController | null>(null);
@@ -153,8 +161,6 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
   useEffect(() => {
     setGameRef(ref);
   }, [setGameRef]);
-
-
 
   useEffect(()=>{
     if (ref.current == null) {
@@ -174,9 +180,12 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
       if (tetrisList[wsId]) {
         delete tetrisList[wsId]
       } else {
-        console.log('to create', wsId)
-        //to create
-        localRef.boardCreateBySlot(wsId,{nickName})
+        // if (wsId === myWsId) {
+        //   localRef.boardCreateByMyTransform(wsId,{nickName})
+        // } else {
+          localRef.boardCreateBySlot(wsId,{nickName})
+        // }
+        
         if (wsId === myWsId) {
           console.log('###')
           const {position, rotation} = localRef.tetrisInfo(wsId)!.boardTransform;
@@ -194,13 +203,12 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
           // controlsRef.current.target.set(position[0] + dx, position[1] + dy, position[2] + dz);
 
           requestAnimationFrame(()=>{
-            console.log(cameraRef.current, controlsRef.current)
-            controlsRef.current?.target.set(to.x + dx, to.y + dy, to.z + dz);
-            cameraRef.current?.position.set(to2.x + dx, to2.y + dy, to2.z + dz);
-            controlsRef.current?.update()
-            console.log(controlsRef.current?.target, cameraRef.current?.position)
+            // console.log(cameraRef.current, controlsRef.current)
+            // controlsRef.current?.target.set(to.x + dx, to.y + dy, to.z + dz);
+            // cameraRef.current?.position.set(to2.x + dx, to2.y + dy, to2.z + dz);
+            // controlsRef.current?.update()
+            // console.log(controlsRef.current?.target, cameraRef.current?.position)
           })
-
 
           handleSync()
         }

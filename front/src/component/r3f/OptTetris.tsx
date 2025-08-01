@@ -271,6 +271,38 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     })
   }
   const boardTrasnfromSlot = useRef(generateBoardTransformSlot(100))
+
+  const generateBoardTransformSlot2 = (cnt: number): {transform: Transform, boardId: string | null}[] => {
+    const cols = 9; // 가로 개수
+    const rows = 11; // 세로 개수
+    const boardWidth = 26;
+    const boardSpacing = 0;
+    const boardStride = boardWidth + boardSpacing;
+    const defulatXSpacing = 60;
+
+    const getBoardPosition = (index: number) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+
+      const x = defulatXSpacing + col * boardStride;
+      const y = row * boardStride;
+
+      return { x, y, rotation: 0 };
+    };
+
+    return Array(cnt).fill(null).map((_, idx) => {
+      const pos = getBoardPosition(idx);
+
+      return {
+        transform: {
+          position: [pos.x, -pos.y, 0],
+          rotation: [0, pos.rotation, 0],
+          scale: [1, 1, 1]
+        },
+        boardId: null
+      };
+    });
+  };
   
   useEffect(() => {
     const keys: Block[] = ["Cover", "CoverLine", "Case", "I", "O", "T", "J", "L", "S", "Z", "H", "Garbage", "GarbageQueue", "GarbageReady"];
@@ -670,10 +702,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       finalEuler.setFromQuaternion(finalQuat);
+      dummy.getWorldScale(finalScale);
       const nickNameText = addText(tetris.createInfo.nickName, {
         position: [finalPos.x, finalPos.y, finalPos.z],
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [2,2,2],
+        scale: [finalScale.x * 2, finalScale.y * 2, finalScale.z * 2],
       });
 
       dummy.position.set(-4, -18, 0);
@@ -684,7 +717,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const infoText = addText(txt, {
         position: [finalPos.x, finalPos.y, finalPos.z],
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
+        scale: [finalScale.x , finalScale.y, finalScale.z],
       });
 
 
@@ -1092,18 +1125,19 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const finalPos = new THREE.Vector3();
       const finalQuat = new THREE.Quaternion();
       const finalEuler = new THREE.Euler();
-      // const finalScale = new THREE.Vector3();
+      const finalScale = new THREE.Vector3();
 
 
       dummy.position.set(-4, -10, 0);
       dummy.getWorldPosition(finalPos);
       dummy.getWorldQuaternion(finalQuat);
       finalEuler.setFromQuaternion(finalQuat);
+      dummy.getWorldScale(finalScale);
       const txt = `${kind}`;
       const scoreEffectText = addText(txt, {
         position: [finalPos.x, finalPos.y, finalPos.z],
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [1,1,1],
+        scale: [finalScale.x,finalScale.y,finalScale.z],
       });
 
       setTimeout(()=>{

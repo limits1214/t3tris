@@ -111,17 +111,53 @@ export const blockColorMapping = (block: Block) => {
   }
 }
 
+function createTextTexture(text: string, options = {}): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+  
+  const fontSize = 64;
+  const padding = 20;
+
+  ctx.font = `${fontSize}px sans-serif`;
+  const textWidth = ctx.measureText(text).width;
+
+  // 캔버스 크기 설정 (텍스트 크기에 맞게)
+  canvas.width = textWidth + padding * 2;
+  canvas.height = fontSize + padding * 2;
+
+  // 다시 컨텍스트 얻고 스타일 적용
+  const ctx2 = canvas.getContext('2d')!;
+  ctx2.font = `${fontSize}px sans-serif`;
+  ctx2.fillStyle = 'black';
+  ctx2.textBaseline = 'top';
+  ctx2.fillText(text, padding, padding);
+
+  // 텍스처로 변환
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+  return texture;
+}
+
 type TetrisGame = {
   board: JsBoard,
   boardTransform: Transform,
   createInfo: BoardCreateInfo,
   texts: Record<string, Text>,
+  textureTexts: Record<string, TextureText>,
   infoTextData: InfoData,
   isTimerOn: boolean,
   lastUpdatedTime: number,
   next: Tetrimino[],
   hold: Tetrimino | null,
   garbageQueue: GarbageQueue[]
+}
+type TextureText = {
+  text: string,
+  mesh: THREE.Mesh,
+  geometry: THREE.PlaneGeometry,
+  material: THREE.MeshBasicMaterial
+  texture: THREE.CanvasTexture
 }
 import {FontLoader} from 'three/addons/loaders/FontLoader.js'
 import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
@@ -170,7 +206,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   });
   const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
   const { scene } = useThree()
-
 
   // const lastUpdateRef = useRef(0);
 
@@ -439,6 +474,48 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     } else {
       text.material.dispose();
     }
+  }
+
+  const addTextureText = (boardId: string, type: string, text: string, transform: Transform) => {
+    const tetris = tetrisGames.current[boardId];
+    if (!tetris) {
+      console.log('tetris undefined');
+      return;
+    }
+
+    const texture = createTextTexture(text);
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const geometry = new THREE.PlaneGeometry(5, 1.5);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(...transform.position);
+    mesh.rotation.set(...transform.rotation);
+    mesh.scale.set(...transform.scale);
+    tetris.textureTexts[type] = {
+      text,
+      material,
+      geometry,
+      mesh,
+      texture
+    }
+    scene.add(mesh);
+  }
+
+  const removeTextureText = (boardId: string, type: string) => {
+    const tetris = tetrisGames.current[boardId];
+    if (!tetris) {
+      console.log('tetris undefined');
+      return;
+    }
+
+    scene.remove(tetris.textureTexts[type].mesh);
+    tetris.textureTexts[type].geometry.dispose();
+    tetris.textureTexts[type].texture.dispose();
+    if (Array.isArray(tetris.textureTexts[type].material)) {
+      tetris.textureTexts[type].material.forEach(m=>m.dispose());
+    } else {
+      tetris.textureTexts[type].material.dispose();
+    }
+
   }
 
   const updateInstanced3dMeshes = () => {
@@ -770,6 +847,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         },
         lastUpdatedTime: 0,
         texts: {},
+        textureTexts: {},
         hold: null,
         next: [],
         garbageQueue: []
@@ -807,8 +885,16 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           scale: [finalScale.x , finalScale.y, finalScale.z],
         });
 
-
         tetris.texts.nickNameText = nickNameText;
+
+
+
+        
+        // addTextureText(boardId, "nickNameText",  tetris.createInfo.nickName, {
+        //   position: [finalPos.x, finalPos.y, finalPos.z],
+        //   rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+        //   scale: [finalScale.x , finalScale.y, finalScale.z],
+        // });
       })
 
       boardCreateOffsetInfo.infoText.forEach((trs)=>{
@@ -973,6 +1059,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         console.log('[boardDelete] removeText', s)
         removeText(v);
       }
+
+      for (const [s] of Object.entries(tetris.textureTexts)) {
+        console.log('[boardDelete] removeTextureText', s)
+        removeTextureText(boardId, s);
+      }
       
       const blocks = instancedBlocks.current;
 
@@ -1043,37 +1134,61 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       
       {
-        boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
-          dummy.position.set(...position);
-          dummy.scale.set(...scale);
+        if (tetris.texts["nickNameText"]) {
+          boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
+            const position = trs.position as [number, number, number]
+            const scale = trs.scale as [number, number, number]
+            dummy.position.set(...position);
+            dummy.scale.set(...scale);
 
-          dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
-          dummy.getWorldQuaternion(finalQuat);
-          finalEuler.setFromQuaternion(finalQuat);
-          tetris.texts["nickNameText"].position.set(finalPos.x, finalPos.y, finalPos.z)
-          tetris.texts["nickNameText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
-          tetris.texts["nickNameText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
-        })
+            dummy.getWorldPosition(finalPos);
+            dummy.getWorldScale(finalScale)
+            dummy.getWorldQuaternion(finalQuat);
+            finalEuler.setFromQuaternion(finalQuat);
+            tetris.texts["nickNameText"].position.set(finalPos.x, finalPos.y, finalPos.z)
+            tetris.texts["nickNameText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
+            tetris.texts["nickNameText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
+          })
+        }
+        
       }
 
       {
-        boardCreateOffsetInfo.infoText.forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
-          dummy.position.set(...position);
-          dummy.scale.set(...scale);
+        if (tetris.texts["infoText"]) {
+          boardCreateOffsetInfo.infoText.forEach((trs)=>{
+            const position = trs.position as [number, number, number]
+            const scale = trs.scale as [number, number, number]
+            dummy.position.set(...position);
+            dummy.scale.set(...scale);
 
-          dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
-          dummy.getWorldQuaternion(finalQuat);
-          finalEuler.setFromQuaternion(finalQuat);
-          tetris.texts["infoText"].position.set(finalPos.x, finalPos.y, finalPos.z)
-          tetris.texts["infoText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
-          tetris.texts["infoText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
-        })
+            dummy.getWorldPosition(finalPos);
+            dummy.getWorldScale(finalScale)
+            dummy.getWorldQuaternion(finalQuat);
+            finalEuler.setFromQuaternion(finalQuat);
+            tetris.texts["infoText"].position.set(finalPos.x, finalPos.y, finalPos.z)
+            tetris.texts["infoText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
+            tetris.texts["infoText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
+          })
+        }
+      }
+
+      {
+        if (tetris.textureTexts["nickNameText"]) {
+          boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
+            const position = trs.position as [number, number, number]
+            const scale = trs.scale as [number, number, number]
+            dummy.position.set(...position);
+            dummy.scale.set(...scale);
+
+            dummy.getWorldPosition(finalPos);
+            dummy.getWorldScale(finalScale)
+            dummy.getWorldQuaternion(finalQuat);
+            finalEuler.setFromQuaternion(finalQuat);
+            tetris.textureTexts["nickNameText"].mesh.position.set(finalPos.x, finalPos.y, finalPos.z)
+            tetris.textureTexts["nickNameText"].mesh.scale.set(finalScale.x, finalScale.y, finalScale.z)
+            tetris.textureTexts["nickNameText"].mesh.rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
+          })
+        }
       }
       
       {

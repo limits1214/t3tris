@@ -313,7 +313,11 @@ const WebSocketInitializer = () => {
                   if (kind === "single" || kind === "double" || kind === "triple" || kind === "tetris"
                     || kind === "tSpinZero" || kind === "tSpinSingle" || kind === "tSpinDouble" || kind === "tSpinTriple" 
                   ) {
-                    gameRef?.current?.scoreEffect(k, kind + combo + 'combo')
+                    let txt = kind + '\n ';
+                    if (combo > 0) {
+                      txt += `${combo} combo`
+                    }
+                    gameRef?.current?.scoreEffect(k, txt)
                   }
                 } else if (typeof action === "object" && action !== null && "boardEnd" in action) {
                   const elapsed = action["boardEnd"].elapsed;

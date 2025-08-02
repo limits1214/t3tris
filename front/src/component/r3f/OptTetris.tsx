@@ -781,6 +781,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     })
   }
 
+  let scoreEffectTimeout = 0;
+
   const optTetrisController: OptTetrisController = {
     tetrisGameList() {
         return tetrisGames.current
@@ -1567,6 +1569,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
+      if (tetris.texts["scoreEffectText"]) {
+        clearTimeout(scoreEffectTimeout)
+        removeText(tetris.texts["scoreEffectText"])
+        delete tetris.texts["scoreEffectText"]
+      }
 
       dummy.position.set(-4, -10, 0);
       dummy.getWorldPosition(finalPos);
@@ -1579,9 +1586,11 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
         scale: [finalScale.x,finalScale.y,finalScale.z],
       });
+      tetris.texts["scoreEffectText"] = scoreEffectText;
 
-      setTimeout(()=>{
-        removeText(scoreEffectText)
+      scoreEffectTimeout = setTimeout(()=>{
+        removeText(tetris.texts["scoreEffectText"])
+        delete tetris.texts["scoreEffectText"]
       }, 1500)
     },
     infoTextUpdate(boardId, data) {

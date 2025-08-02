@@ -316,8 +316,14 @@ const HUD = () => {
         </Flex>
         <Flex direction="column">
           <Text>Users</Text>
-          <Flex direction="column">
-            {roomUsers.map((roomUser) =>(
+          <Flex direction="column" css={css`
+            max-height: 400px; overflow-y: auto
+          `}>
+            {roomUsers.sort((a, b)=> {
+              if (a.wsId === myWsId) return -1;
+              if (b.wsId === myWsId) return 1;
+              return 0
+            }).map((roomUser) =>(
               <Text key={roomUser.wsId}>- {roomUser.nickName} {roomUser.wsId == myWsId ? '(ME)' : ''} {hostUser?.wsId == roomUser.wsId ? '(방장)' : ''}</Text>
             ))}
           </Flex>

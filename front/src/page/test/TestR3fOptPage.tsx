@@ -243,10 +243,18 @@ const TestR3fOptPage = () => {
         </mesh> */}
 
 
-<mesh >
+        {/* Center */}
+        <mesh >
           <boxGeometry/>
           <meshBasicMaterial color={""}/>
         </mesh>
+
+        <mesh position={[13,0,0]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"yellow"}/>
+        </mesh>
+
+
         <ambientLight intensity={2} />
         {/* <hemisphereLight intensity={2} position={[0, 10, 0]}/> */}
 

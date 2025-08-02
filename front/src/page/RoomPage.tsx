@@ -112,9 +112,10 @@ const GameCanvas = () => {
         ? <OrthographicCamera
             makeDefault
             ref={orthoCameraRef}
-            position={[0, 0, 100]}
-            near={0.1}
-            far={5000}
+            position={[13, 0, 10]}
+            near={1}
+            far={12}
+            zoom={20}
           />
         : <PerspectiveCamera
             makeDefault
@@ -125,9 +126,12 @@ const GameCanvas = () => {
         />}
         <OrbitControls
           ref={controlsRef}
-          target={[0, 0, 0]}
-          enableZoom
-          enableRotate
+          target={[13, 0, 0]}
+          enableRotate={false}
+          mouseButtons={{
+            LEFT: THREE.MOUSE.PAN,
+            RIGHT: THREE.MOUSE.PAN,
+          }}
         />
         <ambientLight intensity={1} />
         {[0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle, i) => {

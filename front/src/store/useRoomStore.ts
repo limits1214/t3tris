@@ -56,6 +56,7 @@ export type GameResultInfo = {
   nickName: string,
   score?: number,
   elapsed?: number,
+  clearLine?: number,
   isLine40Clear?: boolean,
   isBattleWin?: boolean,
 }

@@ -285,21 +285,21 @@ pub fn tick(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSu
                 match game.game_type {
                     WsWorldGameType::MultiScore => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed)
+                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed, t.clear_line)
                         } ).collect::<Vec<_>>();
                         res.sort_by(|a, b| b.2.cmp(&a.2));
                         game.result = Some(serde_json::json!(res));
                     },
                     WsWorldGameType::Multi40Line => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed, t.line_40_clear)
+                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed, t.line_40_clear, t.clear_line)
                         } ).collect::<Vec<_>>();
                         res.sort_by(|a, b|(!a.4).cmp(&(!b.4)).then(b.3.cmp(&a.3)));
                         game.result = Some(serde_json::json!(res));
                     },
                     WsWorldGameType::MultiBattle => {
                         let mut res = game.tetries.iter().map(|(_, t)| {
-                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed, t.battle_win)
+                            (t.ws_id.clone(), t.nick_name.clone(), t.score, t.elapsed, t.battle_win, t.clear_line)
                         } ).collect::<Vec<_>>();
                         res.sort_by(|a, b|(!a.4).cmp(&(!b.4)).then(b.3.cmp(&a.3)));
                         game.result = Some(serde_json::json!(res));

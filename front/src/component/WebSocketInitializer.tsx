@@ -227,6 +227,7 @@ const WebSocketInitializer = () => {
                       nickName: r[1],
                       score: r[2],
                       elapsed: r[3],
+                      clearLine: r[4]
                     };
                     gameResultInfos.push(result);
                   } else if (data.gameType === "Multi40Line") {
@@ -236,6 +237,7 @@ const WebSocketInitializer = () => {
                       score: r[2],
                       elapsed: r[3],
                       isLine40Clear: r[4],
+                      clearLine: r[5]
                     };
                     gameResultInfos.push(result);
                   } else if (data.gameType === "MultiBattle") {
@@ -245,6 +247,7 @@ const WebSocketInitializer = () => {
                       score: r[2],
                       elapsed: r[3],
                       isBattleWin: r[4],
+                      clearLine: r[5]
                     };
                     gameResultInfos.push(result);
                   }

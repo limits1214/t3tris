@@ -469,6 +469,7 @@ const GameResultDialog = ({idx, gameResult, }:GameResultDialogProp) => {
             <Table.ColumnHeaderCell>NickName</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>Elapsed</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>Score</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Line</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
 
@@ -479,6 +480,7 @@ const GameResultDialog = ({idx, gameResult, }:GameResultDialogProp) => {
               <Table.Cell>{r.nickName}</Table.Cell>
               <Table.Cell>{`${format(new Date((r.elapsed ?? 0) ), 'mm:ss:SS')}`}</Table.Cell>
               <Table.Cell>{r.score}</Table.Cell>
+              <Table.Cell>{r.clearLine}</Table.Cell>
             </Table.Row>
           ))}
         </Table.Body>

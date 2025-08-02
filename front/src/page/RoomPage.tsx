@@ -180,11 +180,11 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
       if (tetrisList[wsId]) {
         delete tetrisList[wsId]
       } else {
-        // if (wsId === myWsId) {
-        //   localRef.boardCreateByMyTransform(wsId,{nickName})
-        // } else {
+        if (wsId === myWsId) {
+          localRef.boardCreateMy(wsId,{nickName})
+        } else {
           localRef.boardCreateBySlot(wsId,{nickName})
-        // }
+        }
         
         if (wsId === myWsId) {
           console.log('###')

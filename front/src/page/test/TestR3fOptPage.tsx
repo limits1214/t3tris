@@ -21,7 +21,11 @@ const TestR3fOptPage = () => {
       value: 'HI',
       label: 'boardId'
     },
-    boardCreate: button((get)=> {
+    boardCreateMy: button((get)=> {
+      ref.current?.boardCreateMy(get('boardId'), {nickName: 'nick_' + get('boardId')});
+      boardCnt.current += 1;
+    }),
+    boardCreateBySlot: button((get)=> {
       ref.current?.boardCreateBySlot(get('boardId'), {nickName: 'nick_' + get('boardId')});
       boardCnt.current += 1;
     }),
@@ -174,21 +178,75 @@ const TestR3fOptPage = () => {
       <Canvas onCreated={() => {
         // gl.setClearColor('#e6e6e6'); 
       }}>
-        <PerspectiveCamera ref={cameraRef} makeDefault position={[0, 0, 0]} />
+        <PerspectiveCamera ref={cameraRef} makeDefault position={[0, 0, 300]} />
         <OrbitControls 
           ref={controlsRef}
           target={[1, 0, 0]}
         />
-        <mesh position={[60, 0 -12.5, 0 + 4.5]}>
+        {/* <mesh position={[60, 0 -12.5, 0 + 4.5]}>
           <boxGeometry/>
           <meshBasicMaterial color={"red"}/>
-        </mesh>
+        </mesh> */}
         <LazyPerf position="bottom-left"/>
         {/* <BorderedBlock/> */}
         {/* <BorderedStandardBox/> */}
 
-        
+        <mesh position={[0, 0, -1]} scale={[26,26,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"red"}/>
+        </mesh>
 
+
+        {/* <mesh position={[0, (26/2 - (26*1/4)/2) , -0.99]} scale={[26*1/4,26*1/4,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh>
+        <mesh position={[0, (26/2 - (26*1/4)/2) - (26*1/4)*1 , -0.99]} scale={[26*1/4,26*1/4,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh>
+        <mesh position={[0, (26/2 - (26*1/4)/2) - (26*1/4) *2 , -0.99]} scale={[26*1/4,26*1/4,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh>
+        <mesh position={[0, (26/2 - (26*1/4)/2) - (26*1/4) *3 , -0.99]} scale={[26*1/4,26*1/4,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh> */}
+
+        {/* <mesh position={[0, (26/2 - (26*1/5)/2) - (26*1/5)*0 , -0.99]} scale={[26*1/5,26*1/5,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh>
+        <mesh position={[0, (26/2 - (26*1/5)/2) - (26*1/5)*1 , -0.99]} scale={[26*1/5,26*1/5,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh>
+        <mesh position={[0, (26/2 - (26*1/5)/2) - (26*1/5)*2 , -0.99]} scale={[26*1/5,26*1/5,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh>
+        <mesh position={[0, (26/2 - (26*1/5)/2) - (26*1/5)*3 , -0.99]} scale={[26*1/5,26*1/5,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh> */}
+
+
+        <mesh position={[26/2 + 26*1/4/2, 26/2 - 26*1/4/2, -1]} scale={[26*1/4,26*1/4,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh>
+
+        {/* <mesh position={[26/2 + (26*1/5)/2, 26/2 - (26*1/5)/2 , -1]} scale={[26*1/5,26*1/5,1]}>
+          <boxGeometry/>
+          <meshBasicMaterial color={"blue"}/>
+        </mesh> */}
+
+
+<mesh >
+          <boxGeometry/>
+          <meshBasicMaterial color={""}/>
+        </mesh>
         <ambientLight intensity={2} />
         {/* <hemisphereLight intensity={2} position={[0, 10, 0]}/> */}
 

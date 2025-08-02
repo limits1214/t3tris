@@ -1,5 +1,5 @@
 import { useFrame, useLoader, useThree } from "@react-three/fiber"
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react"
+import { forwardRef, useEffect, useImperativeHandle, useRef, type RefObject } from "react"
 import * as THREE from 'three';
 import {Text} from 'troika-three-text'
 import { JsBoard } from "tetris-lib";
@@ -31,6 +31,7 @@ export type OptTetrisController = {
   tetrisInfo: (boardId: string) => TetrisGame | undefined,
   boardCreate: (boardId: string, boardTransform: Transform, boardCreateInfo: BoardCreateInfo) => void,
   boardCreateBySlot: (boardId: string, boardCreateInfo: BoardCreateInfo) => void,
+  boardCreateMy:(boardId: string, boardCreateInfo: BoardCreateInfo) => void,
   boardDelete: (boardId: string) => void,
   boardReset: (boardId: string) => void,
   boardMove: (boardId: string, newTransform: Transform) => void,
@@ -82,7 +83,7 @@ export const blockColorMapping = (block: Block) => {
   } else if (block === "Cover") {
     return "#1a1a1a"
   } else if (block === "CoverLine") {
-    return "white"
+    return "gray"
   } else if (block === "I") {
     return "#00FFFF"
   } else if (block === "O") {
@@ -272,22 +273,104 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     })
   }
-  const boardTrasnfromSlot = useRef(generateBoardTransformSlot(100))
+  // const boardTrasnfromSlot = useRef(generateBoardTransformSlot(100))
 
+  const getBoardSlotLayout = (playerCount: number): { cols: number; rows: number } => {
+    const maxCols = 9;
+    const maxRows = 11;
+
+    let bestCols = 1;
+    let bestRows = playerCount;
+
+    for (let cols = 1; cols <= maxCols; cols++) {
+      const rows = Math.ceil(playerCount / cols);
+      if (rows <= maxRows) {
+        bestCols = cols;
+        bestRows = rows;
+      }
+    }
+    return { cols: bestCols, rows: bestRows };
+  }
+
+  function getBoardGridLayout(count: number): {cols: number, rows: number, scale: number}{
+    /* 
+    1*1 = 1, 1
+    2*2 = 4, 0.9
+    3*3 = 9, 0.8
+    4*4 = 16, 0.7
+    5*5 = 25, 0.6
+    6*6 = 36, 0.5
+    7*7 = 49, 0.4
+    8*8 = 64, 0.3
+    9*9 = 81, 0.2
+    10*10 = 100, 0.1
+    */
+    //  const boundary = [[1, 1, 1/1], [4, 2, 1/2], [9, 3, 1/3], [16, 4, 1/4], [25, 5, 1/5], [36, 6, 1/6], [49, 7, 1/7], [64, 8, 1/8], [81, 9, 1/9], [100, 10, 1/10]]
+   const boundary = Array(10).fill(null).map((_, idx)=>{
+    const v = idx + 1;
+    return [v*v, v, 1/v];
+   })
+    
+    let select = [1, 1, 1] ;
+    if (count !== 1) {
+      for (let i = 0; i < boundary.length; i ++) {
+        if (i < boundary.length - 1) {
+          const l = boundary[i];
+          const r = boundary[i + 1]
+          const min = l[0];
+          const max = r[0]
+          if (min < count && count <= max) {
+            select = boundary[i + 1];
+            break;
+          }
+        } else {
+          select = boundary[boundary.length - 1];
+        }
+      }
+    }
+    
+    return {
+      cols: select[1],
+      rows: select[1],
+      scale: select[2]
+    }
+
+  }
   const generateBoardTransformSlot2 = (cnt: number): {transform: Transform, boardId: string | null}[] => {
-    const cols = 9; // 가로 개수
-    const rows = 11; // 세로 개수
+    // const cols = 9; // 가로 개수
+    // const rows = 11; // 세로 개수
+
+    // const scale = 0.1;
+    const {cols, rows, scale} = getBoardGridLayout(cnt);
+    console.log('layout',cols, rows)
     const boardWidth = 26;
     const boardSpacing = 0;
     const boardStride = boardWidth + boardSpacing;
-    const defulatXSpacing = 60;
+    const defaultXSpacing = ((26 / 2) + (26 * scale) / 2);
+    const defaultYSpacing = 15.5;
 
     const getBoardPosition = (index: number) => {
       const col = index % cols;
-      const row = Math.floor(index / cols);
+      const row = Math.floor(index / cols) ;
+      // console.log(row)
 
-      const x = defulatXSpacing + col * boardStride;
-      const y = row * boardStride;
+      // const x = col * (boardStride * scale);
+      // const y = row * (boardStride * scale);
+
+      // const x = (defaultXSpacing / 2 + (boardStride * scale)/2) + col * (boardStride * scale);
+      // const x = (20) + col * (boardStride * scale);
+      // const y = 16*scale  + row *( boardStride * scale) ;
+      // const y = (26/2 - (26*scale)/2) * scale + row *( boardStride * scale) ;
+
+      // const x = defaultXSpacing;
+      // const y = defaultYSpacing;
+
+
+      // const x = -4.5 * scale;
+      // const y =  15.5 * scale;
+
+      const x = defaultXSpacing + (-4.5 * scale) + col * (boardStride * scale);
+      const y = defaultXSpacing - (boardStride * scale ) + (15.5 * scale) - (boardStride * scale) * row;
 
       return { x, y, rotation: 0 };
     };
@@ -297,14 +380,25 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       return {
         transform: {
-          position: [pos.x, -pos.y, 0],
+          position: [pos.x, pos.y, 0],
           rotation: [0, pos.rotation, 0],
-          scale: [1, 1, 1]
+          scale: [scale, scale, scale]
         },
         boardId: null
       };
     });
   };
+  const otherBoardTrasnformSlot = useRef(generateBoardTransformSlot2(4))
+  console.log(otherBoardTrasnformSlot)
+
+  const myBoardTransform: RefObject<{transform: Transform, boardId: string | null}> = useRef({
+    transform: {
+      position: [-4.5, 15.5, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1]
+    },
+    boardId: null
+  });
   
   useEffect(() => {
     const keys: Block[] = ["Cover", "CoverLine", "Case", "I", "O", "T", "J", "L", "S", "Z", "H", "Garbage", "GarbageQueue", "GarbageReady"];
@@ -623,8 +717,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
   const boardCreateOffsetInfo = {
     nickNameText: [{
-        position: [5, -28, 0],
-        scale: [1,1,1]
+        position: [5, -27, 0],
+        scale: [2,2,2]
       }],
     infoText: [{
         position: [-4, -18, 0],
@@ -715,17 +809,21 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       this.timerOn(boardId);
     },
     boardCreateBySlot(boardId, boardCreateInfo) {
-      let myTransform;
-      for (const slot of boardTrasnfromSlot.current) {
+      let trs;
+      for (const slot of otherBoardTrasnformSlot.current) {
         if (slot.boardId === null) {
-          myTransform = slot.transform;
+          trs = slot.transform;
           slot.boardId = boardId;
           break;
         }
       }
-      if (myTransform) {
-        this.boardCreate(boardId, myTransform, boardCreateInfo);
+      if (trs) {
+        this.boardCreate(boardId, trs, boardCreateInfo);
       }
+    },
+    boardCreateMy(boardId, boardCreateInfo) {
+      myBoardTransform.current.boardId = boardId;
+      this.boardCreate(boardId, myBoardTransform.current.transform, boardCreateInfo)
     },
     boardCreate: (boardId, boardTransform, createInfo) => {
       console.log('[boardCreate]')
@@ -748,7 +846,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
       const tetris = tetrisGames.current[boardId];
       const blocks = instancedBlocks.current;
-
       const group = new THREE.Group();
       group.position.set(...tetris.boardTransform.position);
       group.rotation.set(...tetris.boardTransform.rotation);
@@ -966,7 +1063,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       instanced3dText.current.Hold = instanced3dText.current.Hold.filter(item => item.id != `${boardId}_Hold`);
       updateInstanced3dMeshes();
 
-      boardTrasnfromSlot.current.forEach(item=>{
+      otherBoardTrasnformSlot.current.forEach(item=>{
         if (item.boardId === boardId) {
           item.boardId = null
         }

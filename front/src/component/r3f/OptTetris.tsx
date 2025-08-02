@@ -234,64 +234,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
   }
 
-  const generateBoardTransformSlot = (cnt: number): {transform: Transform, boardId: string | null}[] => {
-    const boardWidth = 26;
-    const boardSpacing = 0; // 여유 간격
-    const effectiveWidth = boardWidth + boardSpacing;
-    const boardsPerRing = (r: number) => Math.floor((2 * Math.PI * r) / effectiveWidth);
-    const getBoardPosition = (index: number) => {
-      // let ring = 0;
-      let radius = 60;
-      let boardIndex = index;
-      // let offset = 0;
-
-      // 몇 번째 링(ring)에 들어가야 하는지 계산
-      while (true) {
-        const capacity = boardsPerRing(radius);
-        if (boardIndex < capacity) break;
-        boardIndex -= capacity;
-        radius += 60;
-        // ring += 1;
-        // offset += capacity;
-      }
-      const angleStep = (2 * Math.PI) / boardsPerRing(radius);
-      const angle = boardIndex * angleStep;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-      const rotation = -angle - Math.PI / 2 ;
-      return { x, y, rotation };
-    };
-    return Array(cnt).fill(null).map((_,idx)=>{
-      const pos = getBoardPosition(idx);
-      return {
-        transform: {
-          position: [pos.x, 0, pos.y],
-          rotation: [0, pos.rotation, 0,],
-          scale: [1, 1, 1,]
-        },
-        boardId: null
-      }
-    })
-  }
-  // const boardTrasnfromSlot = useRef(generateBoardTransformSlot(100))
-
-  const getBoardSlotLayout = (playerCount: number): { cols: number; rows: number } => {
-    const maxCols = 9;
-    const maxRows = 11;
-
-    let bestCols = 1;
-    let bestRows = playerCount;
-
-    for (let cols = 1; cols <= maxCols; cols++) {
-      const rows = Math.ceil(playerCount / cols);
-      if (rows <= maxRows) {
-        bestCols = cols;
-        bestRows = rows;
-      }
-    }
-    return { cols: bestCols, rows: bestRows };
-  }
-
   function getBoardGridLayout(count: number): {cols: number, rows: number, scale: number}{
     /* 
     1*1 = 1, 1
@@ -342,35 +284,18 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
     // const scale = 0.1;
     const {cols, rows, scale} = getBoardGridLayout(cnt);
-    console.log('layout',cols, rows)
+    // console.log('layout',cols, rows)
     const boardWidth = 26;
     const boardSpacing = 0;
     const boardStride = boardWidth + boardSpacing;
     const defaultXSpacing = ((26 / 2) + (26 * scale) / 2);
-    const defaultYSpacing = 15.5;
 
     const getBoardPosition = (index: number) => {
       const col = index % cols;
       const row = Math.floor(index / cols) ;
-      // console.log(row)
 
-      // const x = col * (boardStride * scale);
-      // const y = row * (boardStride * scale);
-
-      // const x = (defaultXSpacing / 2 + (boardStride * scale)/2) + col * (boardStride * scale);
-      // const x = (20) + col * (boardStride * scale);
-      // const y = 16*scale  + row *( boardStride * scale) ;
-      // const y = (26/2 - (26*scale)/2) * scale + row *( boardStride * scale) ;
-
-      // const x = defaultXSpacing;
-      // const y = defaultYSpacing;
-
-
-      // const x = -4.5 * scale;
-      // const y =  15.5 * scale;
-
-      const x = defaultXSpacing + (-4.5 * scale) + col * (boardStride * scale);
-      const y = defaultXSpacing - (boardStride * scale ) + (15.5 * scale) - (boardStride * scale) * row;
+      const x = defaultXSpacing + (-4.5 * scale) +  /*<<spacing*/ (boardStride * scale) * col;
+      const y = defaultXSpacing - (boardStride * scale) + (15.5 * scale) - /*<<spacing*/ (boardStride * scale) * row;
 
       return { x, y, rotation: 0 };
     };
@@ -388,7 +313,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       };
     });
   };
-  const otherBoardTrasnformSlot = useRef(generateBoardTransformSlot2(16))
+  const otherBoardTrasnformSlot = useRef(generateBoardTransformSlot2(0))
 
   const myBoardTransform: RefObject<{transform: Transform, boardId: string | null}> = useRef({
     transform: {
@@ -499,12 +424,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     text.anchorY = 'middle'
     text.material = textMat
     
-
-    // text.sync(()=>{
-    //   console.log('[board]synced', txt)
-    //   scene.add(text)
-    // })
-
     scene.add(text)
     text.sync()
 
@@ -774,6 +693,17 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }]
   }
 
+  const otherBoardSlotPacking = (plus: number) => {
+    const otherBoardLen = Object.entries(tetrisGames.current).filter((v)=>v[0] !== myBoardTransform.current.boardId).length;
+    const currOtherBoardTrasnformSlot = [...otherBoardTrasnformSlot.current.filter(v=>v.boardId !== null)];
+    otherBoardTrasnformSlot.current = generateBoardTransformSlot2(otherBoardLen + plus);
+    currOtherBoardTrasnformSlot.forEach((slot,idx)=>{
+      otherBoardTrasnformSlot.current[idx].boardId = slot.boardId;
+      const newSlot = otherBoardTrasnformSlot.current[idx];
+      optTetrisController.boardMove(slot.boardId!, newSlot.transform);
+    })
+  }
+
   const optTetrisController: OptTetrisController = {
     tetrisGameList() {
         return tetrisGames.current
@@ -808,6 +738,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       this.timerOn(boardId);
     },
     boardCreateBySlot(boardId, boardCreateInfo) {
+      otherBoardSlotPacking(1);
       let trs;
       for (const slot of otherBoardTrasnformSlot.current) {
         if (slot.boardId === null) {
@@ -1030,8 +961,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       updateInstanced3dMeshes();
     },
-
-    boardDelete: (boardId: string) => {
+    boardDelete (boardId: string) {
       console.log('[boardDelete]')
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
@@ -1067,13 +997,15 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           item.boardId = null
         }
       })
+
+      otherBoardSlotPacking(0);
     },
 
     boardMove(boardId, newTransform) {
         //
         // "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
         /*
-          Cover: {}_Block_EndCover
+          Cover: {}_Block
           CoverLine: {}_Block
           Case: {}_Block
           E: {}_Block
@@ -1084,6 +1016,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           Tetrimino: {}_Block,
           {}_Next,
           {}_Hold,
+          Cover: {}_Block_EndCover
         */
 
       const tetris = tetrisGames.current[boardId];
@@ -1238,6 +1171,34 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             }
           });
         })
+      }
+
+      {
+        const isCovered = blocks.Cover.filter(item => item.id === `${boardId}_Block_EndCover`).length > 0;
+        if (isCovered) {
+          const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`)
+          blocks.Cover = newArr;
+          boardCreateOffsetInfo.EndCover.forEach((trs)=>{
+            const position = trs.position as [number, number, number];
+            const scale = trs.scale as [number, number, number];
+
+            dummy.position.set(...position);
+            dummy.scale.set(...scale);
+
+            dummy.getWorldPosition(finalPos);
+            dummy.getWorldQuaternion(finalQuat);
+            dummy.getWorldScale(finalScale)
+            finalEuler.setFromQuaternion(finalQuat);
+            blocks.Cover.push({
+              id: `${boardId}_Block_EndCover`,
+              transform: {
+                position: [finalPos.x, finalPos.y, finalPos.z],
+                rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+                scale: [finalScale.x, finalScale.y, finalScale.z]
+              }
+            });
+          })
+        }
       }
 
       {

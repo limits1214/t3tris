@@ -19,8 +19,8 @@ pub async fn app_start() {
 }
 
 async fn init_axum() {
-    let (ws_world_command_tx, ws_wolrd_handle) = WsWorld::init();
-    let arc_app_state = ArcWsAppState::new(ws_world_command_tx).await;
+    let (ws_world_command_sender, ws_wolrd_handle) = WsWorld::init();
+    let arc_app_state = ArcWsAppState::new(ws_world_command_sender).await;
     let router_controller = init_controller_ws_router(arc_app_state.clone()).await;
 
     let router = Router::new()

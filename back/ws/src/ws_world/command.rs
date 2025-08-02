@@ -37,6 +37,7 @@ pub enum Ws {
         ws_id: String,
         // user 가가지고 있는 ws_sender_tx
         ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
+        ws_close_tx: tokio::sync::watch::Sender<()>,
     },
     CleanupWs {
         ws_id: String,
@@ -50,6 +51,9 @@ pub enum Ws {
         ws_id: String,
     },
     LoginFailed {
+        ws_id: String,
+    },
+    LastPing {
         ws_id: String,
     },
 }

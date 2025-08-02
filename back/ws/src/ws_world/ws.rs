@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use crate::{
     constant::TOPIC_WS_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
@@ -39,9 +41,10 @@ pub fn init_ws(
     pubsub: &mut WsPubSub,
     ws_id: WsId,
     ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
+    ws_close_tx: tokio::sync::watch::Sender<()>,
 ) {
     // === 커넥션 생성하기
-    connections.conn_create(ws_id.clone());
+    connections.conn_create(ws_id.clone(), ws_close_tx);
 
     // === pubsub 생성하기
     pubsub.create_topic_handle(ws_id.clone(), ws_sender_tx);
@@ -168,4 +171,35 @@ pub fn logout_user(
             user_id: user.user_id.into(),
         },
     );
+}
+
+// ping 기록
+pub fn last_ping(
+    connections: &mut WsConnections,
+    _data: &mut WsData,
+    _pubsub: &mut WsPubSub,
+    ws_id: WsId,
+) {
+    if let Some(conn) = connections.conn_get_mut(&ws_id) {
+        conn.last_ping = Instant::now();
+    }
+}
+
+// ping 검증
+pub fn ping_validation(
+    connections: &mut WsConnections,
+    _data: &mut WsData,
+    _pubsub: &mut WsPubSub,
+) {
+    let now = Instant::now();
+    let timeout = Duration::from_secs(65);
+    for (ws_id, conn) in connections.conn_iter() {
+        let elapsed = now - conn.last_ping;
+        if elapsed > timeout {
+            let _ = conn.ws_close_tx.send(());
+            tracing::info!(
+                "[ping_validation] ws_id: {ws_id:?}, timeout!, elapsed: {elapsed:?} close send"
+            );
+        }
+    }
 }

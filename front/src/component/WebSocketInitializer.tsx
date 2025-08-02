@@ -354,7 +354,7 @@ const WebSocketInitializer = () => {
         }
     },
     heartbeat: {
-      interval: 1000 * 30,
+      interval: 1000 * 20,
       message: JSON.stringify({type: 'ping'}),
       returnMessage: JSON.stringify({type: 'pong'}),
     }

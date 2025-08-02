@@ -54,9 +54,9 @@ pub struct ArcWsAppState(pub Arc<WsAppState>);
 
 impl ArcWsAppState {
     pub async fn new(
-        ws_world_command_tx: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
+        ws_world_command_sender: tokio::sync::mpsc::UnboundedSender<WsWorldCommand>,
     ) -> Self {
-        Self(Arc::new(WsAppState::new(ws_world_command_tx).await))
+        Self(Arc::new(WsAppState::new(ws_world_command_sender).await))
     }
 }
 impl Clone for ArcWsAppState {

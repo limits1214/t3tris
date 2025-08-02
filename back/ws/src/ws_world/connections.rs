@@ -1,8 +1,11 @@
 use crate::ws_world::model::{UserId, WsId};
 use serde::{Deserialize, Serialize};
-use std::collections::{
-    HashMap, HashSet,
-    hash_map::{IntoIter, Iter},
+use std::{
+    collections::{
+        HashMap, HashSet,
+        hash_map::{IntoIter, Iter},
+    },
+    time::Instant,
 };
 use time::OffsetDateTime;
 
@@ -37,7 +40,7 @@ impl WsConnections {
     }
 }
 impl WsConnections {
-    pub fn conn_create(&mut self, ws_id: WsId) {
+    pub fn conn_create(&mut self, ws_id: WsId, ws_close_tx: tokio::sync::watch::Sender<()>) {
         self.connections.insert(
             ws_id.clone(),
             WsWorldConnection {
@@ -45,6 +48,8 @@ impl WsConnections {
                 auth: WsConnAuth::Unauthenticated,
                 connected_at: OffsetDateTime::now_utc(),
                 state: WsConnState::Idle,
+                ws_close_tx: ws_close_tx,
+                last_ping: Instant::now(),
             },
         );
     }
@@ -111,6 +116,11 @@ pub struct WsWorldConnection {
     #[serde(with = "time::serde::rfc3339")]
     pub connected_at: OffsetDateTime,
     pub state: WsConnState,
+    #[serde(skip)]
+    pub ws_close_tx: tokio::sync::watch::Sender<()>,
+    #[serde(skip)]
+    #[serde(default = "std::time::Instant::now")]
+    pub last_ping: Instant,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

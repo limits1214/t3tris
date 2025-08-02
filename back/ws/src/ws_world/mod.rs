@@ -47,6 +47,9 @@ impl WsWorld {
             let mut cleanup_timer = tokio::time::interval(std::time::Duration::from_secs(10));
             let mut game_ticker_timer =
                 tokio::time::interval(std::time::Duration::from_secs_f32(1.0 / 60.0));
+            let mut ping_validation_timer =
+                tokio::time::interval(std::time::Duration::from_secs(10));
+
             loop {
                 tokio::select! {
                     msg = world_receiver.recv() => {
@@ -64,6 +67,9 @@ impl WsWorld {
                     _ = game_ticker_timer.tick() => {
                         game::tick(&world.connections, &mut world.data, &mut world.pubsub);
                     }
+                    _ = ping_validation_timer.tick() => {
+                        ws::ping_validation(&mut world.connections, &mut world.data, &mut world.pubsub);
+                    }
                 }
             }
         });
@@ -77,13 +83,22 @@ fn process(
     pubsub: &mut WsPubSub,
     msg: WsWorldCommand,
 ) {
+    // serde_json::to_value(&msg);
     match msg {
         WsWorldCommand::Ws(cmd) => match cmd {
             Ws::InitWs {
                 ws_id,
                 ws_sender_tx,
+                ws_close_tx,
             } => {
-                ws::init_ws(connections, data, pubsub, WsId(ws_id), ws_sender_tx);
+                ws::init_ws(
+                    connections,
+                    data,
+                    pubsub,
+                    WsId(ws_id),
+                    ws_sender_tx,
+                    ws_close_tx,
+                );
             }
             Ws::CleanupWs { ws_id } => {
                 ws::cleanup_ws(connections, data, pubsub, WsId(ws_id));
@@ -109,6 +124,9 @@ fn process(
             Ws::LoginFailed { ws_id } => ws::login_failed_user(pubsub, ws_id),
             Ws::LogoutUser { ws_id } => {
                 ws::logout_user(connections, data, pubsub, WsId(ws_id));
+            }
+            Ws::LastPing { ws_id } => {
+                ws::last_ping(connections, data, pubsub, WsId(ws_id));
             }
         },
         WsWorldCommand::Lobby(cmd) => match cmd {

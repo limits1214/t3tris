@@ -101,7 +101,7 @@ const RoomPage = () => {
 export default RoomPage
 
 const GameCanvas = () => {
-  const [isOrth] = useState(false)
+  const [isOrth] = useState(true)
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const orthoCameraRef = useRef<THREE.OrthographicCamera>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null)

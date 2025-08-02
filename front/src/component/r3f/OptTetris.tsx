@@ -105,7 +105,7 @@ export const blockColorMapping = (block: Block) => {
   } else if (block === "GarbageReady") {
     return "#8B0000"
   } else if (block === "Garbage") {
-    return "gray"
+    return "#4A4F5A"
   } else {
     return ""
   }
@@ -388,8 +388,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       };
     });
   };
-  const otherBoardTrasnformSlot = useRef(generateBoardTransformSlot2(4))
-  console.log(otherBoardTrasnformSlot)
+  const otherBoardTrasnformSlot = useRef(generateBoardTransformSlot2(16))
 
   const myBoardTransform: RefObject<{transform: Transform, boardId: string | null}> = useRef({
     transform: {

@@ -553,7 +553,11 @@ pub fn room_game_start(
             .unwrap_or("X".to_string());
         tetries.insert(
             room_user.ws_id.clone(),
-            TetrisGame::new(room_user.ws_id.clone(), nick_name),
+            TetrisGame::new(
+                room_user.ws_id.clone(),
+                room_user.user_id.clone(),
+                nick_name,
+            ),
         );
     }
 

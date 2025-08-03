@@ -1,3 +1,5 @@
+use crate::app::state::ArcWsAppState;
+
 pub enum WsWorldCommand {
     Pubsub(Pubsub),
     Lobby(Lobby),
@@ -38,6 +40,9 @@ pub enum Ws {
         // user 가가지고 있는 ws_sender_tx
         ws_sender_tx: tokio::sync::mpsc::UnboundedSender<String>,
         ws_close_tx: tokio::sync::watch::Sender<()>,
+    },
+    InitAppState {
+        app_state: ArcWsAppState,
     },
     CleanupWs {
         ws_id: String,

@@ -1,8 +1,11 @@
-use crate::ws_world::{
-    command::{Game, Lobby, Pubsub, Room, Ws, WsWorldCommand},
-    connections::WsConnections,
-    model::{GameId, RoomId, TopicId, UserId, WsData, WsId},
-    pubsub::WsPubSub,
+use crate::{
+    app::state::ArcWsAppState,
+    ws_world::{
+        command::{Game, Lobby, Pubsub, Room, Ws, WsWorldCommand},
+        connections::WsConnections,
+        model::{GameId, RoomId, TopicId, UserId, WsData, WsId},
+        pubsub::WsPubSub,
+    },
 };
 use tokio::task::JoinHandle;
 
@@ -22,6 +25,7 @@ pub struct WsWorld {
     connections: WsConnections,
     data: WsData,
     pubsub: WsPubSub,
+    arc_app_state: Option<ArcWsAppState>,
 }
 impl WsWorld {
     pub fn new() -> Self {
@@ -29,6 +33,7 @@ impl WsWorld {
             connections: WsConnections::new(),
             data: WsData::new(),
             pubsub: WsPubSub::new(),
+            arc_app_state: None,
         }
     }
 }
@@ -54,7 +59,7 @@ impl WsWorld {
                 tokio::select! {
                     msg = world_receiver.recv() => {
                         if let Some(msg) = msg {
-                            process(&mut world.connections, &mut world.data, &mut world.pubsub, msg)
+                            process(&mut world.connections, &mut world.data, &mut world.pubsub, msg, &mut world.arc_app_state)
                         } else {
                             tracing::warn!("WsWorld received None msg, break!");
                             break;
@@ -63,6 +68,9 @@ impl WsWorld {
                     _ = cleanup_timer.tick() => {
                         world.pubsub.pubsub_cleanup();
                         room::room_cleanup(&world.connections, &mut world.data, &mut world.pubsub);
+                        if let Some(arc_app_state) = &world.arc_app_state {
+                            game::game_cleanup(&world.connections,  &mut world.data, &mut world.pubsub, arc_app_state.clone());
+                        }
                     }
                     _ = game_ticker_timer.tick() => {
                         game::tick(&world.connections, &mut world.data, &mut world.pubsub);
@@ -82,6 +90,7 @@ fn process(
     data: &mut WsData,
     pubsub: &mut WsPubSub,
     msg: WsWorldCommand,
+    arc_app_state: &mut Option<ArcWsAppState>,
 ) {
     // serde_json::to_value(&msg);
     match msg {
@@ -127,6 +136,10 @@ fn process(
             }
             Ws::LastPing { ws_id } => {
                 ws::last_ping(connections, data, pubsub, WsId(ws_id));
+            }
+            Ws::InitAppState { app_state } => {
+                //
+                *arc_app_state = Some(app_state)
             }
         },
         WsWorldCommand::Lobby(cmd) => match cmd {

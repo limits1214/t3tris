@@ -1,9 +1,9 @@
 use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use tetris_lib::{Board, FallingBlock, SpawnError, StepError, Tetrimino, Tile, TileAt};
+use tetris_lib::{Board, SpawnError, StepError, Tetrimino, Tile, TileAt};
 
-use crate::ws_world::model::WsId;
+use crate::ws_world::model::{UserId, WsId};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TetrisGameActionType {
@@ -91,6 +91,7 @@ pub enum GarbageQueueKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TetrisGame {
     pub ws_id: WsId,
+    pub user_id: UserId,
     pub nick_name: String,
     pub board: Board,
     pub hold: Option<Tetrimino>,
@@ -125,9 +126,10 @@ pub struct TetrisGame {
 }
 
 impl TetrisGame {
-    pub fn new(ws_id: WsId, nick_name: String) -> Self {
+    pub fn new(ws_id: WsId, user_id: UserId, nick_name: String) -> Self {
         Self {
             ws_id,
+            user_id,
             nick_name,
             board: Board::new(10, 26),
             hold: None,

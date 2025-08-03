@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO tb_game_room_backup\n            (\n                room_id, game_id, ws_ids, user_ids, data,\n                created_by, updated_by\n            )\n            VALUES\n            (\n                $1, $2, $3, $4, $5,\n                NULL, NULL\n            )\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7dba7f8330d77758a4ee57810cd19d9a4bc397ca5fae6292e442a4651b274c4"
+}

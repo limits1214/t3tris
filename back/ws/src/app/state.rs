@@ -50,6 +50,7 @@ impl WsShutDown {
     }
 }
 
+#[derive(Debug)]
 pub struct ArcWsAppState(pub Arc<WsAppState>);
 
 impl ArcWsAppState {

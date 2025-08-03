@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use rand::seq::IndexedRandom;
 
 use crate::{
-    constant::{TOPIC_ROOM_ID, TOPIC_WS_ID},
+    constant::TOPIC_ROOM_ID,
     model::server_to_client_ws_msg::ServerToClientWsMsg,
     topic,
     ws_world::{
         command::GameActionType,
         connections::WsConnections,
         game::tetris::{BoardEndKind, TetrisGameActionType, attack_line},
-        model::{GameId, WsData, WsId, WsWorldGameType},
+        model::{GameId, WsData, WsId, WsWorldGameStatus, WsWorldGameType},
         pubsub::WsPubSub,
         util::err_publish,
     },
@@ -33,6 +33,10 @@ pub fn action(
         err_publish(pubsub, &ws_id, dbg!("[game action] game not exists"));
         return;
     };
+
+    if !matches!(game.status, WsWorldGameStatus::GameStart) {
+        return;
+    }
 
     let mut my_tetris = None;
     let mut other_tetris = Vec::new();

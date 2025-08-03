@@ -367,6 +367,7 @@ const HUD = () => {
         </Flex>
         <Flex direction="column" css={css`margin-top: 1rem`}>
           <Button css={css`pointer-events: auto;`} onClick={()=> navigate('/')} >Exit</Button>
+          <Help/>
         </Flex>
       </Flex>
 
@@ -495,6 +496,49 @@ const GameResultDialog = ({idx, gameResult, }:GameResultDialogProp) => {
           ))}
         </Table.Body>
       </Table.Root>
+
+      <Flex gap="3" mt="4" justify="end">
+        <Dialog.Close>
+          <Button>Close</Button>
+        </Dialog.Close>
+      </Flex>
+    </Dialog.Content>
+  </Dialog.Root>
+}
+
+const Help = () => {
+  return <Dialog.Root>
+    <Dialog.Trigger>
+      <Button onKeyDown={(e) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+        }
+      }}>Help</Button>
+    </Dialog.Trigger>
+
+    <Dialog.Content maxWidth="450px">
+      <Dialog.Title>Help</Dialog.Title>
+
+      <strong>게임모드</strong><br/>
+      Score: 스코어가 가장 높은 사람이 1등 <br/>
+      40Line: 40라인을 가장 먼저 만드는 사람이 1등 <br/>
+      Battle: 서로에게 공격 및 방어하며 최후의 1인이 1등 <br/>
+      (게임모드는 방장만 조작 가능)<br/>
+      <br/>
+      <br/>
+      <strong>조작법</strong> <br/>
+      블럭 왼쪽 움직이기: 화살표 왼키  <br/>
+      블럭 오른쪽 움직이기: 화살표 오른키  <br/>
+      블럭 시계방향 회전: 화살표 위키  <br/>
+      블럭 반시계방향 회전: Z 키 <br/>
+      블럭 소프트 드랍: 화살표 아래키  <br/>
+      블럭 하드 드랍: 스페이스바 <br/>
+      블럭 홀드: 시프트키 <br/>
+      <br/>
+      <br/>
+      <strong>마우스</strong><br/>
+      휠: 카메라 줌 인아웃<br/>
+      좌,우: 카메라 이동<br/>
 
       <Flex gap="3" mt="4" justify="end">
         <Dialog.Close>

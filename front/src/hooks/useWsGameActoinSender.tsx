@@ -59,7 +59,6 @@ export const useKeyboardActionSender = () => {
   const rotating = useRef(false);
  
   const keydown = (e: KeyboardEvent) => {
-    console.log('kd', gameId)
     if (gameId) {
       switch (e.key) {
         case 'a':

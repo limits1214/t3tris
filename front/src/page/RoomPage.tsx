@@ -27,21 +27,8 @@ const RoomPage = () => {
   const send = useWsStore(s=>s.send);
   const roomClear = useRoomStore(s=>s.clear);
   const roomSetGameResult = useRoomStore(s=>s.setRoomGameResult);
-  const games = useRoomStore(s=>s.games);
-  const roomStatus = useRoomStore(s=>s.roomStatus);
-  const setGameId = useKeyboardActionSender();
   const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
 
-  useEffect(() => {
-    if (roomStatus === 'Gaming') {
-      const nowGameId = games[games.length - 1];
-      if (nowGameId) {
-        setGameId(nowGameId)
-      }
-    } else {
-      setGameId(null)
-    }
-  }, [games, roomStatus, setGameId])
 
   const roomEnter = (roomId: string) => {
     const obj = {
@@ -105,6 +92,16 @@ const GameCanvas = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const orthoCameraRef = useRef<THREE.OrthographicCamera>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null)
+  const roomUsers = useRoomStore(s=>s.users);
+  console.log('roomUsers.length',roomUsers.length)
+  const [cameraX, setCameraX] = useState(0);
+  useEffect(()=>{
+    if (roomUsers.length === 1) {
+      setCameraX(0)
+    } else{
+      setCameraX(13)
+    }
+  }, [roomUsers])
   return (
       <Canvas orthographic={isOrth}>
         <LazyPerf position="bottom-left" />
@@ -112,7 +109,7 @@ const GameCanvas = () => {
         ? <OrthographicCamera
             makeDefault
             ref={orthoCameraRef}
-            position={[13, 0, 10]}
+            position={[cameraX, 0, 10]}
             near={1}
             far={12}
             zoom={20}
@@ -126,7 +123,7 @@ const GameCanvas = () => {
         />}
         <OrbitControls
           ref={controlsRef}
-          target={[13, 0, 0]}
+          target={[cameraX, 0, 0]}
           enableRotate={false}
           mouseButtons={{
             LEFT: THREE.MOUSE.PAN,
@@ -156,6 +153,19 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
   const ref = useRef<OptTetrisController | null>(null);
 
   const games = useRoomStore(s=>s.games);
+  const setGameId = useKeyboardActionSender();
+  const roomStatus = useRoomStore(s=>s.roomStatus);
+
+  useEffect(() => {
+    if (roomStatus === 'Gaming') {
+      const nowGameId = games[games.length - 1];
+      if (nowGameId) {
+        setGameId(nowGameId)
+      }
+    } else {
+      setGameId(null)
+    }
+  }, [games, roomStatus, setGameId])
 
   const {roomId} = useParams();
   const send = useWsStore(s=>s.send);
@@ -475,7 +485,7 @@ const GameResultDialog = ({idx, gameResult, }:GameResultDialogProp) => {
 
         <Table.Body >
           {gameResult.gameResultInfo.map((r, idx)=>(
-            <Table.Row>
+            <Table.Row key={idx}>
               <Table.RowHeaderCell>{idx + 1}</Table.RowHeaderCell>
               <Table.Cell>{r.nickName}</Table.Cell>
               <Table.Cell>{`${format(new Date((r.elapsed ?? 0) ), 'mm:ss:SS')}`}</Table.Cell>

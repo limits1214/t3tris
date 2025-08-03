@@ -1783,8 +1783,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         for(const [boardId, syncData] of Object.entries(data)) {
           const tetris = tetrisGames.current[boardId];
           if (!tetris) {
-            console.log('[gameSync] tetris undefined');
-            return;
+            console.log('[gameSync] tetris undefined', boardId);
+            continue;
           }
           // boardSet
           for (const [lineIdx, line] of syncData.board.entries()) {

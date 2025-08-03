@@ -18,7 +18,20 @@ import * as THREE from 'three'
 import { OptTetris, type OptTetrisController } from "../component/r3f/OptTetris"
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const LazyPerf = React.lazy(()=>import('../component/r3f/Perf'));
+
+export const gameTypeMap = (gameType: string) => {
+  if (gameType === "MultiScore") {
+    return "Score"
+  } else if (gameType === "Multi40Line") {
+    return "40Line"
+  } else if (gameType === "MultiBattle") {
+    return "Battle"
+  } else {
+    return "?"
+  }
+}
 
 const RoomPage = () => {
   const wsReadyState = useWsStore(s=>s.readyState)
@@ -28,7 +41,6 @@ const RoomPage = () => {
   const roomClear = useRoomStore(s=>s.clear);
   const roomSetGameResult = useRoomStore(s=>s.setRoomGameResult);
   const setServerGameMsg = useGameStore(s=>s.setServerGameMsg);
-
 
   const roomEnter = (roomId: string) => {
     const obj = {
@@ -93,7 +105,6 @@ const GameCanvas = () => {
   const orthoCameraRef = useRef<THREE.OrthographicCamera>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null)
   const roomUsers = useRoomStore(s=>s.users);
-  console.log('roomUsers.length',roomUsers.length)
   const [cameraX, setCameraX] = useState(0);
   useEffect(()=>{
     if (roomUsers.length === 1) {
@@ -104,7 +115,7 @@ const GameCanvas = () => {
   }, [roomUsers])
   return (
       <Canvas orthographic={isOrth}>
-        <LazyPerf position="bottom-left" />
+        {/* <LazyPerf position="bottom-left" /> */}
         {isOrth
         ? <OrthographicCamera
             makeDefault
@@ -117,7 +128,7 @@ const GameCanvas = () => {
         : <PerspectiveCamera
             makeDefault
             ref={cameraRef}
-            position={[0, 0, 100]}
+            position={[13, 0, 100]}
             near={0.1}
             far={5000}
         />}
@@ -142,12 +153,12 @@ const GameCanvas = () => {
             />
           );
         })}
-        <GameBoard cameraRef={isOrth ? orthoCameraRef : cameraRef} controlsRef={controlsRef} />
+        <GameBoard/>
       </Canvas>
   )
 }
 
-const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.PerspectiveCamera| THREE.OrthographicCamera |null>, controlsRef: React.RefObject<OrbitControlsImpl|null>}) => {
+const GameBoard = () => {
   const myWsId = useWsUserStore(s=>s.wsId);
   const roomUsers = useRoomStore(s=>s.users);
   const ref = useRef<OptTetrisController | null>(null);
@@ -187,10 +198,7 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
     console.log('roomUserWsId', roomUserWsId)
     console.log('boardist', tetrisList)
 
-    // const radius = 40; // 원의 반지름
-    // const angleStep = (2 * Math.PI) / roomUserWsId.length;
     for (const [, {wsId, nickName}] of roomUserWsId.entries()) {
-
       if (tetrisList[wsId]) {
         delete tetrisList[wsId]
       } else {
@@ -201,32 +209,8 @@ const GameBoard = ({cameraRef, controlsRef}: {cameraRef: React.RefObject<THREE.P
         }
         
         if (wsId === myWsId) {
-          console.log('###')
-          const {position, rotation} = localRef.tetrisInfo(wsId)!.boardTransform;
-          const angle = rotation[1] + Math.PI/2;
-          const distanceZ = 4.5;
-          const offsetX = Math.sin(angle) * distanceZ;
-          const offsetZ = Math.cos(angle) * distanceZ;
-          const dx = offsetX;
-          const dy = -12.5;
-          const dz = offsetZ  ;
-          const from = new THREE.Vector3(position[0], position[1] , position[2] );
-          const to = from.clone().normalize().multiplyScalar(-30).add(from);
-          const to2 = to.clone().normalize().multiplyScalar(-10).add(to);
-          // cameraRef.current.position.set(to.x + dx, to.y + dy, to.z + dz);
-          // controlsRef.current.target.set(position[0] + dx, position[1] + dy, position[2] + dz);
-
-          requestAnimationFrame(()=>{
-            // console.log(cameraRef.current, controlsRef.current)
-            // controlsRef.current?.target.set(to.x + dx, to.y + dy, to.z + dz);
-            // cameraRef.current?.position.set(to2.x + dx, to2.y + dy, to2.z + dz);
-            // controlsRef.current?.update()
-            // console.log(controlsRef.current?.target, cameraRef.current?.position)
-          })
-
           handleSync()
         }
-
       }
     }
 
@@ -323,13 +307,18 @@ const HUD = () => {
           border: 1px solid black;
           left: 0px;
           top: 0px;
+          border-radius: 10px;
+          width: 15vw;
+          overflow: auto;
         `}
       >
-        <Flex>
-          <Text>{roomName} ({roomStatus}) / {roomGameType}</Text>
+        <Help />
+        <Flex direction="column" css={css`border: 1px solid black; border-radius: 5px; margin-top: 1rem;`} >
+          <Text>방: {roomName} ({roomStatus})</Text>
+          <Text>게임모드: {gameTypeMap(roomGameType ?? "")}</Text>
         </Flex>
-        <Flex direction="column">
-          <Text>Users</Text>
+        <Flex direction="column" css={css`border: 1px solid black; border-radius: 5px; margin-top: 1rem;`}>
+          <Text>참가자</Text>
           <Flex direction="column" css={css`
             max-height: 400px; overflow-y: auto
           `}>
@@ -338,19 +327,11 @@ const HUD = () => {
               if (b.wsId === myWsId) return 1;
               return 0
             }).map((roomUser) =>(
-              <Text key={roomUser.wsId}>- {roomUser.nickName} {roomUser.wsId == myWsId ? '(ME)' : ''} {hostUser?.wsId == roomUser.wsId ? '(방장)' : ''}</Text>
+              <Text key={roomUser.wsId}>- {roomUser.nickName} {roomUser.wsId == myWsId ? '(본인)' : ''} {hostUser?.wsId == roomUser.wsId ? '(방장)' : ''}</Text>
             ))}
           </Flex>
         </Flex>
-        <Flex direction="column">
-          
-          
-          {isHost && roomStatus === 'Waiting'
-          ? (<Button onClick={handleGameStart}>GAME START</Button>)
-          : (<></>)}
-    
-          {/* <Button css={css`pointer-events: auto;`} onClick={handleSync}>Sync</Button> */}
-          
+        {isHost && <Flex direction="column" css={css`margin-top: 1rem`}>
           {isHost && 
             <Select.Root defaultValue={roomGameType ?? "MultiScore"} onValueChange={handleGameTypeChange} disabled={roomStatus !== 'Waiting'}>
               <Select.Trigger />
@@ -359,15 +340,18 @@ const HUD = () => {
                   <Select.Label>GameType</Select.Label>
                   <Select.Item value="MultiScore">Score</Select.Item>
                   <Select.Item value="Multi40Line">40Line</Select.Item>
-                  <Select.Item value="MultiBattle">Battle(최소2명 이상)</Select.Item>
+                  <Select.Item value="MultiBattle">Battle(최소 2명)</Select.Item>
                 </Select.Group>
               </Select.Content>
             </Select.Root>
           }
-        </Flex>
+
+          {isHost && roomStatus === 'Waiting'
+          ? (<Button variant="classic" onClick={handleGameStart}>GAME START</Button>)
+          : (<></>)}
+        </Flex>}
         <Flex direction="column" css={css`margin-top: 1rem`}>
-          <Button css={css`pointer-events: auto;`} onClick={()=> navigate('/')} >Exit</Button>
-          <Help/>
+          <Button variant="classic" color="crimson" css={css`pointer-events: auto;`} onClick={()=> navigate('/')} >Exit</Button>
         </Flex>
       </Flex>
 
@@ -380,14 +364,23 @@ const HUD = () => {
           border: 1px solid black;
           right: 0px;
           top: 0px;
+          border-radius: 10px;
         `}
       >
       
-        {/* <Text>{games[games.length - 1]}</Text> */}
-        <Text>GameResult</Text>
-        {roomGameResult.map((r, idx)=>(
-          <GameResultDialog key={idx} idx={idx} gameResult={r} />
-        ))}
+        <Text>GameResults</Text>
+        <Flex
+          direction="column"
+          css={css`
+            max-height: 400px;
+            overflow-y: auto;
+          `}
+        >
+           {roomGameResult.map((r, idx)=>(
+            <GameResultDialog key={idx} idx={idx} gameResult={r} />
+          ))}
+        </Flex>
+       
         
       </Flex>
 
@@ -400,15 +393,19 @@ const HUD = () => {
           border: 1px solid black;
           right: 0px;
           bottom: 0px;
+          border-radius: 10px;
         `}
       >
         <Flex direction="column" css={css` border: 1px solid black;  width: 30vw`}>
-          <Flex direction="column" css={css`width: 100%`} >
+          <Chat/>
+          {
+            /* <Flex direction="column" css={css`width: 100%`} >
             <ChatList/>
           </Flex>
           <Flex>
             <ChatSender/>
-          </Flex>
+          </Flex> */
+          }
         </Flex>
         {/* {games[games.length - 1]} */}
       </Flex>
@@ -419,7 +416,8 @@ const HUD = () => {
           position: absolute;
           top: 50%;
           left: 50%;
-          transform: translate(-50%, -50%)
+          transform: translate(-50%, -50%);
+          
         `}>
           <Flex css={css`
             border: 1px solid black;
@@ -429,6 +427,7 @@ const HUD = () => {
             justify-content: center;
             align-items: center;
             font-size: 50px;
+            border-radius: 10px;
           `}>
             {roomGameStartTimer}
           </Flex>
@@ -463,15 +462,19 @@ const GameResultDialog = ({idx, gameResult, }:GameResultDialogProp) => {
     open={(roomGameResult.length === idx + 1) ? roomIsGameResultOpen : undefined}
     onOpenChange={(roomGameResult.length === idx + 1) ? roomSetIsGameResultOpen : undefined}>
     <Dialog.Trigger>
-      <Button onKeyDown={(e) => {
+      <Button variant="classic" color="bronze" onKeyDown={(e) => {
         if (e.code === 'Space') {
           e.preventDefault();
         }
-      }}>{idx + 1} {gameResult.gameType}</Button>
+      }}
+      css={css`
+        margin-top: 3px;
+      `}
+      >#{idx + 1} {gameTypeMap(gameResult.gameType)}</Button>
     </Dialog.Trigger>
 
-    <Dialog.Content maxWidth="450px">
-      <Dialog.Title>{idx + 1} {gameResult.gameType}Result</Dialog.Title>
+    <Dialog.Content >
+      <Dialog.Title>#{idx + 1} {gameTypeMap(gameResult.gameType)} Result</Dialog.Title>
 
       <Table.Root css={css`max-height: 400px; overflow-y: auto `}>
         <Table.Header>
@@ -509,7 +512,7 @@ const GameResultDialog = ({idx, gameResult, }:GameResultDialogProp) => {
 const Help = () => {
   return <Dialog.Root>
     <Dialog.Trigger>
-      <Button onKeyDown={(e) => {
+      <Button variant="classic" color="cyan" onKeyDown={(e) => {
         if (e.code === 'Space') {
           e.preventDefault();
         }
@@ -549,35 +552,20 @@ const Help = () => {
   </Dialog.Root>
 }
 
+const Chat = () => {
+  const roomChats = useRoomStore(s=>s.chats);
 
-const ChatList = () => {
-  const roomChast = useRoomStore(s=>s.chats);
-  return (
-    <Flex
-      direction="column"
-      css={css`
-        height: 20vh;
-        overflow:auto;
-        overflow-wrap: break-word;
-        word-break: break-word;
-        white-space: pre-wrap;
-      `}>
-      {roomChast.map((chat, idx)=>(
-        <Flex key={`${chat.timestamp}_${idx}`} css={css` width: 10wh;`}>
-          <Text >[{format(new Date(chat.timestamp), 'HH:mm:ss')}]</Text>
-          <Text >{"<"}{chat.user.nickName}{">"}:&nbsp;</Text>
-          <Text >{chat.msg}</Text>
-        </Flex>
-      ))} 
-    </Flex>
-  )
-}
-const ChatSender = () => {
   const {roomId} = useParams();
   const [chat, setChat] = useState('');
   const send = useWsStore(s=>s.send);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isComposing, setIsComposing] = useState(false);
+
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [roomChats]);
 
   const handleSendChat = () => {
     if (roomId) {
@@ -594,7 +582,6 @@ const ChatSender = () => {
       setChat('');
       inputRef.current?.focus();
     }
-    
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -604,21 +591,44 @@ const ChatSender = () => {
     }
   }
 
-  
-
   return (
-    <Flex css={css`flex: 1; width: 100%;`}>
-      <TextField.Root
-        css={css`flex: 1; width: 100%;`}
-        ref={inputRef}
-        placeholder="message..."
-        value={chat}
-        onChange={e=>setChat(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onCompositionStart={()=>setIsComposing(true)}
-        onCompositionEnd={()=>setIsComposing(false)}
-      />
-      <Button onClick={handleSendChat}>전송</Button>
-    </Flex>
+    <>
+      <Flex
+        direction="column"
+        css={css`
+          height: 20vh;
+          overflow:auto;
+          overflow-wrap: break-word;
+          word-break: break-word;
+          white-space: pre-wrap;
+          
+        `}>
+          <Flex direction="column" css={css`flex: 1;`}>
+            {roomChats.map((chat, idx)=>(
+              <Flex key={`${chat.timestamp}_${idx}`} css={css` width: 10wh; `}>
+                <Text >[{format(new Date(chat.timestamp), 'HH:mm:ss')}]</Text>
+                <Text >{"<"}{chat.user.nickName}{">"}:&nbsp;</Text>
+                <Text >{chat.msg}</Text>
+              </Flex>
+            ))} 
+          </Flex>
+          <div ref={bottomRef} />
+      </Flex>
+
+        <Flex css={css`width: 100%;`}>
+          <TextField.Root
+            css={css`flex: 1; width: 100%;`}
+            ref={inputRef}
+            placeholder="message..."
+            value={chat}
+            onChange={e=>setChat(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onCompositionStart={()=>setIsComposing(true)}
+            onCompositionEnd={()=>setIsComposing(false)}
+          />
+          <Button onClick={handleSendChat}>전송</Button>
+        </Flex>
+    </>
   )
 }
+

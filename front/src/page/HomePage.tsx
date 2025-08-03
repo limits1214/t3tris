@@ -5,7 +5,6 @@ import { Text,  Flex, Grid, TextField, Button, Dialog } from "@radix-ui/themes"
 import { useAuthStore } from "../store/useAuthStore";
 import { useEffect, useRef, useState } from "react";
 import { getUserInfo, type UserInfo } from "../api/user";
-import { GoogleLoginButton } from "react-social-login-buttons";
 import { guestLogin, serverLogout } from "../api/auth";
 import { useWsStore } from "../store/useWsStore";
 import { useLobbyStore } from "../store/useLobbyStore";
@@ -14,11 +13,13 @@ import type { RoomInfo } from "../store/useRoomStore";
 import { ReadyState } from "react-use-websocket";
 import { useNavigate } from "react-router-dom";
 import { useWsUserStore } from "../store/useWsUserStore";
+import { gameTypeMap } from "./RoomPage";
 
 const HomePage = () => {
   const send = useWsStore(s=>s.send);
   const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
   const wsReadyState = useWsStore(s=>s.readyState)
+
 
   useEffect(() => {
     if (wsReadyState === ReadyState.OPEN) {
@@ -40,16 +41,16 @@ const HomePage = () => {
   }, [isInitialWsLoginEnd, send, wsReadyState])
   return (
     <Flex direction="row" css={css`height: 100vh; padding: 1rem;`}>
-      <Flex direction="column" css={css`border: 1px solid black; flex: 1`} >
-        <Flex justify="between">
-          <Text>T3TRIS</Text>
+      <Flex direction="column" css={css`border: 1px solid black; flex: 1; border-radius: 10px;`} >
+        <Flex justify="between" css={css`margin-left: 1rem; margin-right: 1rem; margin-top: 1rem;`}>
+          <Text css={css`font-size: 1.5rem;`}>T3TRIS</Text>
           <CreateRoom/>
         </Flex>
         <Flex direction="column" css={css`flex: 1;`}>
           <RoomList/>
         </Flex>
       </Flex>
-      <Flex direction="column" css={css`border: 1px solid black; `}>
+      <Flex direction="column" css={css`width: 30vw; `}>
         <MyInfo />
         <CurrentUser/>
         <LobbyChat/>
@@ -60,9 +61,33 @@ const HomePage = () => {
 
 export default HomePage;
 
+const LoginWarnDialog = ({open, onOpenChange}: {open: boolean, onOpenChange: (open: boolean)=>void}) => {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+
+      <Dialog.Content>
+        <Dialog.Title>로그인 필요합니다.</Dialog.Title>
+        <Dialog.Description>
+        </Dialog.Description>
+        <Flex gap="3" justify="end" css={css`margin-top: 10px;`}>
+          <Dialog.Close>
+            <Button variant="soft" color="gray">
+              닫기
+            </Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  )
+}
+
 const CreateRoom = () => {
   const [roomName, setRoomName] = useState('');
   const send = useWsStore(s=>s.send);
+  const [loginWarnOpen, setLoginWarnOpen] = useState(false);
+
+  const wsUserId = useWsUserStore(s=>s.wsUserId);
+  
   const createRoom = () => {
     const obj = {
       type: 'roomCreate',
@@ -73,32 +98,41 @@ const CreateRoom = () => {
     send(JSON.stringify(obj));
   }
   return (
-    <Dialog.Root>
-      <Dialog.Trigger>
-        <Button>방 만들기</Button>
-      </Dialog.Trigger>
-      <Dialog.Content>
-        <Dialog.Title>방 만들기</Dialog.Title>
-        <Dialog.Description>
-          방 설정
-        </Dialog.Description>
+    <>
+      <Dialog.Root>
+        <Dialog.Trigger>
+          <Button onClick={(e)=>{
+            if (!wsUserId) {
+              setLoginWarnOpen(true);
+              e.preventDefault()
+            }
+          }}>방 만들기</Button>
+        </Dialog.Trigger>
+        <Dialog.Content>
+          <Dialog.Title>방 만들기</Dialog.Title>
+          <Dialog.Description>
+            방 설정
+          </Dialog.Description>
 
-        <TextField.Root placeholder="방 이름" onChange={e=>setRoomName(e.target.value)}></TextField.Root>
+          <TextField.Root placeholder="방 이름" onChange={e=>setRoomName(e.target.value)} maxLength={20}></TextField.Root>
 
-        <Flex gap="3" justify="end">
-          <Dialog.Close>
-            <Button variant="soft" onClick={createRoom}>
-                만들기
-            </Button>
-          </Dialog.Close>
-          <Dialog.Close>
-            <Button variant="soft" color="gray">
-              닫기
-            </Button>
-          </Dialog.Close>
-        </Flex>
-      </Dialog.Content>
-    </Dialog.Root>
+          <Flex gap="3" justify="end" css={css`margin-top: 10px;`}>
+            <Dialog.Close>
+              <Button variant="soft" onClick={createRoom}>
+                  만들기
+              </Button>
+            </Dialog.Close>
+            <Dialog.Close>
+              <Button variant="soft" color="gray">
+                닫기
+              </Button>
+            </Dialog.Close>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
+      <LoginWarnDialog open={loginWarnOpen} onOpenChange={(open)=>setLoginWarnOpen(open)}/>
+    </>
+    
   )
 }
 
@@ -155,7 +189,7 @@ const MyInfo = () => {
     }
   }
   return (
-    <Flex direction="row" css={css`padding: 1rem; flex: 1;`}>
+    <Flex direction="row" css={css`padding: 1rem; flex: 1; border: 1px solid black; border-radius: 10px;`}>
       {wsUserId && userInfo ? (
         <>
           {/*
@@ -165,22 +199,22 @@ const MyInfo = () => {
             {/*
               <Text>{userInfo?.userId}</Text>
             */}
-            <Text>별명: {userInfo?.nickName}</Text>
+            <Text>닉네임: {userInfo?.nickName}</Text>
             <Button onClick={handleLogout}>로그아웃</Button>
           </Flex>
         </>
       ) : (
         <>
-          <Flex direction="column" css={css``}>
+          <Flex direction="column" css={css`flex: 1; justify-content: center; align-items:`}>
             <Flex direction="column">
-              <Text>게스트</Text>
-              <TextField.Root placeholder="nick name" onChange={e=>setNickName(e.target.value)}/>
+              <Text>닉네임</Text>
+              <TextField.Root placeholder="닉네임 최소 2글자 이상" onChange={e=>setNickName(e.target.value)} maxLength={10} minLength={2}/>
               <Flex justify="end">
                 <Button onClick={handleGuestLogin}>게스트 로그인</Button>
               </Flex>
             </Flex>
-            <Text>OR</Text>
-            <GoogleLoginButton />
+            {/* <Text>OR</Text>
+            <GoogleLoginButton /> */}
           </Flex>
         </>
       )}
@@ -189,53 +223,49 @@ const MyInfo = () => {
 };
 
 const RoomList = () => {
+  const [loginWarnOpen, setLoginWarnOpen] = useState(false);
   const lobbyRooms = useLobbyStore(s=>s.rooms);
-  
   return (
     <Flex direction="column" css={css`padding: 1rem; flex: 1;`}>
-      <Flex css={css`border: 1px solid black; flex: 1; width: 100%;`} justify="between">
-        <Flex  css={css`flex: 1;`}>
-        {/*
-          <Text>sort1</Text>
-          <Text>sort2</Text>
-          <Text>sort3</Text>
-        */}
-        </Flex>
-        <Flex css={css`flex: 1;`}>
-          
-        </Flex>
-      </Flex>
-      <Flex direction="column" css={css`border: 1px solid black; flex: 10; padding: 1rem;`} overflowY={"auto"}>
+      {
+        /* <Flex css={css`border: 1px solid black; flex: 1; width: 100%;`} justify="between">
+          <Flex  css={css`flex: 1;`}>
+          </Flex>
+          <Flex css={css`flex: 1;`}>
+          </Flex>
+        </Flex> */
+      }
+      <Flex direction="column" css={css`border: 1px solid black; flex: 10; padding: 1rem; border-radius: 10px;`} overflowY={"auto"}>
         <Grid rows="2" columns="2">
         {lobbyRooms.map(roomInfo=>(
-          <RoomListItem key={roomInfo.roomId} roomInfo={roomInfo}/>
+          <RoomListItem key={roomInfo.roomId} roomInfo={roomInfo} setLoginWarnOpen={setLoginWarnOpen}/>
         ))}
         </Grid>
       </Flex>
+      <LoginWarnDialog open={loginWarnOpen} onOpenChange={(open)=>setLoginWarnOpen(open)}/>
     </Flex>
   );
 };
 
-const RoomListItem = ({roomInfo}: {roomInfo: RoomInfo}) => {
+const RoomListItem = ({roomInfo, setLoginWarnOpen}: {roomInfo: RoomInfo, setLoginWarnOpen: (open: boolean)=>void}) => {
   const navigate = useNavigate();
-  /* const send = useWsStore(s=>s.send); */
+  const wsUserId = useWsUserStore(s=>s.wsUserId);
   const roomEnter = (roomId: string) => {
     navigate(`/room/${roomId}`)
   }
   return (
-    <Flex onClick={()=>roomEnter(roomInfo.roomId)} direction="column" css={css`border: 1px solid black; flex: 1;`}>
-      <Flex>
-        <Text>-</Text>
-        <Text>{roomInfo.gameType}</Text>
-         <Text>-</Text>
-        <Text>{roomInfo.roomStatus}</Text>
-        <Text>-</Text>
-        <Text>{roomInfo.roomName}</Text>
-      </Flex>
-      <Flex>
-        <Text>host: {roomInfo.roomHostUser?.nickName}</Text>
-        <Text>users: {roomInfo.roomUsers.length}</Text>
-        <Text>-</Text>
+    <Flex onClick={(e)=>{
+      if (!wsUserId) {
+        setLoginWarnOpen(true);
+        e.preventDefault();
+        return;
+      }
+      roomEnter(roomInfo.roomId)
+    }} direction="column" css={css`border: 1px solid black; flex: 1; border-radius: 5px; margin: 0.5rem; padding: 0.5rem; cursor: pointer;`}>
+      <Flex direction="column">
+        <Text>방: {roomInfo.roomName} ({roomInfo.roomStatus}) </Text> 
+        <Text>게임모드: {gameTypeMap(roomInfo.gameType)}</Text>
+        <Text>방장: {roomInfo.roomHostUser?.nickName}, 참가자: {roomInfo.roomUsers.length}</Text>
       </Flex>
     </Flex>
   )
@@ -244,8 +274,8 @@ const RoomListItem = ({roomInfo}: {roomInfo: RoomInfo}) => {
 const CurrentUser = () => {
   const lobbyUsers = useLobbyStore(s=>s.lobbyUsers);
   return (
-    <Flex direction="column"  css={css`flex: 2; border: 1px solid black; min-height: 0`}>
-      <Text >접속자</Text>
+    <Flex direction="column"  css={css`flex: 2; border: 1px solid black; min-height: 0; border-radius: 10px; padding: 0.5rem;`}>
+      <Text>접속자</Text>
       <Flex direction="column" css={css`overflow: auto;`}>
         {lobbyUsers.map(lobbyUser=>(
           <Flex key={lobbyUser.wsId}>
@@ -259,39 +289,26 @@ const CurrentUser = () => {
 
 const LobbyChat = () => {
   return (
-    <Flex direction="column" css={css`flex: 2; border: 1px solid black; min-height: 0`}>
-      <Flex direction="column" css={css`flex: 1; min-height: 0`} >
-        <ChatList/>
-      </Flex>
-      <Flex>
-        <ChatSender/>
-      </Flex>
+    <Flex direction="column" css={css`flex: 2; border: 1px solid black; min-height: 0; border-radius: 10px; padding: 0.5rem;`}>
+      <Chat/>
     </Flex>
   )
 }
 
 
-
-const ChatList = () => {
+const Chat = () => {
   const lobbyChats = useLobbyStore(s=>s.lobbychats);
-  return (
-    <Flex direction="column" css={css`overflow: auto;`}>
-      {lobbyChats.map((chat, idx)=>(
-        <Flex key={`${chat.timestamp}_${idx}`}>
-          <Text >[{format(new Date(chat.timestamp), 'HH:mm:ss')}]</Text>
-          <Text >{"<"}{chat.user.nickName}{">"}:&nbsp;</Text>
-          <Text >{chat.msg}</Text>
-        </Flex>
-      ))}
-    </Flex>
-  )
-}
 
-const ChatSender = () => {
   const [chat, setChat] = useState('');
   const send = useWsStore(s=>s.send);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isComposing, setIsComposing] = useState(false);
+
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [lobbyChats]);
 
   const handleSendChat = () => {
     const trimmed = chat.trim();
@@ -315,18 +332,32 @@ const ChatSender = () => {
   }
 
   return (
-    <Flex css={css`flex: 1; width: 100%;`}>
-      <TextField.Root
-        css={css`flex: 1; width: 100%;`}
-        ref={inputRef}
-        placeholder="message..."
-        value={chat}
-        onChange={e=>setChat(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onCompositionStart={()=>setIsComposing(true)}
-        onCompositionEnd={()=>setIsComposing(false)}
-      />
-      <Button onClick={handleSendChat}>전송</Button>
-    </Flex>
+    <>
+      <Flex direction="column" css={css`overflow: auto; flex: 1;`}>
+        {lobbyChats.map((chat, idx)=>(
+          <Flex key={`${chat.timestamp}_${idx}`}>
+            <Text >[{format(new Date(chat.timestamp), 'HH:mm:ss')}]</Text>
+            <Text >{"<"}{chat.user.nickName}{">"}:&nbsp;</Text>
+            <Text >{chat.msg}</Text>
+          </Flex>
+        ))}
+        <div ref={bottomRef} />
+      </Flex>
+
+      <Flex css={css` width: 100%;`}>
+        <TextField.Root
+          css={css`flex: 1; width: 100%;`}
+          ref={inputRef}
+          placeholder="message..."
+          value={chat}
+          onChange={e=>setChat(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={()=>setIsComposing(true)}
+          onCompositionEnd={()=>setIsComposing(false)}
+        />
+        <Button onClick={handleSendChat}>전송</Button>
+      </Flex>
+    </>
   )
 }
+

@@ -582,6 +582,7 @@ pub fn room_game_start(
             is_deleted: false,
             tetries,
             result: None,
+            is_backuped: false,
         },
     );
 
@@ -608,13 +609,19 @@ pub fn room_game_start(
 // 유저 없는 방 제거
 pub fn room_cleanup(connections: &WsConnections, data: &mut WsData, pubsub: &mut WsPubSub) {
     let mut is_do_cleaning = false;
+    let mut deleted_room_id = vec![];
     data.rooms.iter_mut().for_each(|(_, room)| {
         // TOOD Created 이후 진입전 clean 이되버리는 현상이 발생할수도 있음
         if !room.is_deleted && room.room_users.len() == 0 {
             room.is_deleted = true;
             is_do_cleaning = true;
+            deleted_room_id.push(room.room_id.clone());
         }
     });
+
+    for room_id in deleted_room_id {
+        data.rooms.remove(&room_id);
+    }
 
     if is_do_cleaning {
         let pub_lobby = gen_lobby_publish_msg(connections, &data.rooms);

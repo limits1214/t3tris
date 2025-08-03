@@ -147,6 +147,7 @@ pub struct WsWorldGame {
     pub status: WsWorldGameStatus,
     pub result: Option<serde_json::Value>,
     pub is_deleted: bool,
+    pub is_backuped: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

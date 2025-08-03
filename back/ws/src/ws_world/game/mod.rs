@@ -91,17 +91,17 @@ pub fn game_cleanup(
     _pubsub: &mut WsPubSub,
     arc_app_state: ArcWsAppState,
 ) {
-    let deleted_game_ids = data
+    let backup_game_ids = data
         .games
         .iter()
-        .filter(|f| f.1.is_deleted)
+        .filter(|f| f.1.is_deleted && !f.1.is_backuped)
         .map(|m| m.0)
         .cloned()
         .collect::<Vec<_>>();
 
-    for deleted_game_id in deleted_game_ids {
+    for backup_game_id in &backup_game_ids {
         let db_pool = arc_app_state.0.common.db_pool.clone();
-        if let Some(game) = data.games.remove(&deleted_game_id) {
+        if let Some(mut game) = data.games.get_mut(&backup_game_id) {
             let room_id = game.room_id.to_string();
             let game_id = game.game_id.to_string();
             let ws_ids = game
@@ -118,9 +118,11 @@ pub fn game_cleanup(
             let user_ids = serde_json::to_value(&user_ids).unwrap_or_default();
             let data = serde_json::to_value(&game).unwrap_or_default();
 
+            tracing::info!("[game_cleanup - backup] game_id: {game_id:?} cleanup");
+            game.is_backuped = true;
             tokio::spawn(async move {
                 if let Ok(mut conn) = db_pool.clone().acquire().await {
-                    let _ = insert_game_room_backup(
+                    let res = insert_game_room_backup(
                         &mut conn,
                         InsertGameRoomBackupArg {
                             room_id: &room_id,
@@ -131,9 +133,27 @@ pub fn game_cleanup(
                         },
                     )
                     .await;
-                    tracing::info!("[game_cleanup] game_id: {game_id:?} cleanup");
+
+                    if let Err(e) = res {
+                        tracing::error!(
+                            "[game_cleanup - backup] insert fail, e: {e:?}, game_id: {game_id:?}, data: {data:?}"
+                        );
+                    }
                 }
             });
+        }
+    }
+
+    let delete_target_game = data
+        .games
+        .iter()
+        .filter(|(_, g)| g.is_deleted && g.is_backuped)
+        .map(|(_, g)| (g.game_id.clone(), g.room_id.clone()))
+        .collect::<Vec<_>>();
+
+    for (game_id, room_id) in delete_target_game {
+        if data.rooms.get(&room_id).is_none() {
+            data.games.remove(&game_id);
         }
     }
 }

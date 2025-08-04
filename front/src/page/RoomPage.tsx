@@ -86,7 +86,14 @@ const RoomPage = () => {
 
   
   return (
-    <Flex direction="column" css={css`height: 100dvh; `}>
+    <Flex direction="column"
+    css={css`
+      height: 100dvh;
+      -webkit-touch-callout: none; /* iOS 컨텍스트 메뉴 막기 */
+      -webkit-user-select: none;   /* 텍스트 선택 막기 (iOS/Android) */
+      user-select: none;
+      /* touch-action: none;          터치 동작 막기 (스크롤/줌 등) */
+    `}>
       <Box css={css`height: 100%;`}>
         
           <GameCanvas/>

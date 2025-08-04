@@ -40,7 +40,7 @@ const HomePage = () => {
     }
   }, [isInitialWsLoginEnd, send, wsReadyState])
   return (
-    <Flex direction="row" css={css`height: 100vh; padding: 1rem;`}>
+    <Flex direction="row" css={css`height: 100dvh; padding: 1rem;`}>
       <Flex direction="column" css={css`border: 1px solid black; flex: 1; border-radius: 10px;`} >
         <Flex css={css`
           margin: 1rem;

@@ -173,7 +173,7 @@ const TestR3fOptPage = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null)
   const controlsRef = useRef<OrbitControlsImpl>(null)
   return (
-    <div css={css`height: 100vh;`}>
+    <div css={css`height: 100dvh;`}>
       <h1 css={css`position: absolute;`}>TestR3fOptPage</h1>
       <Canvas onCreated={() => {
         // gl.setClearColor('#e6e6e6'); 

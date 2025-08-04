@@ -18,7 +18,7 @@ import { OptTetris, type OptTetrisController } from "../component/r3f/OptTetris"
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const LazyPerf = React.lazy(()=>import('../component/r3f/Perf'));
+// const LazyPerf = React.lazy(()=>import('../component/r3f/Perf'));
 
 export const gameTypeMap = (gameType: string) => {
   if (gameType === "MultiScore") {

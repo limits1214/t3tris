@@ -120,33 +120,33 @@ export const blockColorMapping = (block: Block) => {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createTextTexture(text: string, options = {}): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
+// function createTextTexture(text: string, options = {}): THREE.CanvasTexture {
+//   const canvas = document.createElement('canvas');
+//   const ctx = canvas.getContext('2d')!;
   
-  const fontSize = 64;
-  const padding = 20;
+//   const fontSize = 64;
+//   const padding = 20;
 
-  ctx.font = `${fontSize}px sans-serif`;
-  const textWidth = ctx.measureText(text).width;
+//   ctx.font = `${fontSize}px sans-serif`;
+//   const textWidth = ctx.measureText(text).width;
 
-  // 캔버스 크기 설정 (텍스트 크기에 맞게)
-  canvas.width = textWidth + padding * 2;
-  canvas.height = fontSize + padding * 2;
+//   // 캔버스 크기 설정 (텍스트 크기에 맞게)
+//   canvas.width = textWidth + padding * 2;
+//   canvas.height = fontSize + padding * 2;
 
-  // 다시 컨텍스트 얻고 스타일 적용
-  const ctx2 = canvas.getContext('2d')!;
-  ctx2.font = `${fontSize}px sans-serif`;
-  ctx2.fillStyle = 'black';
-  ctx2.textBaseline = 'top';
-  ctx2.fillText(text, padding, padding);
+//   // 다시 컨텍스트 얻고 스타일 적용
+//   const ctx2 = canvas.getContext('2d')!;
+//   ctx2.font = `${fontSize}px sans-serif`;
+//   ctx2.fillStyle = 'black';
+//   ctx2.textBaseline = 'top';
+//   ctx2.fillText(text, padding, padding);
 
-  // 텍스처로 변환
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
+//   // 텍스처로 변환
+//   const texture = new THREE.CanvasTexture(canvas);
+//   texture.needsUpdate = true;
 
-  return texture;
-}
+//   return texture;
+// }
 
 type TetrisGame = {
   board: JsBoard,
@@ -249,7 +249,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
   // TODO: seq check
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _isMatchInputPredicate = (action: string, seq: number) => {
+  const _isMatchInputPredicate = (action: string, _seq: number) => {
     const predicate = inputPredicate.current.shift();
     if (predicate) {
       if (predicate.action === action
@@ -732,29 +732,29 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const addTextureText = (boardId: string, type: string, text: string, transform: Transform) => {
-    const tetris = tetrisGames.current[boardId];
-    if (!tetris) {
-      console.log('tetris undefined');
-      return;
-    }
+  // const addTextureText = (boardId: string, type: string, text: string, transform: Transform) => {
+  //   const tetris = tetrisGames.current[boardId];
+  //   if (!tetris) {
+  //     console.log('tetris undefined');
+  //     return;
+  //   }
 
-    const texture = createTextTexture(text);
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-    const geometry = new THREE.PlaneGeometry(5, 1.5);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(...transform.position);
-    mesh.rotation.set(...transform.rotation);
-    mesh.scale.set(...transform.scale);
-    tetris.textureTexts[type] = {
-      text,
-      material,
-      geometry,
-      mesh,
-      texture
-    }
-    scene.add(mesh);
-  }
+  //   const texture = createTextTexture(text);
+  //   const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+  //   const geometry = new THREE.PlaneGeometry(5, 1.5);
+  //   const mesh = new THREE.Mesh(geometry, material);
+  //   mesh.position.set(...transform.position);
+  //   mesh.rotation.set(...transform.rotation);
+  //   mesh.scale.set(...transform.scale);
+  //   tetris.textureTexts[type] = {
+  //     text,
+  //     material,
+  //     geometry,
+  //     mesh,
+  //     texture
+  //   }
+  //   scene.add(mesh);
+  // }
 
   const removeTextureText = (boardId: string, type: string) => {
     const tetris = tetrisGames.current[boardId];

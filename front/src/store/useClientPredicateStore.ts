@@ -16,7 +16,7 @@ export const pushPredicate = (action: string) => {
     action,
   });
 }
-export const matchPredicate = (action: string, seq: number): boolean => {
+export const matchPredicate = (action: string, _seq: number): boolean => {
   const predicate = predicates.shift();
   if (predicate) {
     if (predicate.action === action

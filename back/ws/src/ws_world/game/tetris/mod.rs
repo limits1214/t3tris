@@ -1,4 +1,4 @@
-use rand::seq::IndexedRandom;
+use rand::{Rng, seq::IndexedRandom};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use tetris_lib::{Board, SpawnError, StepError, Tetrimino, Tile, TileAt};
@@ -124,6 +124,7 @@ pub struct TetrisGame {
     //
     pub line_40_clear: bool,
     pub battle_win: bool,
+    pub seven_bag: VecDeque<Tetrimino>,
 }
 
 impl TetrisGame {
@@ -155,8 +156,10 @@ impl TetrisGame {
             garbage_queue: VecDeque::new(),
             line_40_clear: false,
             battle_win: false,
+            seven_bag: VecDeque::new(),
         }
     }
+
     pub fn board_reset(&mut self) {
         self.board = Board::new(10, 26);
     }
@@ -184,23 +187,25 @@ impl TetrisGame {
         return s;
     }
 
-    fn rand_tetrimino() -> Tetrimino {
-        *[
-            Tetrimino::I,
-            Tetrimino::J,
-            Tetrimino::L,
-            Tetrimino::O,
-            Tetrimino::S,
-            Tetrimino::T,
-            Tetrimino::Z,
-        ]
-        .choose(&mut rand::rng())
-        .unwrap()
+    fn rand_tetrimino(&mut self) -> Tetrimino {
+        if self.seven_bag.is_empty() {
+            self.seven_bag = VecDeque::from(vec![
+                Tetrimino::I,
+                Tetrimino::J,
+                Tetrimino::L,
+                Tetrimino::O,
+                Tetrimino::S,
+                Tetrimino::T,
+                Tetrimino::Z,
+            ]);
+        }
+        let idx = rand::rng().random_range(0..self.seven_bag.len());
+        self.seven_bag.remove(idx).unwrap()
     }
 
     pub fn setup(&mut self) {
         for _ in 0..5 {
-            let tetrimino = Self::rand_tetrimino();
+            let tetrimino = self.rand_tetrimino();
             self.next.push_back(tetrimino);
         }
         self.push_action_buffer(TetrisGameActionType::Setup {
@@ -262,7 +267,7 @@ impl TetrisGame {
             return Ok(false);
         }
 
-        let added_next = Self::rand_tetrimino();
+        let added_next = self.rand_tetrimino();
         self.next.push_back(added_next);
         self.push_action_buffer(TetrisGameActionType::NextAdd { next: added_next });
         self.push_action_buffer(TetrisGameActionType::SpawnFromNext { spawn: next_tetr });

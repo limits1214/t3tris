@@ -13,6 +13,7 @@ pub enum Game {
         ws_id: String,
         game_id: String,
         action: GameActionType,
+        seq: Option<u32>,
     },
     Sync {
         ws_id: String,

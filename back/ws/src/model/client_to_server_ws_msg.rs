@@ -53,6 +53,7 @@ pub enum ClientToServerWsMsg {
         game_id: String,
         input: GameActionInput,
         action: GameActionType,
+        seq: Option<u32>,
     },
     #[serde(rename_all = "camelCase")]
     GameSync { game_id: String, room_id: String },

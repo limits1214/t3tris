@@ -63,6 +63,9 @@ export type OptTetrisController = {
   garbageAdd: (boardId: string, emptyx: number[]) => void,
   gameSync: (data: Record<string, GameSyncData>) => void,
   setGameId: (gameId: string | null) => void,
+  isMatchInputPredicate: (action: string, seq: number) => boolean,
+  getMyBoardId: () => string | null,
+  resetInputPredicate: () => void,
 };
 export type GameSyncData = {
   board: Board,
@@ -167,6 +170,10 @@ type TextureText = {
 }
 type InputType = 'press' | 'release';
 type ActionType = 'left' | 'right' | 'rotateLeft' | 'rotateRight' | 'hardDrop' | 'softDrop' | "hold";
+type Predicate = {
+  seq: number,
+  action: string
+}
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const typefaceUrl ='https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json';
   const font = useLoader(FontLoader, typefaceUrl);
@@ -229,15 +236,69 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
   })
 
+  const inputSeq = useRef(0);
+  const inputPredicate = useRef<Predicate[]>([]);
+
+  const _resetInputSeq = () => {
+    inputSeq.current = 0;
+  }
+
+  const _resetInputPredicate = () => {
+    inputPredicate.current = [];
+  }
+
+  // TODO: seq check
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _isMatchInputPredicate = (action: string, seq: number) => {
+    const predicate = inputPredicate.current.shift();
+    if (predicate) {
+      if (predicate.action === action
+        // && predicate.seq === seq
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   const send = useWsStore(s=>s.send);
 
   const nowGameId= useRef<string | null>(null);
   const actionSender = useRef({
     _send(input: InputType, action: ActionType, gameId: string) {
+      inputSeq.current += 1;
+      if (myBoardTransform.current.boardId) {
+        if (action === "left") {
+          optTetrisController.moveLeft(myBoardTransform.current.boardId);
+          inputPredicate.current.push({
+            action: 'moveLeft',
+            seq: inputSeq.current
+          })
+        } else if (action === "right") {
+          optTetrisController.moveRight(myBoardTransform.current.boardId);
+          inputPredicate.current.push({
+            action: 'moveRight',
+            seq: inputSeq.current
+          })
+        } else if (action === "rotateLeft") {
+          optTetrisController.rotateLeft(myBoardTransform.current.boardId);
+          inputPredicate.current.push({
+            action: 'rotateLeft',
+            seq: inputSeq.current
+          })
+        } else if (action === "rotateRight") {
+          optTetrisController.rotateRight(myBoardTransform.current.boardId);
+          inputPredicate.current.push({
+            action: 'rotateRight',
+            seq: inputSeq.current
+          })
+        }
+      }
+
       const obj = {
         type: 'gameAction',
         data: {
-          input, action, gameId
+          input, action, gameId, seq: inputSeq.current
         }
       }
       send(JSON.stringify(obj))
@@ -2011,7 +2072,18 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
     },
     setGameId(gameId) {
+        _resetInputSeq();
+        _resetInputPredicate();
         nowGameId.current = gameId;
+    },
+    isMatchInputPredicate(action, seq) {
+        return _isMatchInputPredicate(action, seq)
+    },
+    resetInputPredicate() {
+        _resetInputPredicate();
+    },
+    getMyBoardId() {
+        return myBoardTransform.current.boardId
     },
   };
 

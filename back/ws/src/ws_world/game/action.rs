@@ -22,6 +22,7 @@ pub fn action(
     ws_id: WsId,
     game_id: GameId,
     action: GameActionType,
+    seq: Option<u32>,
 ) {
     // === 유저 가드
     let Some(_) = connections.get_user_by_ws_id(&ws_id) else {
@@ -61,16 +62,16 @@ pub fn action(
     // let mut attack_line = None;
     match action {
         GameActionType::Left => {
-            tetris.action_move_left();
+            tetris.action_move_left(seq);
         }
         GameActionType::Right => {
-            tetris.action_move_right();
+            tetris.action_move_right(seq);
         }
         GameActionType::RotateLeft => {
-            tetris.action_roatet_left();
+            tetris.action_roatet_left(seq);
         }
         GameActionType::RotateRight => {
-            tetris.action_rotate_right();
+            tetris.action_rotate_right(seq);
         }
         GameActionType::HardDrop => {
             tetris.action_hard_drop();

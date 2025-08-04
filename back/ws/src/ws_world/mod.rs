@@ -205,6 +205,7 @@ fn process(
                 ws_id,
                 game_id,
                 action,
+                seq,
             } => {
                 game::action::action(
                     connections,
@@ -213,6 +214,7 @@ fn process(
                     WsId(ws_id),
                     GameId(game_id),
                     action,
+                    seq,
                 );
             }
             Game::Sync {

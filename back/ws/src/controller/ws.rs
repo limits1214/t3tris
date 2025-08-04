@@ -374,12 +374,16 @@ pub fn process_clinet_msg(
                 }
                 //
                 GameAction {
-                    action, game_id, ..
+                    action,
+                    game_id,
+                    seq,
+                    ..
                 } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Game(Game::Action {
                         ws_id: ws_id.to_string(),
                         game_id,
                         action: action.into(),
+                        seq,
                     }));
                 }
                 GameSync { game_id, room_id } => {

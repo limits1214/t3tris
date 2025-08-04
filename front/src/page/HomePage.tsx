@@ -42,6 +42,14 @@ const HomePage = () => {
   return (
     <Flex direction="row" css={css`height: 100vh; padding: 1rem;`}>
       <Flex direction="column" css={css`border: 1px solid black; flex: 1; border-radius: 10px;`} >
+        <Flex css={css`
+          margin: 1rem;
+          @media (min-width: 768px) {
+            display: none;
+          }
+        `}>
+          <MyInfo/>
+        </Flex>
         <Flex justify="between" css={css`margin-left: 1rem; margin-right: 1rem; margin-top: 1rem;`}>
           <Text css={css`font-size: 1.5rem;`}>T3TRIS</Text>
           <CreateRoom/>
@@ -50,7 +58,12 @@ const HomePage = () => {
           <RoomList/>
         </Flex>
       </Flex>
-      <Flex direction="column" css={css`width: 30vw; `}>
+      <Flex direction="column" css={css`
+        width: 30vw;
+        @media (max-width: 768px) {
+          display: none;
+        }
+      `}>
         <MyInfo />
         <CurrentUser/>
         <LobbyChat/>
@@ -195,7 +208,7 @@ const MyInfo = () => {
           {/*
             <Avatar fallback="A" css={css`flex: 1; height: 100%`}>asdf</Avatar>
           */}
-          <Flex css={css`flex: 1;`} direction="column" align="center" justify="center">
+          <Flex css={css`flex: 1;`} align="center" justify="center">
             {/*
               <Text>{userInfo?.userId}</Text>
             */}

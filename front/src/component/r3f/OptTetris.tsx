@@ -5,6 +5,10 @@ import {Text} from 'troika-three-text'
 import { JsBoard } from "tetris-lib";
 import type { Board, Tetrimino } from "tetris-lib/bindings";
 import {format} from 'date-fns'
+import {FontLoader} from 'three/addons/loaders/FontLoader.js'
+import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
+import { useGLTF } from "@react-three/drei";
+import { useWsStore } from "../../store/useWsStore";
 
 export type Transform = {
   position: [number, number, number],
@@ -57,7 +61,8 @@ export type OptTetrisController = {
   timerReset: (boardId: string) => void,
   garbageQueueSet: (boardId: string, garbageQueue: GarbageQueue[]) => void,
   garbageAdd: (boardId: string, emptyx: number[]) => void,
-  gameSync: (data: Record<string, GameSyncData>) => void
+  gameSync: (data: Record<string, GameSyncData>) => void,
+  setGameId: (gameId: string | null) => void,
 };
 export type GameSyncData = {
   board: Board,
@@ -111,6 +116,7 @@ export const blockColorMapping = (block: Block) => {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createTextTexture(text: string, options = {}): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
@@ -159,9 +165,8 @@ type TextureText = {
   material: THREE.MeshBasicMaterial
   texture: THREE.CanvasTexture
 }
-import {FontLoader} from 'three/addons/loaders/FontLoader.js'
-import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
-import { useGLTF } from "@react-three/drei";
+type InputType = 'press' | 'release';
+type ActionType = 'left' | 'right' | 'rotateLeft' | 'rotateRight' | 'hardDrop' | 'softDrop' | "hold";
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const typefaceUrl ='https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json';
   const font = useLoader(FontLoader, typefaceUrl);
@@ -175,8 +180,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   });
   const { nodes } = useGLTF('/glb/basicBlock2.glb');
   const blockBasicGeometry = (nodes.Cube as THREE.Mesh).geometry;
-  // blockBasicGeometry.scale(0.5, 0.5, 0.5);
-  // blockBasicGeometry.scale(0.5, 0.5, 0.5)
+  
   const RESERVE = 5000;
   const geometry = new THREE.BoxGeometry();
   const lineGeometry = new THREE.PlaneGeometry();
@@ -207,13 +211,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
   const { scene } = useThree()
 
-  // const lastUpdateRef = useRef(0);
-
   useFrame((_state, delta)=>{
-    // info text update
-    // console.log(clock.getDelta())
-    // console.log(delta)
-
     for (const [boardId, tetris] of Object.entries(tetrisGames.current)) {
       if (tetris) {
         if (tetris.isTimerOn) {
@@ -230,6 +228,208 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     }
   })
+
+  const send = useWsStore(s=>s.send);
+
+  const nowGameId= useRef<string | null>(null);
+  const actionSender = useRef({
+    _send(input: InputType, action: ActionType, gameId: string) {
+      const obj = {
+        type: 'gameAction',
+        data: {
+          input, action, gameId
+        }
+      }
+      send(JSON.stringify(obj))
+    },
+    pressLeft(gameId: string){
+      console.log(gameId)
+      this._send("press", "left", gameId);
+    },
+    pressRight (gameId: string) {
+      this._send("press", "right", gameId)
+    },
+    pressRotateLeft (gameId: string) {
+      this._send("press", "rotateLeft", gameId)
+    },
+    pressRotateRight (gameId: string) {
+      this._send("press", "rotateRight", gameId)
+    },
+    pressSoftDrop(gameId: string) {
+      this._send("press", "softDrop", gameId)
+    } ,
+    pressHardDrop (gameId: string) {
+      this._send("press", "hardDrop", gameId)
+    },
+    pressHold (gameId: string) {
+      this._send("press", "hold", gameId)
+    },
+  })
+
+  const inputListener = useRef<{
+    moveLRSet: Set<"left"|"right">,
+    moveLInterval: null | number,
+    moveRInterval: null | number,
+    moveLTimeout: null | number,
+    moveRTimeout: null | number,
+    softDropInterval: null | number,
+    rotating: boolean,
+    keydown: (e: KeyboardEvent) => void,
+    keyup: (e: KeyboardEvent) => void
+  }>({
+    moveLRSet: new Set<"left"|"right">(),
+    moveLInterval: null,
+    moveRInterval: null,
+    moveLTimeout: null,
+    moveRTimeout: null,
+    softDropInterval: null,
+    rotating: false,
+    keydown (e: KeyboardEvent) {
+      const gameId = nowGameId.current;
+      const input = inputListener.current;
+      if (gameId) {
+        switch (e.key) {
+          case 'a':
+          case 'ArrowLeft':
+            if (input.moveLRSet.has("left")) {
+              return;
+            }
+            input.moveLRSet.add("left")
+            if (input.moveLInterval) {
+              window.clearInterval(input.moveLInterval)
+            }
+            if (input.moveLTimeout) {
+              window.clearTimeout(input.moveLTimeout)
+            }
+            inputListener.current.moveLTimeout = window.setTimeout(()=>{
+              actionSender.current.pressLeft(gameId);
+              input.moveLInterval = window.setInterval(()=>{
+                const lr = [...input.moveLRSet];
+                const size = input.moveLRSet.size - 1
+                if (lr[size] === "left") {
+                  actionSender.current.pressLeft(gameId);
+                }
+              }, 30)
+            }, 150)
+            actionSender.current.pressLeft(gameId);
+            break;
+          case 'd':
+          case 'ArrowRight':
+            if (input.moveLRSet.has("right")) {
+              return;
+            }
+            input.moveLRSet.add("right")
+
+            if (input.moveRInterval) {
+              window.clearInterval(input.moveRInterval)
+            }
+            if (input.moveRTimeout) {
+              window.clearTimeout(input.moveRTimeout)
+            }
+            input.moveRTimeout = window.setTimeout(()=>{
+              actionSender.current.pressRight(gameId);
+              input.moveRInterval = window.setInterval(()=>{
+                const lr = [...input.moveLRSet];
+                const size = input.moveLRSet.size - 1
+                if (lr[size] === "right") {
+                  actionSender.current.pressRight(gameId);
+                }
+              }, 30)
+            }, 150)
+            actionSender.current.pressRight(gameId);
+            break;
+          case 'w':
+          case 'ArrowUp':
+            if(input.rotating) {
+              return;
+            }
+            input.rotating = true;
+            actionSender.current.pressRotateRight(gameId);
+            break;
+          case 'z':
+            if(input.rotating) {
+              return;
+            }
+            input.rotating = true;
+            actionSender.current.pressRotateLeft(gameId);
+            break;
+          case 's':
+          case 'ArrowDown':
+            if (input.softDropInterval) {
+              window.clearInterval(input.softDropInterval);
+            }
+            input.softDropInterval = window.setInterval(()=>{
+              actionSender.current.pressSoftDrop(gameId);
+            }, 50);
+            break;
+          case ' ':
+            actionSender.current.pressHardDrop(gameId);
+            break;
+          case 'Shift':
+            actionSender.current.pressHold(gameId);
+            break;
+          default:
+            break;
+        }
+      }
+    },
+    keyup(e: KeyboardEvent) {
+      const input = inputListener.current;
+      switch (e.key) {
+        case 'a':
+        case 'ArrowLeft':
+          input.moveLRSet.delete("left")
+          if (input.moveLInterval) {
+            window.clearInterval(input.moveLInterval);
+          }
+          if (input.moveLTimeout) {
+            window.clearTimeout(input.moveLTimeout)
+          }
+          break;
+        case 'd':
+        case 'ArrowRight':
+          input.moveLRSet.delete("right")
+          if (input.moveRInterval) {
+            window.clearInterval(input.moveRInterval);
+          }
+          if (input.moveRTimeout) {
+            window.clearTimeout(input.moveRTimeout)
+          }
+          break;
+        case 'w':
+        case 'ArrowUp':
+          input.rotating = false;
+          break;
+        case 'z':
+          input.rotating = false;
+          break;
+        case 's':
+        case 'ArrowDown':
+          if (input.softDropInterval) {
+            window.clearInterval(input.softDropInterval);
+          }
+          break;
+        case ' ':
+          break;
+        case 'Shift':
+          break;
+        default:
+          break;
+      }
+    }
+  })
+  useEffect(()=>{
+    const keydown = inputListener.current.keydown;
+    const keyup = inputListener.current.keyup;
+    window.addEventListener("keydown", keydown);
+    window.addEventListener("keyup", keyup);
+    return () => {
+      window.removeEventListener("keydown", keydown);
+      window.removeEventListener("keyup", keyup);
+    }
+  }, [])
+
+
   const infoTextMake = ({
       level,
       score,
@@ -314,12 +514,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
   }
   const generateBoardTransformSlot2 = (cnt: number): {transform: Transform, boardId: string | null}[] => {
-    // const cols = 9; // 가로 개수
-    // const rows = 11; // 세로 개수
-
-    // const scale = 0.1;
-    const {cols, rows, scale} = getBoardGridLayout(cnt);
-    // console.log('layout',cols, rows)
+    
+    const {cols, scale} = getBoardGridLayout(cnt);
     const boardWidth = 26;
     const boardSpacing = 0;
     const boardStride = boardWidth + boardSpacing;
@@ -328,16 +524,13 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     const getBoardPosition = (index: number) => {
       const col = index % cols;
       const row = Math.floor(index / cols) ;
-
       const x = defaultXSpacing + (-4.5 * scale) +  /*<<spacing*/ (boardStride * scale) * col;
       const y = defaultXSpacing - (boardStride * scale) + (15.5 * scale) - /*<<spacing*/ (boardStride * scale) * row;
-
       return { x, y, rotation: 0 };
     };
 
     return Array(cnt).fill(null).map((_, idx) => {
       const pos = getBoardPosition(idx);
-
       return {
         transform: {
           position: [pos.x, pos.y, 0],
@@ -359,6 +552,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     boardId: null
   });
   
+  // Block InstancedMesh
   useEffect(() => {
     const keys: Block[] = ["Cover", "CoverLine", "Case", "I", "O", "T", "J", "L", "S", "Z", "H", "Garbage", "GarbageQueue", "GarbageReady"];
     const localRef = instancedBlocksMeshes.current; 
@@ -389,6 +583,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   }, [scene]);
 
 
+  //3D Text Instanced Mesh
   useEffect(() => {
     const nextInstanced = instanced3dTextMeshes.current.Next;
     const nextGeometry = new TextGeometry('Next', {
@@ -466,7 +661,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   }
 
   const removeText = (text: Text) => {
-    // const text = texts.current[`${id}`];
     scene.remove(text);
     text.geometry.dispose();
     if (Array.isArray(text.material)) {
@@ -476,6 +670,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const addTextureText = (boardId: string, type: string, text: string, transform: Transform) => {
     const tetris = tetrisGames.current[boardId];
     if (!tetris) {
@@ -698,7 +893,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     updateInstancedMeshes();
   }
 
-
   const showFallingHint = (boardId: string) => {
     const tetris = tetrisGames.current[boardId];
     if (!tetris) {
@@ -708,7 +902,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     tetris.board.removeFallingHint();
     tetris.board.showFallingHint();
   }
-
 
   const boardCreateOffsetInfo = {
     nickNameText: [{
@@ -1816,6 +2009,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
           updateBoardInstancedMeshse(boardId)
         }
+    },
+    setGameId(gameId) {
+        nowGameId.current = gameId;
     },
   };
 

@@ -9,7 +9,6 @@ import { useNavigate, useParams } from "react-router-dom"
 import { format } from "date-fns"
 import { ReadyState } from "react-use-websocket"
 import { useWsUserStore } from "../store/useWsUserStore"
-import { useKeyboardActionSender } from "../hooks/useWsGameActoinSender"
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls,  OrthographicCamera,  PerspectiveCamera } from "@react-three/drei"
 import { useGameStore } from "../store/useGameStore"
@@ -164,19 +163,21 @@ const GameBoard = () => {
   const ref = useRef<OptTetrisController | null>(null);
 
   const games = useRoomStore(s=>s.games);
-  const setGameId = useKeyboardActionSender();
+  // const setGameId = useKeyboardActionSender();
   const roomStatus = useRoomStore(s=>s.roomStatus);
 
   useEffect(() => {
     if (roomStatus === 'Gaming') {
       const nowGameId = games[games.length - 1];
       if (nowGameId) {
-        setGameId(nowGameId)
+        // setGameId(nowGameId)
+        ref.current?.setGameId(nowGameId)
       }
     } else {
-      setGameId(null)
+      // setGameId(null)
+      ref.current?.setGameId(null)
     }
-  }, [games, roomStatus, setGameId])
+  }, [games, roomStatus])
 
   const {roomId} = useParams();
   const send = useWsStore(s=>s.send);
@@ -367,7 +368,6 @@ const HUD = () => {
           border-radius: 10px;
         `}
       >
-      
         <Text>GameResults</Text>
         <Flex
           direction="column"

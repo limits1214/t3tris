@@ -281,7 +281,7 @@ const WebSocketInitializer = () => {
             */
             
             for (const [k, v] of Object.entries(data.action as string | object)) {
-              for (const {action} of v) {
+              for (const {action, seq} of v) {
                 console.log('action:', action)
                 if (typeof action === "object" && action !== null && "setup" in action) {
                   gameRef?.current?.boardReset(k)
@@ -334,56 +334,56 @@ const WebSocketInitializer = () => {
                 } else if (typeof action === "string" && action === "removeFalling") {
                   gameRef?.current?.removeFalling(k,);
                 } else if (typeof action === "string" && action === "moveLeft") {
-                  if (gameRef?.current?.getMyBoardId() === k) {
-                    if (gameRef?.current?.isMatchInputPredicate("moveLeft", 0)) {
-                      // console.log('moveLeft PREDICATE SUCCESS')
-                      continue;
-                    } else {
-                      gameRef.current.resetInputPredicate();
-                      handleSync(data.gameId, data.roomId);
-                      console.log('moveLeft PREDICATE FALSE!!!')
-                      continue;
-                    }
-                  }
+                  // if (gameRef?.current?.getMyBoardId() === k) {
+                  //   if (gameRef?.current?.isMatchInputPredicate("moveLeft", seq)) {
+                  //     // console.log('moveLeft PREDICATE SUCCESS')
+                  //     continue;
+                  //   } else {
+                  //     gameRef.current.resetInputPredicate();
+                  //     handleSync(data.gameId, data.roomId);
+                  //     console.log('moveLeft PREDICATE FALSE!!!')
+                  //     continue;
+                  //   }
+                  // }
                   gameRef?.current?.moveLeft(k)
                 } else if (typeof action === "string" && action === "moveRight") {
-                  if (gameRef?.current?.getMyBoardId() === k) {
-                    if (gameRef?.current?.isMatchInputPredicate("moveRight", 0)) {
-                      // console.log('moveRight PREDICATE SUCCESS')
-                      continue;
-                    } else {
-                      gameRef.current.resetInputPredicate();
-                      handleSync(data.gameId, data.roomId);
-                      console.log('moveRight PREDICATE FALSE!!!')
-                      continue;
-                    }
-                  }
+                  // if (gameRef?.current?.getMyBoardId() === k) {
+                  //   if (gameRef?.current?.isMatchInputPredicate("moveRight", seq)) {
+                  //     // console.log('moveRight PREDICATE SUCCESS')
+                  //     continue;
+                  //   } else {
+                  //     gameRef.current.resetInputPredicate();
+                  //     handleSync(data.gameId, data.roomId);
+                  //     console.log('moveRight PREDICATE FALSE!!!')
+                  //     continue;
+                  //   }
+                  // }
                   gameRef?.current?.moveRight(k)
                 } else if (typeof action === "string" && action === "rotateRight") {
-                  if (gameRef?.current?.getMyBoardId() === k) {
-                    if (gameRef?.current?.isMatchInputPredicate("rotateRight", 0)) {
-                      // console.log('rotateRight PREDICATE SUCCESS')
-                      continue;
-                    } else {
-                      gameRef.current.resetInputPredicate();
-                      handleSync(data.gameId, data.roomId);
-                      console.log('rotateRight PREDICATE FALSE!!!')
-                      continue;
-                    }
-                  }
+                  // if (gameRef?.current?.getMyBoardId() === k) {
+                  //   if (gameRef?.current?.isMatchInputPredicate("rotateRight", seq)) {
+                  //     // console.log('rotateRight PREDICATE SUCCESS')
+                  //     continue;
+                  //   } else {
+                  //     gameRef.current.resetInputPredicate();
+                  //     handleSync(data.gameId, data.roomId);
+                  //     console.log('rotateRight PREDICATE FALSE!!!')
+                  //     continue;
+                  //   }
+                  // }
                   gameRef?.current?.rotateRight(k)
                 } else if (typeof action === "string" && action === "rotateLeft") {
-                  if (gameRef?.current?.getMyBoardId() === k) {
-                    if (gameRef?.current?.isMatchInputPredicate("rotateLeft", 0)) {
-                      // console.log('rotateLeft PREDICATE SUCCESS')
-                      continue;
-                    } else {
-                      gameRef.current.resetInputPredicate();
-                      handleSync(data.gameId, data.roomId);
-                      console.log('rotateLeft PREDICATE FALSE!!!')
-                      continue;
-                    }
-                  }
+                  // if (gameRef?.current?.getMyBoardId() === k) {
+                  //   if (gameRef?.current?.isMatchInputPredicate("rotateLeft", seq)) {
+                  //     // console.log('rotateLeft PREDICATE SUCCESS')
+                  //     continue;
+                  //   } else {
+                  //     gameRef.current.resetInputPredicate();
+                  //     handleSync(data.gameId, data.roomId);
+                  //     console.log('rotateLeft PREDICATE FALSE!!!')
+                  //     continue;
+                  //   }
+                  // }
                   gameRef?.current?.rotateLeft(k)
                 } else if (typeof action === "string" && action === "softDrop") {
                   gameRef?.current?.step(k)

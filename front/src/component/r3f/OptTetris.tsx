@@ -249,11 +249,12 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
   // TODO: seq check
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _isMatchInputPredicate = (action: string, _seq: number) => {
+  const _isMatchInputPredicate = (action: string, seq: number) => {
     const predicate = inputPredicate.current.shift();
+    console.log('predicate', predicate, 'action', action, predicate?.action === action, 'seq', predicate?.seq, predicate?.seq === seq)
     if (predicate) {
       if (predicate.action === action
-        // && predicate.seq === seq
+        && predicate.seq === seq
       ) {
         return true;
       }
@@ -267,33 +268,33 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const actionSender = useRef({
     _send(input: InputType, action: ActionType, gameId: string) {
       inputSeq.current += 1;
-      if (myBoardTransform.current.boardId) {
-        if (action === "left") {
-          optTetrisController.moveLeft(myBoardTransform.current.boardId);
-          inputPredicate.current.push({
-            action: 'moveLeft',
-            seq: inputSeq.current
-          })
-        } else if (action === "right") {
-          optTetrisController.moveRight(myBoardTransform.current.boardId);
-          inputPredicate.current.push({
-            action: 'moveRight',
-            seq: inputSeq.current
-          })
-        } else if (action === "rotateLeft") {
-          optTetrisController.rotateLeft(myBoardTransform.current.boardId);
-          inputPredicate.current.push({
-            action: 'rotateLeft',
-            seq: inputSeq.current
-          })
-        } else if (action === "rotateRight") {
-          optTetrisController.rotateRight(myBoardTransform.current.boardId);
-          inputPredicate.current.push({
-            action: 'rotateRight',
-            seq: inputSeq.current
-          })
-        }
-      }
+      // if (myBoardTransform.current.boardId) {
+      //   if (action === "left") {
+      //     optTetrisController.moveLeft(myBoardTransform.current.boardId);
+      //     inputPredicate.current.push({
+      //       action: 'moveLeft',
+      //       seq: inputSeq.current
+      //     })
+      //   } else if (action === "right") {
+      //     optTetrisController.moveRight(myBoardTransform.current.boardId);
+      //     inputPredicate.current.push({
+      //       action: 'moveRight',
+      //       seq: inputSeq.current
+      //     })
+      //   } else if (action === "rotateLeft") {
+      //     optTetrisController.rotateLeft(myBoardTransform.current.boardId);
+      //     inputPredicate.current.push({
+      //       action: 'rotateLeft',
+      //       seq: inputSeq.current
+      //     })
+      //   } else if (action === "rotateRight") {
+      //     optTetrisController.rotateRight(myBoardTransform.current.boardId);
+      //     inputPredicate.current.push({
+      //       action: 'rotateRight',
+      //       seq: inputSeq.current
+      //     })
+      //   }
+      // }
 
       const obj = {
         type: 'gameAction',

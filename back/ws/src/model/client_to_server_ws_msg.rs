@@ -53,10 +53,11 @@ pub enum ClientToServerWsMsg {
         game_id: String,
         input: GameActionInput,
         action: GameActionType,
-        seq: Option<u32>,
     },
     #[serde(rename_all = "camelCase")]
     GameSync { game_id: String, room_id: String },
+    #[serde(rename_all = "camelCase")]
+    GameBoardSync { game_id: String, room_id: String },
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,8 +69,8 @@ pub enum GameActionInput {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum GameActionType {
-    Left,
-    Right,
+    MoveLeft,
+    MoveRight,
     RotateLeft,
     RotateRight,
     HardDrop,
@@ -81,8 +82,8 @@ impl From<GameActionType> for crate::ws_world::command::GameActionType {
     fn from(value: GameActionType) -> Self {
         match value {
             GameActionType::Hold => Self::Hold,
-            GameActionType::Left => Self::Left,
-            GameActionType::Right => Self::Right,
+            GameActionType::MoveLeft => Self::MoveLeft,
+            GameActionType::MoveRight => Self::MoveRight,
             GameActionType::RotateLeft => Self::RotateLeft,
             GameActionType::RotateRight => Self::RotateRight,
             GameActionType::HardDrop => Self::HardDrop,

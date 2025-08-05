@@ -62,10 +62,15 @@ export type OptTetrisController = {
   garbageQueueSet: (boardId: string, garbageQueue: GarbageQueue[]) => void,
   garbageAdd: (boardId: string, emptyx: number[]) => void,
   gameSync: (data: Record<string, GameSyncData>) => void,
+  gameBoardSync: (boardId: string, syncData: GameSyncData) => void,
   setGameId: (gameId: string | null) => void,
-  isMatchInputPredicate: (action: string, seq: number) => boolean,
+  predicateValidation: (predicate: Predicate)=>boolean,
   getMyBoardId: () => string | null,
-  resetInputPredicate: () => void,
+  predicatesReset: () => void,
+  predicatesLock: () => void,
+  predicatesUnLock: () => void,
+  boardSyncLock: () => void,
+  boardSyncUnLock: () => void,
 };
 export type GameSyncData = {
   board: Board,
@@ -169,7 +174,7 @@ type TextureText = {
   texture: THREE.CanvasTexture
 }
 type InputType = 'press' | 'release';
-type ActionType = 'left' | 'right' | 'rotateLeft' | 'rotateRight' | 'hardDrop' | 'softDrop' | "hold";
+type ActionType = 'moveLeft' | 'moveRight' | 'rotateLeft' | 'rotateRight' | 'hardDrop' | 'softDrop' | "hold";
 type Predicate = {
   seq: number,
   action: string
@@ -236,28 +241,45 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
   })
 
-  const inputSeq = useRef(0);
-  const inputPredicate = useRef<Predicate[]>([]);
-
-  const _resetInputSeq = () => {
-    inputSeq.current = 0;
+  const isLockedBoardSync = useRef(false);
+  // 동기화도중에는 precate를 발생시키지 말아야한다 그 체크용
+  const isLockedPredicate = useRef(false);
+  const predicates = useRef<Predicate[]>([]);
+  const _predicatesReset = () => {
+    predicates.current = [];
   }
-
-  const _resetInputPredicate = () => {
-    inputPredicate.current = [];
-  }
-
-  // TODO: seq check
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _isMatchInputPredicate = (action: string, seq: number) => {
-    const predicate = inputPredicate.current.shift();
-    console.log('predicate', predicate, 'action', action, predicate?.action === action, 'seq', predicate?.seq, predicate?.seq === seq)
-    if (predicate) {
-      if (predicate.action === action
-        && predicate.seq === seq
-      ) {
+  // 서버에서 오는 seq을 predicates에 존재하는지 체크한다.
+  // 만약 존재하고
+  //    action 동일하다면 true, 예측성공이다.
+  //    action 다르다면 false, 예측실패. 동기화가 필요하다.
+  // 만약 미존재라면
+  //    서버 액션이므로 true, 다음 validation때 사용될 예정이다.
+  const _predicateValidation = (predicate: Predicate): boolean => {
+    const p = predicates.current.find((f)=>f.seq === predicate.seq);
+    if (p) {
+      if (p.action === predicate.action) {
         return true;
+      } else {
+        console.error("predicate fail, passed", predicate,"but find", p)
+        return false;
       }
+    } else {
+      // _predicatesReset();
+      predicates.current.push(predicate);
+      return true;
+    }
+  }
+  // 가장 마지막 predicate의 seq를 꺼내서 새로운 액션과함께 seq+1를 넣어준다.
+  // 항상 predicates값이 존재한다고 보고 꺼내쓴다.
+  // 만약 predicates값이 없다면 false를 리턴하고 동기화 해야한다.
+  const _setPredicate = (action: string): boolean => {
+    //
+    const p = predicates.current[predicates.current.length - 1];
+    if (p) {
+      predicates.current.push({
+        action, seq: p.seq + 1
+      });
+      return true;
     }
     return false;
   }
@@ -267,49 +289,56 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const nowGameId= useRef<string | null>(null);
   const actionSender = useRef({
     _send(input: InputType, action: ActionType, gameId: string) {
-      inputSeq.current += 1;
-      // if (myBoardTransform.current.boardId) {
-      //   if (action === "left") {
-      //     optTetrisController.moveLeft(myBoardTransform.current.boardId);
-      //     inputPredicate.current.push({
-      //       action: 'moveLeft',
-      //       seq: inputSeq.current
-      //     })
-      //   } else if (action === "right") {
-      //     optTetrisController.moveRight(myBoardTransform.current.boardId);
-      //     inputPredicate.current.push({
-      //       action: 'moveRight',
-      //       seq: inputSeq.current
-      //     })
-      //   } else if (action === "rotateLeft") {
-      //     optTetrisController.rotateLeft(myBoardTransform.current.boardId);
-      //     inputPredicate.current.push({
-      //       action: 'rotateLeft',
-      //       seq: inputSeq.current
-      //     })
-      //   } else if (action === "rotateRight") {
-      //     optTetrisController.rotateRight(myBoardTransform.current.boardId);
-      //     inputPredicate.current.push({
-      //       action: 'rotateRight',
-      //       seq: inputSeq.current
-      //     })
-      //   }
-      // }
+      if (isLockedPredicate.current) {
+        console.error("isLockedPredicate is true, client act ignored");
+        return;
+      }
+      if (isLockedBoardSync.current) {
+        console.error("isLockedBoardSync is true, client act ignored");
+        return;
+      }
+      if (myBoardTransform.current.boardId) {
+        if (action === "moveLeft") {
+          optTetrisController.moveLeft(myBoardTransform.current.boardId);
+          if (!_setPredicate(action)) {
+            console.error("_setPredicate moveLeft 실패 ")
+            return;
+          };
+        } else if (action === "moveRight") {
+          optTetrisController.moveRight(myBoardTransform.current.boardId);
+          if (!_setPredicate(action)) {
+            console.error("_setPredicate moveRight 실패 ")
+            return;
+          };
+        } else if (action === "rotateLeft") {
+          optTetrisController.rotateLeft(myBoardTransform.current.boardId);
+          if (!_setPredicate(action)) {
+            console.error("_setPredicate rotateLeft 실패")
+            return;
+          };
+        } else if (action === "rotateRight") {
+          optTetrisController.rotateRight(myBoardTransform.current.boardId);
+          if (!_setPredicate(action)) {
+            console.error("_setPredicate rotateRight 실패 ")
+            return;
+          };
+        }
+      }
 
       const obj = {
         type: 'gameAction',
         data: {
-          input, action, gameId, seq: inputSeq.current
+          input, action, gameId
         }
       }
       send(JSON.stringify(obj))
     },
     pressLeft(gameId: string){
       console.log(gameId)
-      this._send("press", "left", gameId);
+      this._send("press", "moveLeft", gameId);
     },
     pressRight (gameId: string) {
-      this._send("press", "right", gameId)
+      this._send("press", "moveRight", gameId)
     },
     pressRotateLeft (gameId: string) {
       this._send("press", "rotateLeft", gameId)
@@ -2036,55 +2065,71 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
     gameSync(data) {
         for(const [boardId, syncData] of Object.entries(data)) {
-          const tetris = tetrisGames.current[boardId];
-          if (!tetris) {
-            console.log('[gameSync] tetris undefined', boardId);
-            continue;
-          }
-          // boardSet
-          for (const [lineIdx, line] of syncData.board.entries()) {
-            for (const [tileIdx, tile] of line.entries()) {
-              tetris.board.setLocation(tileIdx, lineIdx, tile)
-            }
-          }
-          // gq set
-          this.garbageQueueSet(boardId, syncData.garbageQueue)
-
-          // hold set
-          this.holdFalling(boardId, syncData.hold)
-          
-          // next set
-          // syncData.next
-          tetris.next = [];
-          for (const next of syncData.next) {
-            this.nextAdd(boardId, next)
-          }
-
-          // level set
-          // score set
-          this.infoTextUpdate(boardId, {
-            level: syncData.level,
-            score: syncData.score
-          })
-
-          // TODO: game over cover
-
-          updateBoardInstancedMeshse(boardId)
+          this.gameBoardSync(boardId, syncData)
         }
     },
+    gameBoardSync(boardId, syncData) {
+      const tetris = tetrisGames.current[boardId];
+      if (!tetris) {
+        console.log('[gameSync] tetris undefined', boardId);
+        // continue;
+        return;
+      }
+      // boardSet
+      for (const [lineIdx, line] of syncData.board.entries()) {
+        for (const [tileIdx, tile] of line.entries()) {
+          tetris.board.setLocation(tileIdx, lineIdx, tile)
+        }
+      }
+      // gq set
+      this.garbageQueueSet(boardId, syncData.garbageQueue)
+
+      // hold set
+      this.holdFalling(boardId, syncData.hold)
+      
+      // next set
+      // syncData.next
+      tetris.next = [];
+      for (const next of syncData.next) {
+        this.nextAdd(boardId, next)
+      }
+
+      // level set
+      // score set
+      this.infoTextUpdate(boardId, {
+        level: syncData.level,
+        score: syncData.score
+      })
+
+      // TODO: game over cover
+
+      updateBoardInstancedMeshse(boardId)
+    },
     setGameId(gameId) {
-        _resetInputSeq();
-        _resetInputPredicate();
+        _predicatesReset();
         nowGameId.current = gameId;
     },
-    isMatchInputPredicate(action, seq) {
-        return _isMatchInputPredicate(action, seq)
-    },
-    resetInputPredicate() {
-        _resetInputPredicate();
-    },
+    
     getMyBoardId() {
         return myBoardTransform.current.boardId
+    },
+    predicatesReset() {
+        _predicatesReset();
+    },
+    predicateValidation(predicate) {
+        return _predicateValidation(predicate);
+    },
+    predicatesLock() {
+        isLockedPredicate.current = true;
+    },
+    predicatesUnLock() {
+        isLockedPredicate.current = false;
+    },
+    boardSyncLock() {
+        isLockedBoardSync.current = true;
+    },
+    boardSyncUnLock() {
+        isLockedBoardSync.current = false;
     },
   };
 

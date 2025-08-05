@@ -206,6 +206,15 @@ const WebSocketInitializer = () => {
               
             }
             break;
+          case 'gameBoardSync':
+            {
+              const myboardId = gameRef?.current?.getMyBoardId();
+              if (myboardId) {
+                gameRef?.current?.gameBoardSync(myboardId, data.data);
+                gameRef?.current?.boardSyncUnLock();
+              }
+            }
+            break;
           case 'gameStartTimer':
             // if(data.time === 2) {
             //   //
@@ -281,8 +290,19 @@ const WebSocketInitializer = () => {
             */
             
             for (const [k, v] of Object.entries(data.action as string | object)) {
+              if (gameRef?.current?.getMyBoardId() === k) {
+                gameRef.current.predicatesLock();
+              }
               for (const {action, seq} of v) {
                 console.log('action:', action, seq)
+                  if (gameRef?.current?.getMyBoardId() === k) {
+                    if (!gameRef.current.predicateValidation({action, seq})) {
+                      console.log("strat board sync", )
+                      gameRef.current.boardSyncLock();
+                      handleBoardSync(data.gameId, data.roomId);
+                      break;
+                    }
+                  }
                 if (typeof action === "object" && action !== null && "setup" in action) {
                   gameRef?.current?.boardReset(k)
                   // v["gameSetup"]
@@ -334,56 +354,24 @@ const WebSocketInitializer = () => {
                 } else if (typeof action === "string" && action === "removeFalling") {
                   gameRef?.current?.removeFalling(k,);
                 } else if (typeof action === "string" && action === "moveLeft") {
-                  // if (gameRef?.current?.getMyBoardId() === k) {
-                  //   if (gameRef?.current?.isMatchInputPredicate("moveLeft", seq)) {
-                  //     // console.log('moveLeft PREDICATE SUCCESS')
-                  //     continue;
-                  //   } else {
-                  //     gameRef.current.resetInputPredicate();
-                  //     handleSync(data.gameId, data.roomId);
-                  //     console.log('moveLeft PREDICATE FALSE!!!')
-                  //     continue;
-                  //   }
-                  // }
+                  if (gameRef?.current?.getMyBoardId() === k) {
+                    continue;
+                  }
                   gameRef?.current?.moveLeft(k)
                 } else if (typeof action === "string" && action === "moveRight") {
-                  // if (gameRef?.current?.getMyBoardId() === k) {
-                  //   if (gameRef?.current?.isMatchInputPredicate("moveRight", seq)) {
-                  //     // console.log('moveRight PREDICATE SUCCESS')
-                  //     continue;
-                  //   } else {
-                  //     gameRef.current.resetInputPredicate();
-                  //     handleSync(data.gameId, data.roomId);
-                  //     console.log('moveRight PREDICATE FALSE!!!')
-                  //     continue;
-                  //   }
-                  // }
+                  if (gameRef?.current?.getMyBoardId() === k) {
+                    continue;
+                  }
                   gameRef?.current?.moveRight(k)
                 } else if (typeof action === "string" && action === "rotateRight") {
-                  // if (gameRef?.current?.getMyBoardId() === k) {
-                  //   if (gameRef?.current?.isMatchInputPredicate("rotateRight", seq)) {
-                  //     // console.log('rotateRight PREDICATE SUCCESS')
-                  //     continue;
-                  //   } else {
-                  //     gameRef.current.resetInputPredicate();
-                  //     handleSync(data.gameId, data.roomId);
-                  //     console.log('rotateRight PREDICATE FALSE!!!')
-                  //     continue;
-                  //   }
-                  // }
+                  if (gameRef?.current?.getMyBoardId() === k) {
+                    continue;
+                  }
                   gameRef?.current?.rotateRight(k)
                 } else if (typeof action === "string" && action === "rotateLeft") {
-                  // if (gameRef?.current?.getMyBoardId() === k) {
-                  //   if (gameRef?.current?.isMatchInputPredicate("rotateLeft", seq)) {
-                  //     // console.log('rotateLeft PREDICATE SUCCESS')
-                  //     continue;
-                  //   } else {
-                  //     gameRef.current.resetInputPredicate();
-                  //     handleSync(data.gameId, data.roomId);
-                  //     console.log('rotateLeft PREDICATE FALSE!!!')
-                  //     continue;
-                  //   }
-                  // }
+                  if (gameRef?.current?.getMyBoardId() === k) {
+                    continue;
+                  }
                   gameRef?.current?.rotateLeft(k)
                 } else if (typeof action === "string" && action === "softDrop") {
                   gameRef?.current?.step(k)
@@ -396,6 +384,9 @@ const WebSocketInitializer = () => {
                 } else if (typeof action === "string" && action === "lineClear") {
                   gameRef?.current?.lineClear(k)
                 } 
+              }
+              if (gameRef?.current?.getMyBoardId() === k) {
+                gameRef.current.predicatesUnLock();
               }
             }
             
@@ -411,17 +402,17 @@ const WebSocketInitializer = () => {
       returnMessage: JSON.stringify({type: 'pong'}),
     }
   });
-    // const handleSync = (gameId: string, roomId: string) => {
-    //   const obj = {
-    //     type: 'gameSync',
-    //     data: {
-    //       gameId,
-    //       roomId,
-    //     }
-    //   };
-    //   sendMessage(JSON.stringify(obj));
-    // }
 
+    const handleBoardSync = (gameId: string, roomId: string) => {
+      const obj = {
+        type: 'gameBoardSync',
+        data: {
+          gameId,
+          roomId,
+        }
+      };
+      sendMessage(JSON.stringify(obj));
+    }
     
     // todo accessToken이 바뀐다고 재연결하지 않고
     // 연결이 되면 액세스토큰 바뀌어도 재연결하지않게

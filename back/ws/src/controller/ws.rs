@@ -304,16 +304,6 @@ pub fn process_clinet_msg(
                         ws_id: ws_id.to_string(),
                     }));
                 }
-                // LobbyEnter => {
-                //     let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Enter {
-                //         ws_id: ws_id.to_string(),
-                //     }));
-                // }
-                // LobbyLeave => {
-                //     let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Leave {
-                //         ws_id: ws_id.to_string(),
-                //     }));
-                // }
                 LobbyChat { msg } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Lobby(Lobby::Chat {
                         ws_id: ws_id.to_string(),
@@ -372,22 +362,24 @@ pub fn process_clinet_msg(
                         game_type,
                     }));
                 }
-                //
                 GameAction {
-                    action,
-                    game_id,
-                    seq,
-                    ..
+                    action, game_id, ..
                 } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Game(Game::Action {
                         ws_id: ws_id.to_string(),
                         game_id,
                         action: action.into(),
-                        seq,
                     }));
                 }
                 GameSync { game_id, room_id } => {
                     let _ = ws_world_command_tx.send(WsWorldCommand::Game(Game::Sync {
+                        ws_id: ws_id.to_string(),
+                        room_id,
+                        game_id,
+                    }));
+                }
+                GameBoardSync { game_id, room_id } => {
+                    let _ = ws_world_command_tx.send(WsWorldCommand::Game(Game::BoardSync {
                         ws_id: ws_id.to_string(),
                         room_id,
                         game_id,

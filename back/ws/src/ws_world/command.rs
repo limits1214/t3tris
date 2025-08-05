@@ -13,9 +13,13 @@ pub enum Game {
         ws_id: String,
         game_id: String,
         action: GameActionType,
-        seq: Option<u32>,
     },
     Sync {
+        ws_id: String,
+        room_id: String,
+        game_id: String,
+    },
+    BoardSync {
         ws_id: String,
         room_id: String,
         game_id: String,
@@ -23,8 +27,8 @@ pub enum Game {
 }
 #[derive(Debug)]
 pub enum GameActionType {
-    Left,
-    Right,
+    MoveLeft,
+    MoveRight,
     RotateLeft,
     RotateRight,
     HardDrop,

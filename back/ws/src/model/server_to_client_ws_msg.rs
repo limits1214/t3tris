@@ -87,6 +87,14 @@ pub enum ServerToClientWsMsg {
         room_result: Vec<serde_json::Value>,
     },
     #[serde(rename_all = "camelCase")]
+    GameBoardSync {
+        game_id: String,
+        room_id: String,
+        ws_id: String,
+        data: serde_json::Value,
+        // room_result: Option<serde_json::Value>,
+    },
+    #[serde(rename_all = "camelCase")]
     GameEnd {
         game_id: String,
         room_id: String,

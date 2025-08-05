@@ -69,7 +69,7 @@ pub enum BoardEndKind {
 pub struct TetrisGameAction {
     tick: u32,
     action: TetrisGameActionType,
-    seq: Option<u32>,
+    seq: u32,
 }
 
 impl TetrisGameAction {
@@ -125,6 +125,7 @@ pub struct TetrisGame {
     pub line_40_clear: bool,
     pub battle_win: bool,
     pub seven_bag: VecDeque<Tetrimino>,
+    pub act_seq: u32,
 }
 
 impl TetrisGame {
@@ -157,6 +158,7 @@ impl TetrisGame {
             line_40_clear: false,
             battle_win: false,
             seven_bag: VecDeque::new(),
+            act_seq: 0,
         }
     }
 
@@ -165,20 +167,21 @@ impl TetrisGame {
     }
 
     pub fn push_action_buffer(&mut self, action: TetrisGameActionType) {
+        self.act_seq += 1;
         self.actions_buffer.push(TetrisGameAction {
             tick: self.tick,
             action: action,
-            seq: None,
+            seq: self.act_seq,
         });
     }
 
-    pub fn push_action_buffer_with_seq(&mut self, action: TetrisGameActionType, seq: u32) {
-        self.actions_buffer.push(TetrisGameAction {
-            tick: self.tick,
-            action: action,
-            seq: Some(seq),
-        });
-    }
+    // pub fn push_action_buffer_with_seq(&mut self, action: TetrisGameActionType, seq: u32) {
+    //     self.actions_buffer.push(TetrisGameAction {
+    //         tick: self.tick,
+    //         action: action,
+    //         seq: seq,
+    //     });
+    // }
 
     pub fn get_action_buffer(&mut self) -> Vec<TetrisGameAction> {
         self.actions.extend(self.actions_buffer.clone());
@@ -498,17 +501,18 @@ impl TetrisGame {
         is_tspin
     }
 
-    pub fn action_move_left(&mut self, seq: Option<u32>) -> anyhow::Result<()> {
+    pub fn action_move_left(&mut self) -> anyhow::Result<()> {
         let plan = self
             .board
             .try_move_falling(tetris_lib::MoveDirection::Left)?;
         self.board.apply_move_falling(plan);
 
-        if let Some(seq) = seq {
-            self.push_action_buffer_with_seq(TetrisGameActionType::MoveLeft, seq);
-        } else {
-            self.push_action_buffer(TetrisGameActionType::MoveLeft);
-        }
+        // if let Some(seq) = seq {
+        //     self.push_action_buffer_with_seq(TetrisGameActionType::MoveLeft, seq);
+        // } else {
+        //     self.push_action_buffer(TetrisGameActionType::MoveLeft);
+        // }
+        self.push_action_buffer(TetrisGameActionType::MoveLeft);
 
         self.is_tspin = false;
 
@@ -519,17 +523,18 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn action_move_right(&mut self, seq: Option<u32>) -> anyhow::Result<()> {
+    pub fn action_move_right(&mut self) -> anyhow::Result<()> {
         let plan = self
             .board
             .try_move_falling(tetris_lib::MoveDirection::Right)?;
         self.board.apply_move_falling(plan);
 
-        if let Some(seq) = seq {
-            self.push_action_buffer_with_seq(TetrisGameActionType::MoveRight, seq);
-        } else {
-            self.push_action_buffer(TetrisGameActionType::MoveRight);
-        }
+        // if let Some(seq) = seq {
+        //     self.push_action_buffer_with_seq(TetrisGameActionType::MoveRight, seq);
+        // } else {
+        //     self.push_action_buffer(TetrisGameActionType::MoveRight);
+        // }
+        self.push_action_buffer(TetrisGameActionType::MoveRight);
 
         self.is_tspin = false;
 
@@ -540,17 +545,18 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn action_rotate_right(&mut self, seq: Option<u32>) -> anyhow::Result<()> {
+    pub fn action_rotate_right(&mut self) -> anyhow::Result<()> {
         let plan = self
             .board
             .try_rotate_falling(tetris_lib::RotateDirection::Right)?;
         self.board.apply_rotate_falling(plan);
 
-        if let Some(seq) = seq {
-            self.push_action_buffer_with_seq(TetrisGameActionType::RotateRight, seq);
-        } else {
-            self.push_action_buffer(TetrisGameActionType::RotateRight);
-        }
+        // if let Some(seq) = seq {
+        //     self.push_action_buffer_with_seq(TetrisGameActionType::RotateRight, seq);
+        // } else {
+        //     self.push_action_buffer(TetrisGameActionType::RotateRight);
+        // }
+        self.push_action_buffer(TetrisGameActionType::RotateRight);
 
         self.is_tspin = self.tspin_check();
 
@@ -561,17 +567,18 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn action_roatet_left(&mut self, seq: Option<u32>) -> anyhow::Result<()> {
+    pub fn action_roatet_left(&mut self) -> anyhow::Result<()> {
         let plan = self
             .board
             .try_rotate_falling(tetris_lib::RotateDirection::Left)?;
         self.board.apply_rotate_falling(plan);
 
-        if let Some(seq) = seq {
-            self.push_action_buffer_with_seq(TetrisGameActionType::RotateLeft, seq);
-        } else {
-            self.push_action_buffer(TetrisGameActionType::RotateLeft);
-        }
+        // if let Some(seq) = seq {
+        //     self.push_action_buffer_with_seq(TetrisGameActionType::RotateLeft, seq);
+        // } else {
+        //     self.push_action_buffer(TetrisGameActionType::RotateLeft);
+        // }
+        self.push_action_buffer(TetrisGameActionType::RotateLeft);
 
         self.is_tspin = self.tspin_check();
 

@@ -93,9 +93,11 @@ export const useRoomStore = create<RoomState>(
         })
       },
       addChat: (chat) => {
-        set((state) => ({
-          chats: [...state.chats, chat]
-        }))
+        set((state) => {
+          const updatedChats = [...state.chats, chat];
+          const trimmedChats = updatedChats.slice(-100); // 마지막 100개만 유지
+          return { chats: trimmedChats };
+        });
       },
       update: (info) => {
         set({

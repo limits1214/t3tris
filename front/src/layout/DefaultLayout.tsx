@@ -63,7 +63,7 @@ const WsDisconnectedDiaglog = ({readyState}: {readyState: ReadyState}) => {
 
   const setWsToken = useWsStore(s=>s.setWsToken);
 
-  return <Dialog.Root open={open} onOpenChange={setOpen}>
+  return <Dialog.Root open={open} onOpenChange={()=>{}}>
     <Dialog.Content maxWidth="450px">
       <Dialog.Title>연결이 끊어졌습니다.</Dialog.Title>
       <Dialog.Description size="2" mb="4">

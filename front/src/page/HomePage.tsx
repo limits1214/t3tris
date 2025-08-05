@@ -19,15 +19,17 @@ const HomePage = () => {
   const send = useWsStore(s=>s.send);
   const isInitialWsLoginEnd = useWsUserStore(s=>s.isInitialWsLoginEnd);
   const wsReadyState = useWsStore(s=>s.readyState)
+  const updateLobbyChats = useLobbyStore(s=>s.updateLobbyChats);
 
 
   useEffect(() => {
     if (wsReadyState === ReadyState.OPEN) {
       console.log('lobby sub')
-        const obj = {
-          type: 'lobbySubscribe'
-        }
-        send(JSON.stringify(obj))
+      const obj = {
+        type: 'lobbySubscribe'
+      }
+      send(JSON.stringify(obj))
+      updateLobbyChats([])
     }
     return () => {
       if (wsReadyState === ReadyState.OPEN) {

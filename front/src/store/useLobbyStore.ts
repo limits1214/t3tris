@@ -9,7 +9,8 @@ type LobbyState = {
   updatedIsEnterd: (isEnterd: boolean) => void,
   updateRooms: (rooms: RoomInfo[]) => void
   updateLobbyUsers: (lobbyUsers: LobbyUser[]) => void
-  updateLobbyChats: (lobbychats: LobbyChat) => void
+  addLobbyChats: (lobbychats: LobbyChat) => void,
+  updateLobbyChats: (lobbychats: LobbyChat[]) => void,
 }
 
 type LobbyUser = {
@@ -43,10 +44,17 @@ export const useLobbyStore = create<LobbyState>(
           lobbyUsers,
         })
       },
-      updateLobbyChats: (lobbychats) => {
-        set((state)=>({
-          lobbychats: [...state.lobbychats, lobbychats]
-        }))
-      }
+      addLobbyChats: (newChat) => {
+        set((state) => {
+          const updatedChats = [...state.lobbychats, newChat];
+          const trimmedChats = updatedChats.slice(-100); // 뒤에서 100개만 유지
+          return { lobbychats: trimmedChats };
+        });
+      },
+      updateLobbyChats(lobbychats) {
+          set({
+            lobbychats
+          })
+      },
     }),
 )

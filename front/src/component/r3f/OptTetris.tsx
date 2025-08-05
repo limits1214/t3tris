@@ -79,7 +79,9 @@ export type GameSyncData = {
   level: number,
   next: Tetrimino[],
   score: number,
-  line: number
+  line: number,
+  isBoardEnd: boolean,
+  elapsed: number,
 }
 export type GarbageQueue = {
   kind: "Queued" | "Ready",
@@ -2101,7 +2103,14 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         score: syncData.score
       })
 
-      // TODO: game over cover
+      // game over cover
+      if (syncData.isBoardEnd) {
+        this.removeEndCover(boardId);
+        this.addEndCover(boardId, "");
+        this.timerOff(boardId);
+        this.infoTextUpdate(boardId, {time: syncData.elapsed/1000});
+      }
+      
 
       updateBoardInstancedMeshse(boardId)
     },

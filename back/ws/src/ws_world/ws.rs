@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use crate::{
-    constant::TOPIC_WS_ID,
+    constant::{TOPIC_LOBBY, TOPIC_WS_ID},
     model::server_to_client_ws_msg::ServerToClientWsMsg,
     topic,
     ws_world::{
@@ -91,6 +91,16 @@ pub fn cleanup_ws(
 
     // === 커넥션 제거
     connections.conn_remove(&ws_id);
+
+    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(connections, &data.rooms);
+    pubsub.publish(
+        &topic!(TOPIC_LOBBY),
+        ServerToClientWsMsg::LobbyUpdated {
+            rooms: pub_lobby.rooms,
+            users: pub_lobby.users,
+            chats: vec![],
+        },
+    );
 }
 
 /// 로그인
@@ -153,6 +163,7 @@ pub fn logout_user(
         err_publish(pubsub, &ws_id, dbg!("[logout_user] not authenticated"));
         return;
     };
+
     // === 로비 나가기
     lobby::lobby_leave(connections, data, pubsub, ws_id.clone());
 
@@ -163,6 +174,16 @@ pub fn logout_user(
 
         connections.del_user_ws_id(&ws_id, &user.user_id);
     }
+
+    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(connections, &data.rooms);
+    pubsub.publish(
+        &topic!(TOPIC_LOBBY),
+        ServerToClientWsMsg::LobbyUpdated {
+            rooms: pub_lobby.rooms,
+            users: pub_lobby.users,
+            chats: vec![],
+        },
+    );
 
     // === 개인 메시지 발행
     pubsub.publish(

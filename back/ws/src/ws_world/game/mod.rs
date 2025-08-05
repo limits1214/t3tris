@@ -173,7 +173,7 @@ pub fn game_cleanup(
 
     for backup_game_id in &backup_game_ids {
         let db_pool = arc_app_state.0.common.db_pool.clone();
-        if let Some(mut game) = data.games.get_mut(&backup_game_id) {
+        if let Some(game) = data.games.get_mut(&backup_game_id) {
             let room_id = game.room_id.to_string();
             let game_id = game.game_id.to_string();
             let ws_ids = game

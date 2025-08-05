@@ -11,7 +11,7 @@ import { useGameStore } from "../store/useGameStore";
 const apiUrl = import.meta.env.VITE_WS_URL;
 
 const WebSocketInitializer = () => {
-  const wsToken = useWsStore(s=>s.wsToken);
+  
   const setWsToken = useWsStore(s=>s.setWsToken);
 
   const setSend = useWsStore(s=>s.setSend);
@@ -26,7 +26,7 @@ const WebSocketInitializer = () => {
   const lobbyUpdateIsEnterd = useLobbyStore(s=>s.updatedIsEnterd);
   const lobbyUpdateUsers = useLobbyStore(s=>s.updateLobbyUsers);
   const lobbyUpdateRooms = useLobbyStore(s=>s.updateRooms);
-  const lobbyUpdateChats = useLobbyStore(s=>s.updateLobbyChats);
+  const addLobbyChats = useLobbyStore(s=>s.addLobbyChats);
 
   // const roomEnter = useRoomStore(s=>s.enter);
   const roomAddChat = useRoomStore(s=>s.addChat);
@@ -40,11 +40,11 @@ const WebSocketInitializer = () => {
   const gameRef = useGameStore(s=>s.gameRef);
 
   const navigate = useNavigate();
-
+const wsToken = useWsStore(s=>s.wsToken);
   const getSocketUrl = useCallback( async () => { 
-    const wsToken = await getWsToken();
-    setWsToken(wsToken)
-    return `${apiUrl}/ws/haha?ws_token=${wsToken}`
+    const wt = await getWsToken();
+    setWsToken(wt)
+    return `${apiUrl}/ws/haha?ws_token=${wt}`
   }, [wsToken])
 
 // const getSocketUrl = useCallback(async () => {
@@ -54,6 +54,7 @@ const WebSocketInitializer = () => {
   
   const {sendMessage, readyState} = useWebSocket(getSocketUrl, {
     // shouldReconnect: () => false,
+  
     onOpen: () => {
       console.log('ws on open');
       const afterOpen = async () => {
@@ -122,7 +123,7 @@ const WebSocketInitializer = () => {
             lobbyUpdateUsers(data.users);
             break;
           case 'lobbyChat':
-            lobbyUpdateChats({
+            addLobbyChats({
               timestamp: data.timestamp,
               user: data.user,
               msg: data.msg
@@ -216,13 +217,6 @@ const WebSocketInitializer = () => {
             }
             break;
           case 'gameStartTimer':
-            // if(data.time === 2) {
-            //   //
-            // } else if (data.time === 1) {
-            //   //
-            // } else {
-            //   //
-            // }
             roomGameStartTimer(data.time)
             break;
           case 'gameEnd':

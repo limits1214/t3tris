@@ -681,6 +681,8 @@ impl TetrisGame {
         let score = self.score;
         let level = self.level;
         let line = self.clear_line;
+        let is_board_end = self.is_board_end;
+        let elapsed = self.elapsed;
 
         serde_json::json!({
             "next": next,
@@ -690,6 +692,8 @@ impl TetrisGame {
             "score": score,
             "level": level,
             "line": line,
+            "isBoardEnd": is_board_end,
+            "elapsed": elapsed
         })
     }
 }

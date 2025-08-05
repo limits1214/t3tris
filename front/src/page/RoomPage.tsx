@@ -178,7 +178,7 @@ const GameBoard = () => {
   const games = useRoomStore(s=>s.games);
   // const setGameId = useKeyboardActionSender();
   const roomStatus = useRoomStore(s=>s.roomStatus);
-
+  const roomGameStartTimer = useRoomStore(s=>s.setGameStartTimer);
   useEffect(() => {
     if (roomStatus === 'Gaming') {
       const nowGameId = games[games.length - 1];
@@ -189,6 +189,7 @@ const GameBoard = () => {
     } else {
       // setGameId(null)
       ref.current?.setGameId(null)
+      roomGameStartTimer(0)
     }
   }, [games, roomStatus])
 

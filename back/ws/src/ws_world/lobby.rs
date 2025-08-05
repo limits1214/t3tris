@@ -44,7 +44,7 @@ pub fn lobby_unsubscribe(
 /// 로그인해야됨
 pub fn lobby_enter(
     connections: &WsConnections,
-    _data: &mut WsData,
+    data: &mut WsData,
     pubsub: &mut WsPubSub,
     ws_id: WsId,
 ) {
@@ -53,15 +53,15 @@ pub fn lobby_enter(
         ServerToClientWsMsg::LobbyEntered.to_json(),
     );
 
-    // let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(connections, &data.rooms);
-    // pubsub.publish(
-    //     &topic!(TOPIC_LOBBY),
-    //     ServerToClientWsMsg::LobbyUpdated {
-    //         rooms: pub_lobby.rooms,
-    //         users: pub_lobby.users,
-    //         chats: vec![],
-    //     },
-    // );
+    let pub_lobby = crate::ws_world::util::gen_lobby_publish_msg(connections, &data.rooms);
+    pubsub.publish(
+        &topic!(TOPIC_LOBBY),
+        ServerToClientWsMsg::LobbyUpdated {
+            rooms: pub_lobby.rooms,
+            users: pub_lobby.users,
+            chats: vec![],
+        },
+    );
 
     if let Some(WsWorldUser { nick_name, .. }) = connections.get_user_by_ws_id(&ws_id).cloned() {
         pubsub.publish(

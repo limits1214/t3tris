@@ -39,8 +39,13 @@ const HomePage = () => {
       }
     }
   }, [isInitialWsLoginEnd, send, wsReadyState])
+
+  
   return (
-    <Flex direction="row" css={css`height: 100dvh; padding: 1rem;`}>
+    <Flex
+      direction="row"
+      css={css`height: 100dvh; padding: 1rem;`}
+      >
       <Flex direction="column" css={css`border: 1px solid black; flex: 1; border-radius: 10px;`} >
         <Flex css={css`
           margin: 1rem;
@@ -54,7 +59,7 @@ const HomePage = () => {
           <Text css={css`font-size: 1.5rem;`}>T3TRIS</Text>
           <CreateRoom/>
         </Flex>
-        <Flex direction="column" css={css`flex: 1;`}>
+        <Flex direction="column" css={css`flex: 1; min-height: 0;`}>
           <RoomList/>
         </Flex>
       </Flex>
@@ -239,7 +244,7 @@ const RoomList = () => {
   const [loginWarnOpen, setLoginWarnOpen] = useState(false);
   const lobbyRooms = useLobbyStore(s=>s.rooms);
   return (
-    <Flex direction="column" css={css`padding: 1rem; flex: 1;`}>
+    <Flex direction="column" css={css`padding: 1rem; min-height: 0; flex: 1;`}>
       {
         /* <Flex css={css`border: 1px solid black; flex: 1; width: 100%;`} justify="between">
           <Flex  css={css`flex: 1;`}>
@@ -248,7 +253,7 @@ const RoomList = () => {
           </Flex>
         </Flex> */
       }
-      <Flex direction="column" css={css`border: 1px solid black; flex: 10; padding: 1rem; border-radius: 10px;`} overflowY={"auto"}>
+      <Flex direction="column" css={css`border: 1px solid black; flex: 1; padding: 1rem; border-radius: 10px; overflow: auto; `} >
         <Grid rows="2" columns="2">
         {lobbyRooms.map(roomInfo=>(
           <RoomListItem key={roomInfo.roomId} roomInfo={roomInfo} setLoginWarnOpen={setLoginWarnOpen}/>
@@ -367,6 +372,7 @@ const Chat = () => {
           onKeyDown={handleKeyDown}
           onCompositionStart={()=>setIsComposing(true)}
           onCompositionEnd={()=>setIsComposing(false)}
+          maxLength={100}
         />
         <Button onClick={handleSendChat}>전송</Button>
       </Flex>

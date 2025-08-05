@@ -282,7 +282,7 @@ const WebSocketInitializer = () => {
             
             for (const [k, v] of Object.entries(data.action as string | object)) {
               for (const {action, seq} of v) {
-                console.log('action:', action)
+                console.log('action:', action, seq)
                 if (typeof action === "object" && action !== null && "setup" in action) {
                   gameRef?.current?.boardReset(k)
                   // v["gameSetup"]
@@ -411,16 +411,18 @@ const WebSocketInitializer = () => {
       returnMessage: JSON.stringify({type: 'pong'}),
     }
   });
-    const handleSync = (gameId: string, roomId: string) => {
-      const obj = {
-        type: 'gameSync',
-        data: {
-          gameId,
-          roomId,
-        }
-      };
-      sendMessage(JSON.stringify(obj));
-    }
+    // const handleSync = (gameId: string, roomId: string) => {
+    //   const obj = {
+    //     type: 'gameSync',
+    //     data: {
+    //       gameId,
+    //       roomId,
+    //     }
+    //   };
+    //   sendMessage(JSON.stringify(obj));
+    // }
+
+    
     // todo accessToken이 바뀐다고 재연결하지 않고
     // 연결이 되면 액세스토큰 바뀌어도 재연결하지않게
     // 만약 연결이 안됬다면, 액세스토큰 바뀔때마다 재연결

@@ -260,6 +260,10 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     const p = predicates.current.find((f)=>f.seq === predicate.seq);
     if (p) {
       if (p.action === predicate.action) {
+        const idx = predicates.current.findIndex(f => f.seq === predicate.seq);
+        if (idx !== -1) {
+          predicates.current.splice(0, idx); // 왼쪽 제거 (predicate.seq는 포함됨)
+        }
         return true;
       } else {
         console.error("predicate fail, passed", predicate,"but find", p)
@@ -267,6 +271,10 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       }
     } else {
       // _predicatesReset();
+      const idx = predicates.current.findIndex(f => f.seq === predicate.seq);
+      if (idx !== -1) {
+        predicates.current.splice(0, idx); // 왼쪽 제거 (predicate.seq는 포함됨)
+      }
       predicates.current.push(predicate);
       return true;
     }

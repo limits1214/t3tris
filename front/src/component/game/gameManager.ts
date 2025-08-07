@@ -60,6 +60,7 @@ export class GameManager {
   }
 
   frame(delta: number) {
+    this.input.frame(delta);
     for (const [, board] of Object.entries(this.boards)) {
       board?.timer.tick(delta);
 

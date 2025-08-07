@@ -85,20 +85,7 @@ class Controller {
       this.tetrisBoard.renderHandler.isDirty = true;
     }
   }
-  step() {
-    console.log("AAAAA");
-    try {
-      const plan = this.tetrisBoard.board.tryStep();
-      this.tetrisBoard.board.applyStep(plan);
-      this.tetrisBoard.renderHandler.isDirty = true;
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(e.message); // OK
-      } else {
-        console.error("Unknown error", e);
-      }
-    }
-  }
+
   placing() {
     this.tetrisBoard.board.placeFalling();
     this.tetrisBoard.renderHandler.isDirty = true;
@@ -114,25 +101,70 @@ class Controller {
       this.tetrisBoard.info.line = data.line;
     }
   }
+  step() {
+    try {
+      const plan = this.tetrisBoard.board.tryStep();
+      this.tetrisBoard.board.applyStep(plan);
+      this.tetrisBoard.renderHandler.isDirty = true;
+    } catch (e) {
+      if (e instanceof Error) {
+        // console.error(e.message); // OK
+      } else {
+        // console.error("Unknown error", e);
+      }
+    }
+  }
   moveLeft() {
-    const plan = this.tetrisBoard.board.tryMoveFalling("Left");
-    this.tetrisBoard.board.applyMoveFalling(plan);
-    this.tetrisBoard.renderHandler.isDirty = true;
+    try {
+      const plan = this.tetrisBoard.board.tryMoveFalling("Left");
+      this.tetrisBoard.board.applyMoveFalling(plan);
+      this.tetrisBoard.renderHandler.isDirty = true;
+    } catch (e) {
+      if (e instanceof Error) {
+        // console.error(e.message); // OK
+      } else {
+        // console.error("Unknown error", e);
+      }
+    }
   }
   moveRight() {
-    const plan = this.tetrisBoard.board.tryMoveFalling("Right");
-    this.tetrisBoard.board.applyMoveFalling(plan);
-    this.tetrisBoard.renderHandler.isDirty = true;
+    try {
+      const plan = this.tetrisBoard.board.tryMoveFalling("Right");
+      this.tetrisBoard.board.applyMoveFalling(plan);
+      this.tetrisBoard.renderHandler.isDirty = true;
+    } catch (e) {
+      if (e instanceof Error) {
+        // console.error(e.message); // OK
+      } else {
+        // console.error("Unknown error", e);
+      }
+    }
   }
   rotateLeft() {
-    const plan = this.tetrisBoard.board.tryRotateFalling("Left");
-    this.tetrisBoard.board.applyRotateFalling(plan);
-    this.tetrisBoard.renderHandler.isDirty = true;
+    try {
+      const plan = this.tetrisBoard.board.tryRotateFalling("Left");
+      this.tetrisBoard.board.applyRotateFalling(plan);
+      this.tetrisBoard.renderHandler.isDirty = true;
+    } catch (e) {
+      if (e instanceof Error) {
+        // console.error(e.message); // OK
+      } else {
+        // console.error("Unknown error", e);
+      }
+    }
   }
   rotateRight() {
-    const plan = this.tetrisBoard.board.tryRotateFalling("Right");
-    this.tetrisBoard.board.applyRotateFalling(plan);
-    this.tetrisBoard.renderHandler.isDirty = true;
+    try {
+      const plan = this.tetrisBoard.board.tryRotateFalling("Right");
+      this.tetrisBoard.board.applyRotateFalling(plan);
+      this.tetrisBoard.renderHandler.isDirty = true;
+    } catch (e) {
+      if (e instanceof Error) {
+        // console.error(e.message); // OK
+      } else {
+        // console.error("Unknown error", e);
+      }
+    }
   }
 }
 
@@ -149,7 +181,7 @@ class Timer {
       this.timerAccumulate += delta;
       if (this.timerAccumulate - this.timerLastUpdated > 0.05) {
         this.info.time = this.timerAccumulate;
-        this.timerLastUpdated = this.timerAccumulate;
+        this.timerLastUpdated += 0.05;
       }
     }
   }

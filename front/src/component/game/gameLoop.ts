@@ -21,7 +21,7 @@ export class GameLoop {
     this.accumulatedDelta += delta;
     if (this.accumulatedDelta - this.lastTicking > this.oneTick) {
       this.delegation?.ticking();
-      this.lastTicking = this.accumulatedDelta;
+      this.lastTicking = this.oneTick;
     }
   }
 

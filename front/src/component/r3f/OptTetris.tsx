@@ -1,136 +1,158 @@
-import { useFrame, useLoader, useThree } from "@react-three/fiber"
-import { forwardRef, useEffect, useImperativeHandle, useRef, type RefObject } from "react"
-import * as THREE from 'three';
-import {Text} from 'troika-three-text'
+import { useFrame, useLoader, useThree } from "@react-three/fiber";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  type RefObject,
+} from "react";
+import * as THREE from "three";
+import { Text } from "troika-three-text";
 import { JsBoard } from "tetris-lib";
 import type { Board, Tetrimino } from "tetris-lib/bindings";
-import {format} from 'date-fns'
-import {FontLoader} from 'three/addons/loaders/FontLoader.js'
-import {TextGeometry} from 'three/addons/geometries/TextGeometry.js'
+import { format } from "date-fns";
+import { FontLoader } from "three/addons/loaders/FontLoader.js";
+import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
 import { useGLTF } from "@react-three/drei";
 import { useWsStore } from "../../store/useWsStore";
 
 export type Transform = {
-  position: [number, number, number],
-  rotation: [number, number, number],
-  scale: [number, number, number],
-}
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+};
 
- export type BoardCreateInfo = {
-  nickName: string,
-}
+export type BoardCreateInfo = {
+  nickName: string;
+};
 
 export type BoardInfo = {
-  nickName: string
-}
+  nickName: string;
+};
 
 export type InfoData = {
-  level?: number,
-  score?: number,
-  time?: number,
-  line?: number
-}
+  level?: number;
+  score?: number;
+  time?: number;
+  line?: number;
+};
 export type OptTetrisController = {
-  tetrisGameList: ()=>Partial<Record<string, TetrisGame>>,
-  tetrisInfo: (boardId: string) => TetrisGame | undefined,
-  boardCreate: (boardId: string, boardTransform: Transform, boardCreateInfo: BoardCreateInfo) => void,
-  boardCreateBySlot: (boardId: string, boardCreateInfo: BoardCreateInfo) => void,
-  boardCreateMy:(boardId: string, boardCreateInfo: BoardCreateInfo) => void,
-  boardDelete: (boardId: string) => void,
-  boardReset: (boardId: string) => void,
-  boardMove: (boardId: string, newTransform: Transform) => void,
-  nextAdd: (boardId: string, block: Tetrimino) => void,
-  spawnFromNext: (boardId: string, block: Tetrimino) => void,
-  spawnFromHold: (boardId: string, block: Tetrimino, hold: Tetrimino) => void,
-  step: (boardId: string) => void,
-  moveRight: (boardId: string) => void,
-  moveLeft: (boardId: string) => void,
-  rotateRight: (boardId: string) => void,
-  rotateLeft: (boardId: string) => void,
-  hardDrop: (boardId: string) => void,
-  placing: (boardId: string) => void,
-  lineClear:(boardId: string) => void,
-  holdFalling:(boardId: string, hold: Tetrimino | null) => void,
-  removeFalling:(boardId: string) => void,
-  scoreEffect: (boardId: string, kind: string)=>void,
-  infoTextUpdate: (boardId: string, data: InfoData) => void,
-  addEndCover: (boardId: string, text: string) => void
-  removeEndCover: (boardId: string) => void
-  timerOn: (boardId: string) => void,
-  timerOff: (boardId: string) => void,
-  timerReset: (boardId: string) => void,
-  garbageQueueSet: (boardId: string, garbageQueue: GarbageQueue[]) => void,
-  garbageAdd: (boardId: string, emptyx: number[]) => void,
-  gameSync: (data: Record<string, GameSyncData>) => void,
-  gameBoardSync: (boardId: string, syncData: GameSyncData) => void,
-  setGameId: (gameId: string | null) => void,
-  predicateValidation: (predicate: Predicate)=>boolean,
-  getMyBoardId: () => string | null,
-  predicatesReset: () => void,
-  predicatesLock: () => void,
-  predicatesUnLock: () => void,
-  boardSyncLock: () => void,
-  boardSyncUnLock: () => void,
+  tetrisGameList: () => Partial<Record<string, TetrisGame>>;
+  tetrisInfo: (boardId: string) => TetrisGame | undefined;
+  boardCreate: (
+    boardId: string,
+    boardTransform: Transform,
+    boardCreateInfo: BoardCreateInfo
+  ) => void;
+  boardCreateBySlot: (
+    boardId: string,
+    boardCreateInfo: BoardCreateInfo
+  ) => void;
+  boardCreateMy: (boardId: string, boardCreateInfo: BoardCreateInfo) => void;
+  boardDelete: (boardId: string) => void;
+  boardReset: (boardId: string) => void;
+  boardMove: (boardId: string, newTransform: Transform) => void;
+  nextAdd: (boardId: string, block: Tetrimino) => void;
+  spawnFromNext: (boardId: string, block: Tetrimino) => void;
+  spawnFromHold: (boardId: string, block: Tetrimino, hold: Tetrimino) => void;
+  step: (boardId: string) => void;
+  moveRight: (boardId: string) => void;
+  moveLeft: (boardId: string) => void;
+  rotateRight: (boardId: string) => void;
+  rotateLeft: (boardId: string) => void;
+  hardDrop: (boardId: string) => void;
+  placing: (boardId: string) => void;
+  lineClear: (boardId: string) => void;
+  holdFalling: (boardId: string, hold: Tetrimino | null) => void;
+  removeFalling: (boardId: string) => void;
+  scoreEffect: (boardId: string, kind: string) => void;
+  infoTextUpdate: (boardId: string, data: InfoData) => void;
+  addEndCover: (boardId: string, text: string) => void;
+  removeEndCover: (boardId: string) => void;
+  timerOn: (boardId: string) => void;
+  timerOff: (boardId: string) => void;
+  timerReset: (boardId: string) => void;
+  garbageQueueSet: (boardId: string, garbageQueue: GarbageQueue[]) => void;
+  garbageAdd: (boardId: string, emptyx: number[]) => void;
+  gameSync: (data: Record<string, GameSyncData>) => void;
+  gameBoardSync: (boardId: string, syncData: GameSyncData) => void;
+  setGameId: (gameId: string | null) => void;
+  predicateValidation: (predicate: Predicate) => boolean;
+  getMyBoardId: () => string | null;
+  predicatesReset: () => void;
+  predicatesLock: () => void;
+  predicatesUnLock: () => void;
+  boardSyncLock: () => void;
+  boardSyncUnLock: () => void;
 };
 export type GameSyncData = {
-  board: Board,
-  garbageQueue: GarbageQueue[],
-  hold: Tetrimino | null,
-  level: number,
-  next: Tetrimino[],
-  score: number,
-  line: number,
-  isBoardEnd: boolean,
-  elapsed: number,
-}
+  board: Board;
+  garbageQueue: GarbageQueue[];
+  hold: Tetrimino | null;
+  level: number;
+  next: Tetrimino[];
+  score: number;
+  line: number;
+  isBoardEnd: boolean;
+  elapsed: number;
+};
 export type GarbageQueue = {
-  kind: "Queued" | "Ready",
-  line: number
-}
+  kind: "Queued" | "Ready";
+  line: number;
+};
 export type InstanceType = {
-  id: string,
-  transform: Transform
-}
-export type Block = "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
+  id: string;
+  transform: Transform;
+};
+export type Block =
+  | "Cover"
+  | "CoverLine"
+  | "Case"
+  | "E"
+  | "H"
+  | "GarbageQueue"
+  | "GarbageReady"
+  | "Garbage"
+  | Tetrimino;
 export const blockColorMapping = (block: Block) => {
   if (block === "Case") {
-    return "black"
+    return "black";
   } else if (block === "Cover") {
-    return "#1a1a1a"
+    return "#1a1a1a";
   } else if (block === "CoverLine") {
-    return "gray"
+    return "gray";
   } else if (block === "I") {
-    return "#00FFFF"
+    return "#00FFFF";
   } else if (block === "O") {
-    return "#FFFF00"
+    return "#FFFF00";
   } else if (block === "T") {
-    return "#800080"
+    return "#800080";
   } else if (block === "J") {
-    return "#0000FF"
+    return "#0000FF";
   } else if (block === "L") {
-    return "#FFA500"
+    return "#FFA500";
   } else if (block === "S") {
-    return "#00FF00"
+    return "#00FF00";
   } else if (block === "Z") {
-    return "#FF0000"
+    return "#FF0000";
   } else if (block === "H") {
-    return "white"
+    return "white";
   } else if (block === "GarbageQueue") {
-    return "#F08080"
+    return "#F08080";
   } else if (block === "GarbageReady") {
-    return "#8B0000"
+    return "#8B0000";
   } else if (block === "Garbage") {
-    return "#4A4F5A"
+    return "#4A4F5A";
   } else {
-    return ""
+    return "";
   }
-}
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 // function createTextTexture(text: string, options = {}): THREE.CanvasTexture {
 //   const canvas = document.createElement('canvas');
 //   const ctx = canvas.getContext('2d')!;
-  
+
 //   const fontSize = 64;
 //   const padding = 20;
 
@@ -156,83 +178,173 @@ export const blockColorMapping = (block: Block) => {
 // }
 
 type TetrisGame = {
-  board: JsBoard,
-  boardTransform: Transform,
-  createInfo: BoardCreateInfo,
-  texts: Record<string, Text>,
-  textureTexts: Record<string, TextureText>,
-  infoTextData: InfoData,
-  isTimerOn: boolean,
-  lastUpdatedTime: number,
-  next: Tetrimino[],
-  hold: Tetrimino | null,
-  garbageQueue: GarbageQueue[]
-}
+  board: JsBoard;
+  boardTransform: Transform;
+  createInfo: BoardCreateInfo;
+  texts: Record<string, Text>;
+  textureTexts: Record<string, TextureText>;
+  infoTextData: InfoData;
+  isTimerOn: boolean;
+  lastUpdatedTime: number;
+  next: Tetrimino[];
+  hold: Tetrimino | null;
+  garbageQueue: GarbageQueue[];
+};
 type TextureText = {
-  text: string,
-  mesh: THREE.Mesh,
-  geometry: THREE.PlaneGeometry,
-  material: THREE.MeshBasicMaterial
-  texture: THREE.CanvasTexture
-}
-type InputType = 'press' | 'release';
-type ActionType = 'moveLeft' | 'moveRight' | 'rotateLeft' | 'rotateRight' | 'hardDrop' | 'softDrop' | "hold";
+  text: string;
+  mesh: THREE.Mesh;
+  geometry: THREE.PlaneGeometry;
+  material: THREE.MeshBasicMaterial;
+  texture: THREE.CanvasTexture;
+};
+type InputType = "press" | "release";
+type ActionType =
+  | "moveLeft"
+  | "moveRight"
+  | "rotateLeft"
+  | "rotateRight"
+  | "hardDrop"
+  | "softDrop"
+  | "hold";
 type Predicate = {
-  seq: number,
-  action: string
-}
+  seq: number;
+  action: string;
+};
 export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
-  const typefaceUrl ='https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json';
+  const typefaceUrl =
+    "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/fonts/helvetiker_bold.typeface.json";
   const font = useLoader(FontLoader, typefaceUrl);
 
   const instanced3dTextMeshes = useRef<Record<string, THREE.InstancedMesh>>({
     Next: new THREE.InstancedMesh(undefined, undefined, 200),
     Hold: new THREE.InstancedMesh(undefined, undefined, 200),
   });
-  const instanced3dText =  useRef<Record<string, InstanceType[]>>({
-    Next: [], Hold: []
+  const instanced3dText = useRef<Record<string, InstanceType[]>>({
+    Next: [],
+    Hold: [],
   });
-  const { nodes } = useGLTF('/glb/basicBlock2.glb');
+  const { nodes } = useGLTF("/glb/basicBlock2.glb");
   const blockBasicGeometry = (nodes.Cube as THREE.Mesh).geometry;
-  
+
   const RESERVE = 5000;
   const geometry = new THREE.BoxGeometry();
   const lineGeometry = new THREE.PlaneGeometry();
-  
+
   const instancedBlocksMeshes = useRef<Record<Block, THREE.InstancedMesh>>({
-    Cover: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Cover"), transparent: true, opacity: 0.7, }), RESERVE),
-    CoverLine: new THREE.InstancedMesh(lineGeometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("CoverLine")}), RESERVE),
-    Case: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("Case") }), RESERVE),
-    E: new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("E") }), RESERVE),
-    GarbageQueue:new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("GarbageQueue") }), RESERVE),
-    GarbageReady:new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshBasicMaterial({ color: blockColorMapping("GarbageReady") }), RESERVE),
-    Garbage:new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("Garbage") }), RESERVE),
-    I: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("I") }), RESERVE),
-    O: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("O") }), RESERVE),
-    T: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("T") }), RESERVE),
-    J: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("J") }), RESERVE),
-    L: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("L") }), RESERVE),
-    S: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("S") }), RESERVE),
-    Z: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("Z") }), RESERVE),
-    H: new THREE.InstancedMesh(blockBasicGeometry, new THREE.MeshLambertMaterial({ color: blockColorMapping("H"), transparent: true, opacity: 0.5,  }), RESERVE),
+    Cover: new THREE.InstancedMesh(
+      geometry,
+      new THREE.MeshBasicMaterial({
+        color: blockColorMapping("Cover"),
+        transparent: true,
+        opacity: 0.7,
+      }),
+      RESERVE
+    ),
+    CoverLine: new THREE.InstancedMesh(
+      lineGeometry,
+      new THREE.MeshBasicMaterial({ color: blockColorMapping("CoverLine") }),
+      RESERVE
+    ),
+    Case: new THREE.InstancedMesh(
+      geometry,
+      new THREE.MeshBasicMaterial({ color: blockColorMapping("Case") }),
+      RESERVE
+    ),
+    E: new THREE.InstancedMesh(
+      geometry,
+      new THREE.MeshBasicMaterial({ color: blockColorMapping("E") }),
+      RESERVE
+    ),
+    GarbageQueue: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshBasicMaterial({ color: blockColorMapping("GarbageQueue") }),
+      RESERVE
+    ),
+    GarbageReady: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshBasicMaterial({ color: blockColorMapping("GarbageReady") }),
+      RESERVE
+    ),
+    Garbage: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("Garbage") }),
+      RESERVE
+    ),
+    I: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("I") }),
+      RESERVE
+    ),
+    O: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("O") }),
+      RESERVE
+    ),
+    T: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("T") }),
+      RESERVE
+    ),
+    J: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("J") }),
+      RESERVE
+    ),
+    L: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("L") }),
+      RESERVE
+    ),
+    S: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("S") }),
+      RESERVE
+    ),
+    Z: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({ color: blockColorMapping("Z") }),
+      RESERVE
+    ),
+    H: new THREE.InstancedMesh(
+      blockBasicGeometry,
+      new THREE.MeshLambertMaterial({
+        color: blockColorMapping("H"),
+        transparent: true,
+        opacity: 0.5,
+      }),
+      RESERVE
+    ),
   });
   instancedBlocksMeshes.current.H.renderOrder = 999;
   const instancedBlocks = useRef<Record<Block, InstanceType[]>>({
-    Cover: [], CoverLine:[], Case: [], E: [],
-    GarbageQueue: [],GarbageReady:[],Garbage:[],
-    I: [], O: [], T: [], J: [], L: [], S: [], Z: [], H: []
+    Cover: [],
+    CoverLine: [],
+    Case: [],
+    E: [],
+    GarbageQueue: [],
+    GarbageReady: [],
+    Garbage: [],
+    I: [],
+    O: [],
+    T: [],
+    J: [],
+    L: [],
+    S: [],
+    Z: [],
+    H: [],
   });
   const tetrisGames = useRef<Partial<Record<string, TetrisGame>>>({});
-  const { scene } = useThree()
+  const { scene } = useThree();
 
-  useFrame((_state, delta)=>{
+  useFrame((_state, delta) => {
     for (const [boardId, tetris] of Object.entries(tetrisGames.current)) {
       if (tetris) {
         if (tetris.isTimerOn) {
           if (tetris.infoTextData.time !== undefined) {
             tetris.infoTextData.time += delta;
 
-            const sinceLastUpdate = tetris.infoTextData.time - tetris.lastUpdatedTime;
+            const sinceLastUpdate =
+              tetris.infoTextData.time - tetris.lastUpdatedTime;
             if (sinceLastUpdate >= 0.05) {
               tetris.lastUpdatedTime = tetris.infoTextData.time;
               infoTextDiffUpdate(boardId);
@@ -241,7 +353,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       }
     }
-  })
+  });
 
   const isLockedBoardSync = useRef(false);
   // 동기화도중에는 precate를 발생시키지 말아야한다 그 체크용
@@ -249,7 +361,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const predicates = useRef<Predicate[]>([]);
   const _predicatesReset = () => {
     predicates.current = [];
-  }
+  };
   // 서버에서 오는 seq을 predicates에 존재하는지 체크한다.
   // 만약 존재하고
   //    action 동일하다면 true, 예측성공이다.
@@ -257,28 +369,30 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   // 만약 미존재라면
   //    서버 액션이므로 true, 다음 validation때 사용될 예정이다.
   const _predicateValidation = (predicate: Predicate): boolean => {
-    const p = predicates.current.find((f)=>f.seq === predicate.seq);
+    const p = predicates.current.find((f) => f.seq === predicate.seq);
     if (p) {
       if (p.action === predicate.action) {
-        const idx = predicates.current.findIndex(f => f.seq === predicate.seq);
+        const idx = predicates.current.findIndex(
+          (f) => f.seq === predicate.seq
+        );
         if (idx !== -1) {
           predicates.current.splice(0, idx); // 왼쪽 제거 (predicate.seq는 포함됨)
         }
         return true;
       } else {
-        console.error("predicate fail, passed", predicate,"but find", p)
+        console.error("predicate fail, passed", predicate, "but find", p);
         return false;
       }
     } else {
       // _predicatesReset();
-      const idx = predicates.current.findIndex(f => f.seq === predicate.seq);
+      const idx = predicates.current.findIndex((f) => f.seq === predicate.seq);
       if (idx !== -1) {
         predicates.current.splice(0, idx); // 왼쪽 제거 (predicate.seq는 포함됨)
       }
       predicates.current.push(predicate);
       return true;
     }
-  }
+  };
   // 가장 마지막 predicate의 seq를 꺼내서 새로운 액션과함께 seq+1를 넣어준다.
   // 항상 predicates값이 존재한다고 보고 꺼내쓴다.
   // 만약 predicates값이 없다면 false를 리턴하고 동기화 해야한다.
@@ -287,16 +401,17 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     const p = predicates.current[predicates.current.length - 1];
     if (p) {
       predicates.current.push({
-        action, seq: p.seq + 1
+        action,
+        seq: p.seq + 1,
       });
       return true;
     }
     return false;
-  }
+  };
 
-  const send = useWsStore(s=>s.send);
+  const send = useWsStore((s) => s.send);
 
-  const nowGameId= useRef<string | null>(null);
+  const nowGameId = useRef<string | null>(null);
   const actionSender = useRef({
     _send(input: InputType, action: ActionType, gameId: string) {
       if (isLockedPredicate.current) {
@@ -311,162 +426,164 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         if (action === "moveLeft") {
           optTetrisController.moveLeft(myBoardTransform.current.boardId);
           if (!_setPredicate(action)) {
-            console.error("_setPredicate moveLeft 실패 ")
+            console.error("_setPredicate moveLeft 실패 ");
             return;
-          };
+          }
         } else if (action === "moveRight") {
           optTetrisController.moveRight(myBoardTransform.current.boardId);
           if (!_setPredicate(action)) {
-            console.error("_setPredicate moveRight 실패 ")
+            console.error("_setPredicate moveRight 실패 ");
             return;
-          };
+          }
         } else if (action === "rotateLeft") {
           optTetrisController.rotateLeft(myBoardTransform.current.boardId);
           if (!_setPredicate(action)) {
-            console.error("_setPredicate rotateLeft 실패")
+            console.error("_setPredicate rotateLeft 실패");
             return;
-          };
+          }
         } else if (action === "rotateRight") {
           optTetrisController.rotateRight(myBoardTransform.current.boardId);
           if (!_setPredicate(action)) {
-            console.error("_setPredicate rotateRight 실패 ")
+            console.error("_setPredicate rotateRight 실패 ");
             return;
-          };
+          }
         }
       }
 
       const obj = {
-        type: 'gameAction',
+        type: "gameAction",
         data: {
-          input, action, gameId
-        }
-      }
-      send(JSON.stringify(obj))
+          input,
+          action,
+          gameId,
+        },
+      };
+      send(JSON.stringify(obj));
     },
-    pressLeft(gameId: string){
-      console.log(gameId)
+    pressLeft(gameId: string) {
+      console.log(gameId);
       this._send("press", "moveLeft", gameId);
     },
-    pressRight (gameId: string) {
-      this._send("press", "moveRight", gameId)
+    pressRight(gameId: string) {
+      this._send("press", "moveRight", gameId);
     },
-    pressRotateLeft (gameId: string) {
-      this._send("press", "rotateLeft", gameId)
+    pressRotateLeft(gameId: string) {
+      this._send("press", "rotateLeft", gameId);
     },
-    pressRotateRight (gameId: string) {
-      this._send("press", "rotateRight", gameId)
+    pressRotateRight(gameId: string) {
+      this._send("press", "rotateRight", gameId);
     },
     pressSoftDrop(gameId: string) {
-      this._send("press", "softDrop", gameId)
-    } ,
-    pressHardDrop (gameId: string) {
-      this._send("press", "hardDrop", gameId)
+      this._send("press", "softDrop", gameId);
     },
-    pressHold (gameId: string) {
-      this._send("press", "hold", gameId)
+    pressHardDrop(gameId: string) {
+      this._send("press", "hardDrop", gameId);
     },
-  })
+    pressHold(gameId: string) {
+      this._send("press", "hold", gameId);
+    },
+  });
 
   const inputListener = useRef<{
-    moveLRSet: Set<"left"|"right">,
-    moveLInterval: null | number,
-    moveRInterval: null | number,
-    moveLTimeout: null | number,
-    moveRTimeout: null | number,
-    softDropInterval: null | number,
-    rotating: boolean,
-    keydown: (e: KeyboardEvent) => void,
-    keyup: (e: KeyboardEvent) => void
+    moveLRSet: Set<"left" | "right">;
+    moveLInterval: null | number;
+    moveRInterval: null | number;
+    moveLTimeout: null | number;
+    moveRTimeout: null | number;
+    softDropInterval: null | number;
+    rotating: boolean;
+    keydown: (e: KeyboardEvent) => void;
+    keyup: (e: KeyboardEvent) => void;
   }>({
-    moveLRSet: new Set<"left"|"right">(),
+    moveLRSet: new Set<"left" | "right">(),
     moveLInterval: null,
     moveRInterval: null,
     moveLTimeout: null,
     moveRTimeout: null,
     softDropInterval: null,
     rotating: false,
-    keydown (e: KeyboardEvent) {
+    keydown(e: KeyboardEvent) {
       const gameId = nowGameId.current;
       const input = inputListener.current;
       if (gameId) {
         switch (e.key) {
-          case 'a':
-          case 'ArrowLeft':
+          case "a":
+          case "ArrowLeft":
             if (input.moveLRSet.has("left")) {
               return;
             }
-            input.moveLRSet.add("left")
+            input.moveLRSet.add("left");
             if (input.moveLInterval) {
-              window.clearInterval(input.moveLInterval)
+              window.clearInterval(input.moveLInterval);
             }
             if (input.moveLTimeout) {
-              window.clearTimeout(input.moveLTimeout)
+              window.clearTimeout(input.moveLTimeout);
             }
-            inputListener.current.moveLTimeout = window.setTimeout(()=>{
+            inputListener.current.moveLTimeout = window.setTimeout(() => {
               actionSender.current.pressLeft(gameId);
-              input.moveLInterval = window.setInterval(()=>{
+              input.moveLInterval = window.setInterval(() => {
                 const lr = [...input.moveLRSet];
-                const size = input.moveLRSet.size - 1
+                const size = input.moveLRSet.size - 1;
                 if (lr[size] === "left") {
                   actionSender.current.pressLeft(gameId);
                 }
-              }, 30)
-            }, 150)
+              }, 30);
+            }, 150);
             actionSender.current.pressLeft(gameId);
             break;
-          case 'd':
-          case 'ArrowRight':
+          case "d":
+          case "ArrowRight":
             if (input.moveLRSet.has("right")) {
               return;
             }
-            input.moveLRSet.add("right")
+            input.moveLRSet.add("right");
 
             if (input.moveRInterval) {
-              window.clearInterval(input.moveRInterval)
+              window.clearInterval(input.moveRInterval);
             }
             if (input.moveRTimeout) {
-              window.clearTimeout(input.moveRTimeout)
+              window.clearTimeout(input.moveRTimeout);
             }
-            input.moveRTimeout = window.setTimeout(()=>{
+            input.moveRTimeout = window.setTimeout(() => {
               actionSender.current.pressRight(gameId);
-              input.moveRInterval = window.setInterval(()=>{
+              input.moveRInterval = window.setInterval(() => {
                 const lr = [...input.moveLRSet];
-                const size = input.moveLRSet.size - 1
+                const size = input.moveLRSet.size - 1;
                 if (lr[size] === "right") {
                   actionSender.current.pressRight(gameId);
                 }
-              }, 30)
-            }, 150)
+              }, 30);
+            }, 150);
             actionSender.current.pressRight(gameId);
             break;
-          case 'w':
-          case 'ArrowUp':
-            if(input.rotating) {
+          case "w":
+          case "ArrowUp":
+            if (input.rotating) {
               return;
             }
             input.rotating = true;
             actionSender.current.pressRotateRight(gameId);
             break;
-          case 'z':
-            if(input.rotating) {
+          case "z":
+            if (input.rotating) {
               return;
             }
             input.rotating = true;
             actionSender.current.pressRotateLeft(gameId);
             break;
-          case 's':
-          case 'ArrowDown':
+          case "s":
+          case "ArrowDown":
             if (input.softDropInterval) {
               window.clearInterval(input.softDropInterval);
             }
-            input.softDropInterval = window.setInterval(()=>{
+            input.softDropInterval = window.setInterval(() => {
               actionSender.current.pressSoftDrop(gameId);
             }, 50);
             break;
-          case ' ':
+          case " ":
             actionSender.current.pressHardDrop(gameId);
             break;
-          case 'Shift':
+          case "Shift":
             actionSender.current.pressHold(gameId);
             break;
           default:
@@ -477,49 +594,49 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     keyup(e: KeyboardEvent) {
       const input = inputListener.current;
       switch (e.key) {
-        case 'a':
-        case 'ArrowLeft':
-          input.moveLRSet.delete("left")
+        case "a":
+        case "ArrowLeft":
+          input.moveLRSet.delete("left");
           if (input.moveLInterval) {
             window.clearInterval(input.moveLInterval);
           }
           if (input.moveLTimeout) {
-            window.clearTimeout(input.moveLTimeout)
+            window.clearTimeout(input.moveLTimeout);
           }
           break;
-        case 'd':
-        case 'ArrowRight':
-          input.moveLRSet.delete("right")
+        case "d":
+        case "ArrowRight":
+          input.moveLRSet.delete("right");
           if (input.moveRInterval) {
             window.clearInterval(input.moveRInterval);
           }
           if (input.moveRTimeout) {
-            window.clearTimeout(input.moveRTimeout)
+            window.clearTimeout(input.moveRTimeout);
           }
           break;
-        case 'w':
-        case 'ArrowUp':
+        case "w":
+        case "ArrowUp":
           input.rotating = false;
           break;
-        case 'z':
+        case "z":
           input.rotating = false;
           break;
-        case 's':
-        case 'ArrowDown':
+        case "s":
+        case "ArrowDown":
           if (input.softDropInterval) {
             window.clearInterval(input.softDropInterval);
           }
           break;
-        case ' ':
+        case " ":
           break;
-        case 'Shift':
+        case "Shift":
           break;
         default:
           break;
       }
-    }
-  })
-  useEffect(()=>{
+    },
+  });
+  useEffect(() => {
     const keydown = inputListener.current.keydown;
     const keyup = inputListener.current.keyup;
     window.addEventListener("keydown", keydown);
@@ -527,35 +644,34 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     return () => {
       window.removeEventListener("keydown", keydown);
       window.removeEventListener("keyup", keyup);
-    }
-  }, [])
-
+    };
+  }, []);
 
   const infoTextMake = ({
-      level,
-      score,
-      time,
-      line,
-    }: {
-        level?: number;
-        score?: number;
-        time?: number;
-        line?: number;
-      }) => {
-      const parts: string[] = [];
+    level,
+    score,
+    time,
+    line,
+  }: {
+    level?: number;
+    score?: number;
+    time?: number;
+    line?: number;
+  }) => {
+    const parts: string[] = [];
 
-      if (level !== undefined) parts.push(`level:\n${level}`);
-      if (line !== undefined) parts.push(`line:\n${line}`);
-      if (score !== undefined) parts.push(`score:\n${score}`);
-      if (time !== undefined) {
-        parts.push(`time:\n${format(new Date(time * 1000), 'mm:ss:SS')}`);
+    if (level !== undefined) parts.push(`level:\n${level}`);
+    if (line !== undefined) parts.push(`line:\n${line}`);
+    if (score !== undefined) parts.push(`score:\n${score}`);
+    if (time !== undefined) {
+      parts.push(`time:\n${format(new Date(time * 1000), "mm:ss:SS")}`);
     }
 
-    return parts.join('\n');
+    return parts.join("\n");
   };
 
   const infoTextDiffUpdate = (boardId: string) => {
-    const tetris = tetrisGames.current[boardId]
+    const tetris = tetrisGames.current[boardId];
     if (tetris) {
       const beforeText = tetris.texts.infoText.text;
       const nowText = infoTextMake({
@@ -563,14 +679,18 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         score: tetris.infoTextData.score,
         time: tetris.infoTextData.time,
         line: tetris.infoTextData.line,
-      })
+      });
       if (beforeText !== nowText) {
-        tetris.texts.infoText.text = nowText
+        tetris.texts.infoText.text = nowText;
       }
     }
-  }
+  };
 
-  function getBoardGridLayout(count: number): {cols: number, rows: number, scale: number}{
+  function getBoardGridLayout(count: number): {
+    cols: number;
+    rows: number;
+    scale: number;
+  } {
     /* 
     1*1 = 1, 1
     2*2 = 4, 0.9
@@ -584,19 +704,21 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     10*10 = 100, 0.1
     */
     //  const boundary = [[1, 1, 1/1], [4, 2, 1/2], [9, 3, 1/3], [16, 4, 1/4], [25, 5, 1/5], [36, 6, 1/6], [49, 7, 1/7], [64, 8, 1/8], [81, 9, 1/9], [100, 10, 1/10]]
-   const boundary = Array(10).fill(null).map((_, idx)=>{
-    const v = idx + 1;
-    return [v*v, v, 1/v];
-   })
-    
-    let select = [1, 1, 1] ;
+    const boundary = Array(10)
+      .fill(null)
+      .map((_, idx) => {
+        const v = idx + 1;
+        return [v * v, v, 1 / v];
+      });
+
+    let select = [1, 1, 1];
     if (count !== 1) {
-      for (let i = 0; i < boundary.length; i ++) {
+      for (let i = 0; i < boundary.length; i++) {
         if (i < boundary.length - 1) {
           const l = boundary[i];
-          const r = boundary[i + 1]
+          const r = boundary[i + 1];
           const min = l[0];
-          const max = r[0]
+          const max = r[0];
           if (min < count && count <= max) {
             select = boundary[i + 1];
             break;
@@ -606,57 +728,84 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         }
       }
     }
-    
+
     return {
       cols: select[1],
       rows: select[1],
-      scale: select[2]
-    }
-
+      scale: select[2],
+    };
   }
-  const generateBoardTransformSlot2 = (cnt: number): {transform: Transform, boardId: string | null}[] => {
-    
-    const {cols, scale} = getBoardGridLayout(cnt);
+  const generateBoardTransformSlot2 = (
+    cnt: number
+  ): { transform: Transform; boardId: string | null }[] => {
+    const { cols, scale } = getBoardGridLayout(cnt);
     const boardWidth = 26;
     const boardSpacing = 0;
     const boardStride = boardWidth + boardSpacing;
-    const defaultXSpacing = ((26 / 2) + (26 * scale) / 2);
+    const defaultXSpacing = 26 / 2 + (26 * scale) / 2;
 
     const getBoardPosition = (index: number) => {
       const col = index % cols;
-      const row = Math.floor(index / cols) ;
-      const x = defaultXSpacing + (-4.5 * scale) +  /*<<spacing*/ (boardStride * scale) * col;
-      const y = defaultXSpacing - (boardStride * scale) + (15.5 * scale) - /*<<spacing*/ (boardStride * scale) * row;
+      const row = Math.floor(index / cols);
+      const x =
+        defaultXSpacing +
+        -4.5 * scale +
+        /*<<spacing*/ boardStride * scale * col;
+      const y =
+        defaultXSpacing -
+        boardStride * scale +
+        15.5 * scale -
+        /*<<spacing*/ boardStride * scale * row;
       return { x, y, rotation: 0 };
     };
 
-    return Array(cnt).fill(null).map((_, idx) => {
-      const pos = getBoardPosition(idx);
-      return {
-        transform: {
-          position: [pos.x, pos.y, 0],
-          rotation: [0, pos.rotation, 0],
-          scale: [scale, scale, scale]
-        },
-        boardId: null
-      };
-    });
+    return Array(cnt)
+      .fill(null)
+      .map((_, idx) => {
+        const pos = getBoardPosition(idx);
+        return {
+          transform: {
+            position: [pos.x, pos.y, 0],
+            rotation: [0, pos.rotation, 0],
+            scale: [scale, scale, scale],
+          },
+          boardId: null,
+        };
+      });
   };
-  const otherBoardTrasnformSlot = useRef(generateBoardTransformSlot2(0))
+  const otherBoardTrasnformSlot = useRef(generateBoardTransformSlot2(0));
 
-  const myBoardTransform: RefObject<{transform: Transform, boardId: string | null}> = useRef({
+  const myBoardTransform: RefObject<{
+    transform: Transform;
+    boardId: string | null;
+  }> = useRef({
     transform: {
       position: [-4.5, 15.5, 0],
       rotation: [0, 0, 0],
-      scale: [1, 1, 1]
+      scale: [1, 1, 1],
     },
-    boardId: null
+    boardId: null,
   });
-  
+
   // Block InstancedMesh
   useEffect(() => {
-    const keys: Block[] = ["Cover", "CoverLine", "Case", "I", "O", "T", "J", "L", "S", "Z", "H", "Garbage", "GarbageQueue", "GarbageReady"];
-    const localRef = instancedBlocksMeshes.current; 
+    const keys: Block[] = [
+      "Cover",
+      "CoverLine",
+      "Case",
+      "I",
+      "O",
+      "T",
+      "J",
+      "L",
+      "S",
+      "Z",
+      "H",
+      "Garbage",
+      "GarbageQueue",
+      "GarbageReady",
+    ];
+    const localRef = instancedBlocksMeshes.current;
     for (const key of keys) {
       localRef[key].count = 0;
       localRef[key].frustumCulled = false;
@@ -664,9 +813,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
     const localRefTetrisGames = tetrisGames.current;
     return () => {
-      console.log('del effect opt ')
+      console.log("del effect opt ");
       for (const key of keys) {
-        const mesh = localRef[key]; 
+        const mesh = localRef[key];
         if (!mesh) continue;
         scene.remove(mesh);
         mesh.geometry.dispose();
@@ -683,30 +832,28 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     };
   }, [scene]);
 
-
   //3D Text Instanced Mesh
   useEffect(() => {
     const nextInstanced = instanced3dTextMeshes.current.Next;
-    const nextGeometry = new TextGeometry('Next', {
+    const nextGeometry = new TextGeometry("Next", {
       font: font,
       size: 1,
       depth: 0.5,
-    })
+    });
     nextInstanced.geometry = nextGeometry;
-    nextInstanced.material = new THREE.MeshBasicMaterial({color: 'black'});
+    nextInstanced.material = new THREE.MeshBasicMaterial({ color: "black" });
     nextInstanced.count = 0;
     nextInstanced.frustumCulled = false;
     scene.add(nextInstanced);
 
-
     const holdInstanced = instanced3dTextMeshes.current.Hold;
-    const holdGeometry = new TextGeometry('Hold', {
+    const holdGeometry = new TextGeometry("Hold", {
       font: font,
       size: 1,
       depth: 0.5,
-    })
+    });
     holdInstanced.geometry = holdGeometry;
-    holdInstanced.material = new THREE.MeshBasicMaterial({color: 'black'});
+    holdInstanced.material = new THREE.MeshBasicMaterial({ color: "black" });
     holdInstanced.count = 0;
     holdInstanced.frustumCulled = false;
     scene.add(holdInstanced);
@@ -719,7 +866,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         nextInstanced.material.dispose();
       }
 
-
       scene.remove(holdInstanced);
       holdInstanced.geometry.dispose();
       if (Array.isArray(holdInstanced.material)) {
@@ -727,49 +873,56 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       } else {
         holdInstanced.material.dispose();
       }
-    }
-  }, [font, scene])
+    };
+  }, [font, scene]);
 
   const placedIdMap = (placedId: number) => {
-    if (placedId === 1) return "I"
-    else if (placedId === 2) return "O"
-    else if (placedId === 3) return "T"
-    else if (placedId === 4) return "J"
-    else if (placedId === 5) return "L"
-    else if (placedId === 6) return "S"
-    else if (placedId === 7) return "Z" 
-    else return "Garbage"
-  }
+    if (placedId === 1) return "I";
+    else if (placedId === 2) return "O";
+    else if (placedId === 3) return "T";
+    else if (placedId === 4) return "J";
+    else if (placedId === 5) return "L";
+    else if (placedId === 6) return "S";
+    else if (placedId === 7) return "Z";
+    else return "Garbage";
+  };
 
-  const textMat = new THREE.MeshBasicMaterial({color: 'black', side: THREE.DoubleSide});
+  const textMat = new THREE.MeshBasicMaterial({
+    color: "black",
+    side: THREE.DoubleSide,
+  });
   const addText = (txt: string, transform: Transform) => {
-    const text = new Text()
-    text.text = `${txt}`
+    const text = new Text();
+    text.text = `${txt}`;
     // text.font = typefaceUrl
-    text.fontSize = 1
-    text.position.set(transform.position[0], transform.position[1] , transform.position[2])
+    text.fontSize = 1;
+    text.position.set(
+      transform.position[0],
+      transform.position[1],
+      transform.position[2]
+    );
     text.rotation.set(...transform.rotation);
     text.scale.set(...transform.scale);
-    
-    text.anchorX = 'center'
-    text.anchorY = 'middle'
-    text.material = textMat
-    
-    scene.add(text)
-    text.sync()
+
+    text.anchorX = "center";
+    text.anchorY = "middle";
+    text.material = textMat;
+
+    scene.add(text);
+    text.sync();
 
     return text;
-  }
+  };
 
   const removeText = (text: Text) => {
     scene.remove(text);
     text.geometry.dispose();
     if (Array.isArray(text.material)) {
-      text.material.forEach(m=>m.dispose());
+      text.material.forEach((m) => m.dispose());
     } else {
       text.material.dispose();
     }
-  }
+  };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   // const addTextureText = (boardId: string, type: string, text: string, transform: Transform) => {
@@ -799,7 +952,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
   const removeTextureText = (boardId: string, type: string) => {
     const tetris = tetrisGames.current[boardId];
     if (!tetris) {
-      console.log('tetris undefined');
+      console.log("tetris undefined");
       return;
     }
 
@@ -807,57 +960,57 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     tetris.textureTexts[type].geometry.dispose();
     tetris.textureTexts[type].texture.dispose();
     if (Array.isArray(tetris.textureTexts[type].material)) {
-      tetris.textureTexts[type].material.forEach(m=>m.dispose());
+      tetris.textureTexts[type].material.forEach((m) => m.dispose());
     } else {
       tetris.textureTexts[type].material.dispose();
     }
-
-  }
+  };
 
   const updateInstanced3dMeshes = () => {
     const dummy = new THREE.Object3D();
-    for (const [idx, val] of instanced3dText.current.Next.entries() ) {
+    for (const [idx, val] of instanced3dText.current.Next.entries()) {
       dummy.position.set(...val.transform.position);
       dummy.rotation.set(...val.transform.rotation);
       dummy.scale.set(...val.transform.scale);
       dummy.updateMatrix();
       instanced3dTextMeshes.current.Next.setMatrixAt(idx, dummy.matrix);
     }
-    instanced3dTextMeshes.current.Next.count = instanced3dText.current.Next.length;
+    instanced3dTextMeshes.current.Next.count =
+      instanced3dText.current.Next.length;
     instanced3dTextMeshes.current.Next.instanceMatrix.needsUpdate = true;
 
-
-    for (const [idx, val] of instanced3dText.current.Hold.entries() ) {
+    for (const [idx, val] of instanced3dText.current.Hold.entries()) {
       dummy.position.set(...val.transform.position);
       dummy.rotation.set(...val.transform.rotation);
       dummy.scale.set(...val.transform.scale);
       dummy.updateMatrix();
       instanced3dTextMeshes.current.Hold.setMatrixAt(idx, dummy.matrix);
     }
-    instanced3dTextMeshes.current.Hold.count = instanced3dText.current.Hold.length;
+    instanced3dTextMeshes.current.Hold.count =
+      instanced3dText.current.Hold.length;
     instanced3dTextMeshes.current.Hold.instanceMatrix.needsUpdate = true;
-  }
+  };
 
   const updateInstancedMeshes = () => {
     const dummy = new THREE.Object3D();
-    for (const [a, block] of Object.entries(instancedBlocks.current) ) {
-        const key = a as Block;
-       for (let idx = 0; idx < block.length; idx ++) {
-          dummy.position.set(...block[idx].transform.position);
-          dummy.rotation.set(...block[idx].transform.rotation);
-          dummy.scale.set(...block[idx].transform.scale);
-          dummy.updateMatrix();
-          instancedBlocksMeshes.current[key].setMatrixAt(idx, dummy.matrix);
-        }
-        instancedBlocksMeshes.current[key].count = block.length;
-        instancedBlocksMeshes.current[key].instanceMatrix.needsUpdate = true;
+    for (const [a, block] of Object.entries(instancedBlocks.current)) {
+      const key = a as Block;
+      for (let idx = 0; idx < block.length; idx++) {
+        dummy.position.set(...block[idx].transform.position);
+        dummy.rotation.set(...block[idx].transform.rotation);
+        dummy.scale.set(...block[idx].transform.scale);
+        dummy.updateMatrix();
+        instancedBlocksMeshes.current[key].setMatrixAt(idx, dummy.matrix);
+      }
+      instancedBlocksMeshes.current[key].count = block.length;
+      instancedBlocksMeshes.current[key].instanceMatrix.needsUpdate = true;
     }
-  }
+  };
 
   const updateBoardInstancedMeshse = (boardId: string) => {
     const tetris = tetrisGames.current[boardId];
     if (!tetris) {
-      console.log('tetris undefined');
+      console.log("tetris undefined");
       return;
     }
 
@@ -866,11 +1019,16 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     const boardTransform = tetris.boardTransform;
 
     for (const [k, block] of Object.entries(blocks)) {
-      if (k === "Case" || k === "Cover" || k === "CoverLine"
-        || k === "GarbageQueue" ||k === "GarbageReady" 
-      ) continue;
-      const newArr = block.filter(item => item.id !== `${boardId}_Block`);
-      blocks[k as Block] = newArr
+      if (
+        k === "Case" ||
+        k === "Cover" ||
+        k === "CoverLine" ||
+        k === "GarbageQueue" ||
+        k === "GarbageReady"
+      )
+        continue;
+      const newArr = block.filter((item) => item.id !== `${boardId}_Block`);
+      blocks[k as Block] = newArr;
     }
 
     const group = new THREE.Group();
@@ -879,16 +1037,16 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     group.scale.set(...boardTransform.scale);
 
     const dummy = new THREE.Object3D();
-    group.add(dummy)
+    group.add(dummy);
 
     const finalPos = new THREE.Vector3();
     const finalQuat = new THREE.Quaternion();
     const finalEuler = new THREE.Euler();
     const finalScale = new THREE.Vector3();
 
-    showFallingHint(boardId)
+    showFallingHint(boardId);
 
-    for (const [lineIdx, line] of (board.getBoard() as Board).entries() ) {
+    for (const [lineIdx, line] of (board.getBoard() as Board).entries()) {
       for (const [tileIdx, tile] of line.entries()) {
         if (tile === "Empty") {
           //
@@ -905,9 +1063,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             transform: {
               position: [finalPos.x, finalPos.y, finalPos.z],
               rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
-          })
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
+          });
         } else if ("Placed" in tile) {
           dummy.position.set(tileIdx, -lineIdx, 0);
           dummy.getWorldPosition(finalPos);
@@ -918,12 +1076,12 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           const tetr = placedIdMap(tile.Placed as number);
           blocks[tetr].push({
             id: `${boardId}_Block`,
-              transform: {
-                position: [finalPos.x, finalPos.y, finalPos.z],
-                rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-                scale: [finalScale.x, finalScale.y, finalScale.z]
-              }
-          })
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
+          });
         } else if ("Hint" in tile) {
           dummy.position.set(tileIdx, -lineIdx, 0);
           dummy.getWorldPosition(finalPos);
@@ -936,9 +1094,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             transform: {
               position: [finalPos.x, finalPos.y, finalPos.z],
               rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
-          })
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
+          });
         } else {
           //
         }
@@ -946,18 +1104,53 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     }
 
     const BlockLocation = {
-      I: [[0,0], [1,0], [2,0],[3,0]],
-      O: [[0,0], [1,0], [1,1],[0,1]],
-      T: [[0,0], [1,0], [2,0],[1,1]],
-      J: [[0,1], [1,1], [2,1],[2,0]],
-      L: [[0,0], [0,1], [1,1],[2,1]],
-      S: [[0,0], [1,1], [1,0],[2,1]],
-      Z: [[2,0], [1,1], [1,0],[0,1]],
-    }
+      I: [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [3, 0],
+      ],
+      O: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ],
+      T: [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [1, 1],
+      ],
+      J: [
+        [0, 1],
+        [1, 1],
+        [2, 1],
+        [2, 0],
+      ],
+      L: [
+        [0, 0],
+        [0, 1],
+        [1, 1],
+        [2, 1],
+      ],
+      S: [
+        [0, 0],
+        [1, 1],
+        [1, 0],
+        [2, 1],
+      ],
+      Z: [
+        [2, 0],
+        [1, 1],
+        [1, 0],
+        [0, 1],
+      ],
+    };
 
     for (const [idx, next] of tetris.next.entries()) {
       for (const [dx, dy] of BlockLocation[next]) {
-        dummy.position.set(12 + dx, -7 + (-idx * 3) + dy, 0);
+        dummy.position.set(12 + dx, -7 + -idx * 3 + dy, 0);
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
@@ -965,17 +1158,17 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         blocks[next].push({
           id: `${boardId}_Block`,
           transform: {
-            position: [finalPos.x , finalPos.y , finalPos.z],
+            position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
         });
       }
     }
-    
+
     if (tetris.hold) {
       for (const [dx, dy] of BlockLocation[tetris.hold]) {
-        dummy.position.set(-6  + dx, -7 + dy, 0);
+        dummy.position.set(-6 + dx, -7 + dy, 0);
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
@@ -985,39 +1178,43 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
         });
       }
     }
 
     updateInstancedMeshes();
-  }
+  };
 
   const showFallingHint = (boardId: string) => {
     const tetris = tetrisGames.current[boardId];
     if (!tetris) {
-      console.log('tetris undefined');
+      console.log("tetris undefined");
       return;
     }
     tetris.board.removeFallingHint();
     tetris.board.showFallingHint();
-  }
+  };
 
   const boardCreateOffsetInfo = {
-    nickNameText: [{
+    nickNameText: [
+      {
         position: [5, -27, 0],
-        scale: [2,2,2]
-      }],
-    infoText: [{
+        scale: [2, 2, 2],
+      },
+    ],
+    infoText: [
+      {
         position: [-4, -18, 0],
-        scale: [1,1,1]
-      }],
+        scale: [1, 1, 1],
+      },
+    ],
     Case: [
       // 아래
       {
         position: [4.5, -26 + 0.4, 0],
-        scale: [10 +0.4, 0.2, 1],
+        scale: [10 + 0.4, 0.2, 1],
       },
       // 왼쪽
       {
@@ -1028,66 +1225,84 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       {
         position: [-1 + 0.4, -15.5, 0],
         scale: [0.2, 20, 1],
-      }
+      },
     ],
-    CoverLineX: ()=>{
-      return Array(9).fill(null).map((_,idx)=>{
-        return {
-          position: [0.5 + idx, -15.5, -0.5],
-          scale: [0.05, 20, 0.05]
-        }
-      })
+    CoverLineX: () => {
+      return Array(9)
+        .fill(null)
+        .map((_, idx) => {
+          return {
+            position: [0.5 + idx, -15.5, -0.5],
+            scale: [0.05, 20, 0.05],
+          };
+        });
     },
-    CoverLineY: ()=>{
-        return Array(19).fill(null).map((_,idx)=>{
+    CoverLineY: () => {
+      return Array(19)
+        .fill(null)
+        .map((_, idx) => {
           return {
             position: [4.5, -6.5 + -idx, -0.5],
-            scale: [10, 0.05, 0.05]
-          }
-        })
+            scale: [10, 0.05, 0.05],
+          };
+        });
+    },
+    Cover: [
+      {
+        position: [4.5, -15.5, -0.51],
+        scale: [10, 20, 0.01],
       },
-    Cover: [{
-      position: [4.5 , -15.5, -0.51],
-      scale: [10, 20, 0.01]
-    }],
-    EndCover: [{
-      position: [4.5 , -15.5, 0.71],
-      scale: [10, 20, 0.01]
-    }],
-    Next: [{
-      position: [12, -5, 0],
-      scale: [1,1,1]
-    }],
-    Hold: [{
-      position: [-6, -5, 0],
-      scale: [1,1,1]
-    }]
-  }
+    ],
+    EndCover: [
+      {
+        position: [4.5, -15.5, 0.71],
+        scale: [10, 20, 0.01],
+      },
+    ],
+    Next: [
+      {
+        position: [12, -5, 0],
+        scale: [1, 1, 1],
+      },
+    ],
+    Hold: [
+      {
+        position: [-6, -5, 0],
+        scale: [1, 1, 1],
+      },
+    ],
+  };
 
   const otherBoardSlotPacking = (plus: number) => {
-    const otherBoardLen = Object.entries(tetrisGames.current).filter((v)=>v[0] !== myBoardTransform.current.boardId).length;
-    const currOtherBoardTrasnformSlot = [...otherBoardTrasnformSlot.current.filter(v=>v.boardId !== null)];
-    otherBoardTrasnformSlot.current = generateBoardTransformSlot2(otherBoardLen + plus);
-    currOtherBoardTrasnformSlot.forEach((slot,idx)=>{
+    const otherBoardLen = Object.entries(tetrisGames.current).filter(
+      (v) => v[0] !== myBoardTransform.current.boardId
+    ).length;
+    const currOtherBoardTrasnformSlot = [
+      ...otherBoardTrasnformSlot.current.filter((v) => v.boardId !== null),
+    ];
+    otherBoardTrasnformSlot.current = generateBoardTransformSlot2(
+      otherBoardLen + plus
+    );
+    currOtherBoardTrasnformSlot.forEach((slot, idx) => {
       otherBoardTrasnformSlot.current[idx].boardId = slot.boardId;
       const newSlot = otherBoardTrasnformSlot.current[idx];
       optTetrisController.boardMove(slot.boardId!, newSlot.transform);
-    })
-  }
+    });
+  };
 
   let scoreEffectTimeout = 0;
 
   const optTetrisController: OptTetrisController = {
     tetrisGameList() {
-        return tetrisGames.current
+      return tetrisGames.current;
     },
     tetrisInfo(boardId) {
-      return tetrisGames.current[boardId]
+      return tetrisGames.current[boardId];
     },
     boardReset(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       tetris.board = new JsBoard(10, 26);
@@ -1105,9 +1320,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const txt = "level:\n1\nscore:\n0";
       tetris.texts.infoText.text = txt;
 
-      this.removeEndCover(boardId)
+      this.removeEndCover(boardId);
 
-      this.timerReset(boardId)
+      this.timerReset(boardId);
       this.timerOn(boardId);
     },
     boardCreateBySlot(boardId, boardCreateInfo) {
@@ -1126,10 +1341,14 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     },
     boardCreateMy(boardId, boardCreateInfo) {
       myBoardTransform.current.boardId = boardId;
-      this.boardCreate(boardId, myBoardTransform.current.transform, boardCreateInfo)
+      this.boardCreate(
+        boardId,
+        myBoardTransform.current.transform,
+        boardCreateInfo
+      );
     },
     boardCreate: (boardId, boardTransform, createInfo) => {
-      console.log('[boardCreate]')
+      console.log("[boardCreate]");
       tetrisGames.current[boardId] = {
         board: new JsBoard(10, 26),
         boardTransform,
@@ -1146,8 +1365,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         textureTexts: {},
         hold: null,
         next: [],
-        garbageQueue: []
-      }
+        garbageQueue: [],
+      };
       const tetris = tetrisGames.current[boardId];
       const blocks = instancedBlocks.current;
       const group = new THREE.Group();
@@ -1156,17 +1375,16 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       group.scale.set(...tetris.boardTransform.scale);
 
       const dummy = new THREE.Object3D();
-      group.add(dummy)
+      group.add(dummy);
 
       const finalPos = new THREE.Vector3();
       const finalQuat = new THREE.Quaternion();
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
-
-      boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.nickNameText.forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
 
         dummy.position.set(...position);
         dummy.scale.set(...scale);
@@ -1178,24 +1396,21 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         const nickNameText = addText(tetris.createInfo.nickName, {
           position: [finalPos.x, finalPos.y, finalPos.z],
           rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x , finalScale.y, finalScale.z],
+          scale: [finalScale.x, finalScale.y, finalScale.z],
         });
 
         tetris.texts.nickNameText = nickNameText;
 
-
-
-        
         // addTextureText(boardId, "nickNameText",  tetris.createInfo.nickName, {
         //   position: [finalPos.x, finalPos.y, finalPos.z],
         //   rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
         //   scale: [finalScale.x , finalScale.y, finalScale.z],
         // });
-      })
+      });
 
-      boardCreateOffsetInfo.infoText.forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.infoText.forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
 
         dummy.position.set(...position);
         dummy.scale.set(...scale);
@@ -1208,21 +1423,20 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         const infoText = addText(txt, {
           position: [finalPos.x, finalPos.y, finalPos.z],
           rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-          scale: [finalScale.x , finalScale.y, finalScale.z],
+          scale: [finalScale.x, finalScale.y, finalScale.z],
         });
 
-
         tetris.texts.infoText = infoText;
-      })
+      });
 
-      boardCreateOffsetInfo.Case.forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.Case.forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
         dummy.position.set(...position);
         dummy.scale.set(...scale);
-        
+
         dummy.getWorldPosition(finalPos);
-        dummy.getWorldScale(finalScale)
+        dummy.getWorldScale(finalScale);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
         blocks.Case.push({
@@ -1230,19 +1444,19 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
         });
-      })
+      });
 
-      boardCreateOffsetInfo.CoverLineY().forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.CoverLineY().forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
         dummy.position.set(...position);
         dummy.scale.set(...scale);
-        
+
         dummy.getWorldPosition(finalPos);
-        dummy.getWorldScale(finalScale)
+        dummy.getWorldScale(finalScale);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
         blocks.CoverLine.push({
@@ -1250,19 +1464,19 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
         });
-      })
+      });
 
-      boardCreateOffsetInfo.CoverLineX().forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.CoverLineX().forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
         dummy.position.set(...position);
         dummy.scale.set(...scale);
-        
+
         dummy.getWorldPosition(finalPos);
-        dummy.getWorldScale(finalScale)
+        dummy.getWorldScale(finalScale);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
         blocks.CoverLine.push({
@@ -1270,19 +1484,19 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
         });
-      })
+      });
 
-      boardCreateOffsetInfo.Cover.forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.Cover.forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
         dummy.position.set(...position);
         dummy.scale.set(...scale);
-        
+
         dummy.getWorldPosition(finalPos);
-        dummy.getWorldScale(finalScale)
+        dummy.getWorldScale(finalScale);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
         blocks.Cover.push({
@@ -1290,22 +1504,22 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
         });
-      })
+      });
 
       updateInstancedMeshes();
 
-      boardCreateOffsetInfo.Next.forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.Next.forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
 
         dummy.position.set(...position);
         dummy.scale.set(...scale);
-        
+
         dummy.getWorldPosition(finalPos);
-        dummy.getWorldScale(finalScale)
+        dummy.getWorldScale(finalScale);
         dummy.getWorldQuaternion(finalQuat);
         finalEuler.setFromQuaternion(finalQuat);
         instanced3dText.current.Next.push({
@@ -1313,85 +1527,88 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
-        })
-      })
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
+        });
+      });
 
-      boardCreateOffsetInfo.Hold.forEach((trs)=>{
-        const position = trs.position as [number, number, number]
-        const scale = trs.scale as [number, number, number]
+      boardCreateOffsetInfo.Hold.forEach((trs) => {
+        const position = trs.position as [number, number, number];
+        const scale = trs.scale as [number, number, number];
 
         dummy.position.set(...position);
         dummy.scale.set(...scale);
-        
+
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
-        dummy.getWorldScale(finalScale)
+        dummy.getWorldScale(finalScale);
         finalEuler.setFromQuaternion(finalQuat);
         instanced3dText.current.Hold.push({
           id: `${boardId}_Hold`,
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
-        })
-      })
-
-
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
+        });
+      });
 
       updateInstanced3dMeshes();
     },
-    boardDelete (boardId: string) {
-      console.log('[boardDelete]')
+    boardDelete(boardId: string) {
+      console.log("[boardDelete]");
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       for (const [s, v] of Object.entries(tetris.texts)) {
-        console.log('[boardDelete] removeText', s)
+        console.log("[boardDelete] removeText", s);
         removeText(v);
       }
 
       for (const [s] of Object.entries(tetris.textureTexts)) {
-        console.log('[boardDelete] removeTextureText', s)
+        console.log("[boardDelete] removeTextureText", s);
         removeTextureText(boardId, s);
       }
-      
+
       const blocks = instancedBlocks.current;
 
       for (const [k, block] of Object.entries(blocks)) {
-        const newArr = block.filter(item => item.id !== `${boardId}_Block`);
-        blocks[k as Block] = newArr
+        const newArr = block.filter((item) => item.id !== `${boardId}_Block`);
+        blocks[k as Block] = newArr;
       }
-      const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`);
+      const newArr = blocks.Cover.filter(
+        (item) => item.id !== `${boardId}_Block_EndCover`
+      );
       blocks.Cover = newArr;
 
-      delete tetrisGames.current[boardId]
+      delete tetrisGames.current[boardId];
 
-      updateInstancedMeshes()
+      updateInstancedMeshes();
 
-
-      instanced3dText.current.Next = instanced3dText.current.Next.filter(item => item.id != `${boardId}_Next`);
-      instanced3dText.current.Hold = instanced3dText.current.Hold.filter(item => item.id != `${boardId}_Hold`);
+      instanced3dText.current.Next = instanced3dText.current.Next.filter(
+        (item) => item.id != `${boardId}_Next`
+      );
+      instanced3dText.current.Hold = instanced3dText.current.Hold.filter(
+        (item) => item.id != `${boardId}_Hold`
+      );
       updateInstanced3dMeshes();
 
-      otherBoardTrasnformSlot.current.forEach(item=>{
+      otherBoardTrasnformSlot.current.forEach((item) => {
         if (item.boardId === boardId) {
-          item.boardId = null
+          item.boardId = null;
         }
-      })
+      });
 
       otherBoardSlotPacking(0);
     },
 
     boardMove(boardId, newTransform) {
-        //
-        // "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
-        /*
+      //
+      // "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
+      /*
           Cover: {}_Block
           CoverLine: {}_Block
           Case: {}_Block
@@ -1408,12 +1625,12 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       const blocks = instancedBlocks.current;
       // const text3D = instanced3dText.current;
-      tetris.boardTransform = newTransform
+      tetris.boardTransform = newTransform;
 
       const group = new THREE.Group();
       group.position.set(...tetris.boardTransform.position);
@@ -1421,83 +1638,119 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       group.scale.set(...tetris.boardTransform.scale);
 
       const dummy = new THREE.Object3D();
-      group.add(dummy)
+      group.add(dummy);
 
       const finalPos = new THREE.Vector3();
       const finalQuat = new THREE.Quaternion();
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
-      
       {
         if (tetris.texts["nickNameText"]) {
-          boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
-            const position = trs.position as [number, number, number]
-            const scale = trs.scale as [number, number, number]
+          boardCreateOffsetInfo.nickNameText.forEach((trs) => {
+            const position = trs.position as [number, number, number];
+            const scale = trs.scale as [number, number, number];
             dummy.position.set(...position);
             dummy.scale.set(...scale);
 
             dummy.getWorldPosition(finalPos);
-            dummy.getWorldScale(finalScale)
+            dummy.getWorldScale(finalScale);
             dummy.getWorldQuaternion(finalQuat);
             finalEuler.setFromQuaternion(finalQuat);
-            tetris.texts["nickNameText"].position.set(finalPos.x, finalPos.y, finalPos.z)
-            tetris.texts["nickNameText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
-            tetris.texts["nickNameText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
-          })
+            tetris.texts["nickNameText"].position.set(
+              finalPos.x,
+              finalPos.y,
+              finalPos.z
+            );
+            tetris.texts["nickNameText"].scale.set(
+              finalScale.x,
+              finalScale.y,
+              finalScale.z
+            );
+            tetris.texts["nickNameText"].rotation.set(
+              finalEuler.x,
+              finalEuler.y,
+              finalEuler.z
+            );
+          });
         }
-        
       }
 
       {
         if (tetris.texts["infoText"]) {
-          boardCreateOffsetInfo.infoText.forEach((trs)=>{
-            const position = trs.position as [number, number, number]
-            const scale = trs.scale as [number, number, number]
+          boardCreateOffsetInfo.infoText.forEach((trs) => {
+            const position = trs.position as [number, number, number];
+            const scale = trs.scale as [number, number, number];
             dummy.position.set(...position);
             dummy.scale.set(...scale);
 
             dummy.getWorldPosition(finalPos);
-            dummy.getWorldScale(finalScale)
+            dummy.getWorldScale(finalScale);
             dummy.getWorldQuaternion(finalQuat);
             finalEuler.setFromQuaternion(finalQuat);
-            tetris.texts["infoText"].position.set(finalPos.x, finalPos.y, finalPos.z)
-            tetris.texts["infoText"].scale.set(finalScale.x, finalScale.y, finalScale.z)
-            tetris.texts["infoText"].rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
-          })
+            tetris.texts["infoText"].position.set(
+              finalPos.x,
+              finalPos.y,
+              finalPos.z
+            );
+            tetris.texts["infoText"].scale.set(
+              finalScale.x,
+              finalScale.y,
+              finalScale.z
+            );
+            tetris.texts["infoText"].rotation.set(
+              finalEuler.x,
+              finalEuler.y,
+              finalEuler.z
+            );
+          });
         }
       }
 
       {
         if (tetris.textureTexts["nickNameText"]) {
-          boardCreateOffsetInfo.nickNameText.forEach((trs)=>{
-            const position = trs.position as [number, number, number]
-            const scale = trs.scale as [number, number, number]
+          boardCreateOffsetInfo.nickNameText.forEach((trs) => {
+            const position = trs.position as [number, number, number];
+            const scale = trs.scale as [number, number, number];
             dummy.position.set(...position);
             dummy.scale.set(...scale);
 
             dummy.getWorldPosition(finalPos);
-            dummy.getWorldScale(finalScale)
+            dummy.getWorldScale(finalScale);
             dummy.getWorldQuaternion(finalQuat);
             finalEuler.setFromQuaternion(finalQuat);
-            tetris.textureTexts["nickNameText"].mesh.position.set(finalPos.x, finalPos.y, finalPos.z)
-            tetris.textureTexts["nickNameText"].mesh.scale.set(finalScale.x, finalScale.y, finalScale.z)
-            tetris.textureTexts["nickNameText"].mesh.rotation.set(finalEuler.x, finalEuler.y, finalEuler.z)
-          })
+            tetris.textureTexts["nickNameText"].mesh.position.set(
+              finalPos.x,
+              finalPos.y,
+              finalPos.z
+            );
+            tetris.textureTexts["nickNameText"].mesh.scale.set(
+              finalScale.x,
+              finalScale.y,
+              finalScale.z
+            );
+            tetris.textureTexts["nickNameText"].mesh.rotation.set(
+              finalEuler.x,
+              finalEuler.y,
+              finalEuler.z
+            );
+          });
         }
       }
-      
+
       {
-        const newArr = instanced3dText.current.Next.filter(item => item.id !== `${boardId}_Next`);
+        const newArr = instanced3dText.current.Next.filter(
+          (item) => item.id !== `${boardId}_Next`
+        );
         instanced3dText.current.Next = newArr;
-        boardCreateOffsetInfo.Next.forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
+        boardCreateOffsetInfo.Next.forEach((trs) => {
+          const position = trs.position as [number, number, number];
+          const scale = trs.scale as [number, number, number];
           dummy.position.set(...position);
           dummy.scale.set(...scale);
-          
+
           dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
+          dummy.getWorldScale(finalScale);
           dummy.getWorldQuaternion(finalQuat);
           finalEuler.setFromQuaternion(finalQuat);
           instanced3dText.current.Next.push({
@@ -1505,23 +1758,25 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             transform: {
               position: [finalPos.x, finalPos.y, finalPos.z],
               rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
-          })
-        })
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
+          });
+        });
       }
 
       {
-        const newArr = instanced3dText.current.Hold.filter(item => item.id !== `${boardId}_Hold`);
+        const newArr = instanced3dText.current.Hold.filter(
+          (item) => item.id !== `${boardId}_Hold`
+        );
         instanced3dText.current.Hold = newArr;
-        boardCreateOffsetInfo.Hold.forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
+        boardCreateOffsetInfo.Hold.forEach((trs) => {
+          const position = trs.position as [number, number, number];
+          const scale = trs.scale as [number, number, number];
           dummy.position.set(...position);
           dummy.scale.set(...scale);
-          
+
           dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
+          dummy.getWorldScale(finalScale);
           dummy.getWorldQuaternion(finalQuat);
           finalEuler.setFromQuaternion(finalQuat);
           instanced3dText.current.Hold.push({
@@ -1529,24 +1784,25 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             transform: {
               position: [finalPos.x, finalPos.y, finalPos.z],
               rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
-          })
-        })
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
+          });
+        });
       }
 
-
       {
-        const newArr = blocks.Case.filter(item => item.id !== `${boardId}_Block`)
+        const newArr = blocks.Case.filter(
+          (item) => item.id !== `${boardId}_Block`
+        );
         blocks.Case = newArr;
-        boardCreateOffsetInfo.Case.forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
+        boardCreateOffsetInfo.Case.forEach((trs) => {
+          const position = trs.position as [number, number, number];
+          const scale = trs.scale as [number, number, number];
           dummy.position.set(...position);
           dummy.scale.set(...scale);
-          
+
           dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
+          dummy.getWorldScale(finalScale);
           dummy.getWorldQuaternion(finalQuat);
           finalEuler.setFromQuaternion(finalQuat);
           blocks.Case.push({
@@ -1554,23 +1810,25 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             transform: {
               position: [finalPos.x, finalPos.y, finalPos.z],
               rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
           });
-        })
+        });
       }
 
       {
-        const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block`)
+        const newArr = blocks.Cover.filter(
+          (item) => item.id !== `${boardId}_Block`
+        );
         blocks.Cover = newArr;
-        boardCreateOffsetInfo.Cover.forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
+        boardCreateOffsetInfo.Cover.forEach((trs) => {
+          const position = trs.position as [number, number, number];
+          const scale = trs.scale as [number, number, number];
           dummy.position.set(...position);
           dummy.scale.set(...scale);
-          
+
           dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
+          dummy.getWorldScale(finalScale);
           dummy.getWorldQuaternion(finalQuat);
           finalEuler.setFromQuaternion(finalQuat);
           blocks.Cover.push({
@@ -1578,18 +1836,22 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             transform: {
               position: [finalPos.x, finalPos.y, finalPos.z],
               rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
           });
-        })
+        });
       }
 
       {
-        const isCovered = blocks.Cover.filter(item => item.id === `${boardId}_Block_EndCover`).length > 0;
+        const isCovered =
+          blocks.Cover.filter((item) => item.id === `${boardId}_Block_EndCover`)
+            .length > 0;
         if (isCovered) {
-          const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`)
+          const newArr = blocks.Cover.filter(
+            (item) => item.id !== `${boardId}_Block_EndCover`
+          );
           blocks.Cover = newArr;
-          boardCreateOffsetInfo.EndCover.forEach((trs)=>{
+          boardCreateOffsetInfo.EndCover.forEach((trs) => {
             const position = trs.position as [number, number, number];
             const scale = trs.scale as [number, number, number];
 
@@ -1598,51 +1860,33 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
             dummy.getWorldPosition(finalPos);
             dummy.getWorldQuaternion(finalQuat);
-            dummy.getWorldScale(finalScale)
+            dummy.getWorldScale(finalScale);
             finalEuler.setFromQuaternion(finalQuat);
             blocks.Cover.push({
               id: `${boardId}_Block_EndCover`,
               transform: {
                 position: [finalPos.x, finalPos.y, finalPos.z],
                 rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-                scale: [finalScale.x, finalScale.y, finalScale.z]
-              }
+                scale: [finalScale.x, finalScale.y, finalScale.z],
+              },
             });
-          })
+          });
         }
       }
 
       {
-        const newArr = blocks.CoverLine.filter(item => item.id !== `${boardId}_Block`)
+        const newArr = blocks.CoverLine.filter(
+          (item) => item.id !== `${boardId}_Block`
+        );
         blocks.CoverLine = newArr;
-        boardCreateOffsetInfo.CoverLineX().forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
+        boardCreateOffsetInfo.CoverLineX().forEach((trs) => {
+          const position = trs.position as [number, number, number];
+          const scale = trs.scale as [number, number, number];
           dummy.position.set(...position);
           dummy.scale.set(...scale);
-          
-          dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
-          dummy.getWorldQuaternion(finalQuat);
-          finalEuler.setFromQuaternion(finalQuat);
-          blocks.CoverLine.push({
-            id: `${boardId}_Block`,
-            transform: {
-              position: [finalPos.x, finalPos.y, finalPos.z],
-              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
-          });
-        })
 
-        boardCreateOffsetInfo.CoverLineY().forEach((trs)=>{
-          const position = trs.position as [number, number, number]
-          const scale = trs.scale as [number, number, number]
-          dummy.position.set(...position);
-          dummy.scale.set(...scale);
-          
           dummy.getWorldPosition(finalPos);
-          dummy.getWorldScale(finalScale)
+          dummy.getWorldScale(finalScale);
           dummy.getWorldQuaternion(finalQuat);
           finalEuler.setFromQuaternion(finalQuat);
           blocks.CoverLine.push({
@@ -1650,43 +1894,57 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
             transform: {
               position: [finalPos.x, finalPos.y, finalPos.z],
               rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-              scale: [finalScale.x, finalScale.y, finalScale.z]
-            }
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
           });
-        })
+        });
+
+        boardCreateOffsetInfo.CoverLineY().forEach((trs) => {
+          const position = trs.position as [number, number, number];
+          const scale = trs.scale as [number, number, number];
+          dummy.position.set(...position);
+          dummy.scale.set(...scale);
+
+          dummy.getWorldPosition(finalPos);
+          dummy.getWorldScale(finalScale);
+          dummy.getWorldQuaternion(finalQuat);
+          finalEuler.setFromQuaternion(finalQuat);
+          blocks.CoverLine.push({
+            id: `${boardId}_Block`,
+            transform: {
+              position: [finalPos.x, finalPos.y, finalPos.z],
+              rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
+              scale: [finalScale.x, finalScale.y, finalScale.z],
+            },
+          });
+        });
       }
 
       this.garbageQueueSet(boardId, tetris.garbageQueue);
 
-
-
-
-
-
-
       updateBoardInstancedMeshse(boardId);
       updateInstancedMeshes();
-      updateInstanced3dMeshes()
+      updateInstanced3dMeshes();
     },
 
     spawnFromHold(boardId, block, hold) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
-    
+
       const plan = tetris.board.trySpawnFalling(block);
       tetris.board.applySpawnFalling(plan);
-      
+
       tetris.hold = hold;
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     spawnFromNext(boardId, block) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
@@ -1695,31 +1953,31 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       tetris.next.shift();
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     nextAdd(boardId, block) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
-      tetris.next.push(block)
+      tetris.next.push(block);
     },
     step: (boardId) => {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       try {
         const plan = tetris.board.tryStep();
-        tetris.board.applyStep(plan)
+        tetris.board.applyStep(plan);
       } catch (e) {
         if (e instanceof Error) {
           console.error(e.message); // OK
         } else {
-          console.error('Unknown error', e);
+          console.error("Unknown error", e);
         }
         // const isStepError = (err: unknown): err is StepError => {
         //   return (
@@ -1740,105 +1998,105 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
         // }
       }
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     moveRight(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       const plan = tetris.board.tryMoveFalling("Right");
-      tetris.board.applyMoveFalling(plan)
+      tetris.board.applyMoveFalling(plan);
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     moveLeft(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       const plan = tetris.board.tryMoveFalling("Left");
-      tetris.board.applyMoveFalling(plan)
+      tetris.board.applyMoveFalling(plan);
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     rotateRight(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       const plan = tetris.board.tryRotateFalling("Right");
-      tetris.board.applyRotateFalling(plan)
+      tetris.board.applyRotateFalling(plan);
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     rotateLeft(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       const plan = tetris.board.tryRotateFalling("Left");
-      tetris.board.applyRotateFalling(plan)
+      tetris.board.applyRotateFalling(plan);
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     hardDrop(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
-     try {
+      try {
         tetris.board.hardDrop();
       } catch (e) {
-        console.log(e)
+        console.log(e);
       }
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     lineClear(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       const clear = tetris.board.tryLineClear();
-      tetris.board.applyLineClear(clear)
+      tetris.board.applyLineClear(clear);
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     holdFalling(boardId, tetr) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
-      tetris.hold = tetr
-      updateBoardInstancedMeshse(boardId)
+      tetris.hold = tetr;
+      updateBoardInstancedMeshse(boardId);
     },
     placing(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       tetris.board.placeFalling();
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     removeFalling(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       tetris.board.removeFallingBlocks();
@@ -1847,7 +2105,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     scoreEffect(boardId, kind) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       const group = new THREE.Group();
@@ -1856,7 +2114,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       group.scale.set(...tetris.boardTransform.scale);
 
       const dummy = new THREE.Object3D();
-      group.add(dummy)
+      group.add(dummy);
 
       const finalPos = new THREE.Vector3();
       const finalQuat = new THREE.Quaternion();
@@ -1864,9 +2122,9 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const finalScale = new THREE.Vector3();
 
       if (tetris.texts["scoreEffectText"]) {
-        clearTimeout(scoreEffectTimeout)
-        removeText(tetris.texts["scoreEffectText"])
-        delete tetris.texts["scoreEffectText"]
+        clearTimeout(scoreEffectTimeout);
+        removeText(tetris.texts["scoreEffectText"]);
+        delete tetris.texts["scoreEffectText"];
       }
 
       dummy.position.set(-4, -10, 0);
@@ -1878,19 +2136,19 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const scoreEffectText = addText(txt, {
         position: [finalPos.x, finalPos.y, finalPos.z],
         rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-        scale: [finalScale.x,finalScale.y,finalScale.z],
+        scale: [finalScale.x, finalScale.y, finalScale.z],
       });
       tetris.texts["scoreEffectText"] = scoreEffectText;
 
-      scoreEffectTimeout = setTimeout(()=>{
-        removeText(tetris.texts["scoreEffectText"])
-        delete tetris.texts["scoreEffectText"]
-      }, 1500)
+      scoreEffectTimeout = setTimeout(() => {
+        removeText(tetris.texts["scoreEffectText"]);
+        delete tetris.texts["scoreEffectText"];
+      }, 1500);
     },
     infoTextUpdate(boardId, data) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       if (data.level) {
@@ -1910,7 +2168,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     addEndCover(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
@@ -1922,14 +2180,14 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       group.scale.set(...tetris.boardTransform.scale);
 
       const dummy = new THREE.Object3D();
-      group.add(dummy)
+      group.add(dummy);
 
       const finalPos = new THREE.Vector3();
       const finalQuat = new THREE.Quaternion();
       const finalEuler = new THREE.Euler();
       const finalScale = new THREE.Vector3();
 
-      boardCreateOffsetInfo.EndCover.forEach((trs)=>{
+      boardCreateOffsetInfo.EndCover.forEach((trs) => {
         const position = trs.position as [number, number, number];
         const scale = trs.scale as [number, number, number];
 
@@ -1938,29 +2196,31 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
         dummy.getWorldPosition(finalPos);
         dummy.getWorldQuaternion(finalQuat);
-        dummy.getWorldScale(finalScale)
+        dummy.getWorldScale(finalScale);
         finalEuler.setFromQuaternion(finalQuat);
         blocks.Cover.push({
           id: `${boardId}_Block_EndCover`,
           transform: {
             position: [finalPos.x, finalPos.y, finalPos.z],
             rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-            scale: [finalScale.x, finalScale.y, finalScale.z]
-          }
+            scale: [finalScale.x, finalScale.y, finalScale.z],
+          },
         });
-      })
+      });
 
       updateInstancedMeshes();
     },
     removeEndCover(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       const blocks = instancedBlocks.current;
-      const newArr = blocks.Cover.filter(item => item.id !== `${boardId}_Block_EndCover`)
+      const newArr = blocks.Cover.filter(
+        (item) => item.id !== `${boardId}_Block_EndCover`
+      );
       blocks.Cover = newArr;
 
       updateInstancedMeshes();
@@ -1969,7 +2229,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     timerOn(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       tetris.isTimerOn = true;
@@ -1977,7 +2237,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     timerOff(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       tetris.isTimerOn = false;
@@ -1985,7 +2245,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
     timerReset(boardId) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       tetris.lastUpdatedTime = 0;
@@ -1993,21 +2253,25 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
 
       tetris.isTimerOn = false;
 
-      infoTextDiffUpdate(boardId)
+      infoTextDiffUpdate(boardId);
     },
     garbageQueueSet(boardId, garbageQueue) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
 
       tetris.garbageQueue = garbageQueue;
-      
+
       const blocks = instancedBlocks.current;
 
-      blocks.GarbageQueue = blocks.GarbageQueue.filter(item => item.id !== `${boardId}_Block`);
-      blocks.GarbageReady = blocks.GarbageReady.filter(item => item.id !== `${boardId}_Block`);
+      blocks.GarbageQueue = blocks.GarbageQueue.filter(
+        (item) => item.id !== `${boardId}_Block`
+      );
+      blocks.GarbageReady = blocks.GarbageReady.filter(
+        (item) => item.id !== `${boardId}_Block`
+      );
 
       const group = new THREE.Group();
       group.position.set(...tetris.boardTransform.position);
@@ -2015,7 +2279,7 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       group.scale.set(...tetris.boardTransform.scale);
 
       const dummy = new THREE.Object3D();
-      group.add(dummy)
+      group.add(dummy);
 
       const finalPos = new THREE.Vector3();
       const finalQuat = new THREE.Quaternion();
@@ -2025,7 +2289,6 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
       const yBase = -26;
       let y = 0;
       for (const gq of garbageQueue) {
-        
         for (let i = 0; i < gq.line; i++) {
           y += 1;
           dummy.position.set(-1.0, yBase + y, 0);
@@ -2041,8 +2304,8 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
               transform: {
                 position: [finalPos.x, finalPos.y, finalPos.z],
                 rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-                scale: [finalScale.x, finalScale.y, finalScale.z]
-              }
+                scale: [finalScale.x, finalScale.y, finalScale.z],
+              },
             });
           } else if (gq.kind === "Ready") {
             blocks.GarbageReady.push({
@@ -2050,107 +2313,104 @@ export const OptTetris = forwardRef<OptTetrisController>((_, ref) => {
               transform: {
                 position: [finalPos.x, finalPos.y, finalPos.z],
                 rotation: [finalEuler.x, finalEuler.y, finalEuler.z],
-                scale: [finalScale.x, finalScale.y, finalScale.z]
-              }
+                scale: [finalScale.x, finalScale.y, finalScale.z],
+              },
             });
           }
         }
-        
-        
       }
-      
-      updateInstancedMeshes()
+
+      updateInstancedMeshes();
     },
     garbageAdd(boardId, emptyx) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('tetris undefined');
+        console.log("tetris undefined");
         return;
       }
       for (const x of emptyx) {
         tetris.board.pushGarbageLine(x);
       }
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
 
     gameSync(data) {
-        for(const [boardId, syncData] of Object.entries(data)) {
-          this.gameBoardSync(boardId, syncData)
-        }
+      for (const [boardId, syncData] of Object.entries(data)) {
+        this.gameBoardSync(boardId, syncData);
+      }
     },
     gameBoardSync(boardId, syncData) {
       const tetris = tetrisGames.current[boardId];
       if (!tetris) {
-        console.log('[gameSync] tetris undefined', boardId);
+        console.log("[gameSync] tetris undefined", boardId);
         // continue;
         return;
       }
       // boardSet
       for (const [lineIdx, line] of syncData.board.entries()) {
         for (const [tileIdx, tile] of line.entries()) {
-          tetris.board.setLocation(tileIdx, lineIdx, tile)
+          tetris.board.setLocation(tileIdx, lineIdx, tile);
         }
       }
       // gq set
-      this.garbageQueueSet(boardId, syncData.garbageQueue)
+      this.garbageQueueSet(boardId, syncData.garbageQueue);
 
       // hold set
-      this.holdFalling(boardId, syncData.hold)
-      
+      this.holdFalling(boardId, syncData.hold);
+
       // next set
       // syncData.next
       tetris.next = [];
       for (const next of syncData.next) {
-        this.nextAdd(boardId, next)
+        this.nextAdd(boardId, next);
       }
 
       // level set
       // score set
       this.infoTextUpdate(boardId, {
         level: syncData.level,
-        score: syncData.score
-      })
+        score: syncData.score,
+      });
 
       // game over cover
       if (syncData.isBoardEnd) {
         this.removeEndCover(boardId);
         this.addEndCover(boardId, "");
         this.timerOff(boardId);
-        this.infoTextUpdate(boardId, {time: syncData.elapsed/1000});
+        this.infoTextUpdate(boardId, { time: syncData.elapsed / 1000 });
       }
-      
 
-      updateBoardInstancedMeshse(boardId)
+      updateBoardInstancedMeshse(boardId);
     },
     setGameId(gameId) {
-        _predicatesReset();
-        nowGameId.current = gameId;
+      _predicatesReset();
+      nowGameId.current = gameId;
     },
-    
+
     getMyBoardId() {
-        return myBoardTransform.current.boardId
+      return myBoardTransform.current.boardId;
     },
     predicatesReset() {
-        _predicatesReset();
+      _predicatesReset();
     },
     predicateValidation(predicate) {
-        return _predicateValidation(predicate);
+      return _predicateValidation(predicate);
     },
     predicatesLock() {
-        isLockedPredicate.current = true;
+      isLockedPredicate.current = true;
     },
     predicatesUnLock() {
-        isLockedPredicate.current = false;
+      isLockedPredicate.current = false;
     },
     boardSyncLock() {
-        isLockedBoardSync.current = true;
+      isLockedBoardSync.current = true;
     },
     boardSyncUnLock() {
-        isLockedBoardSync.current = false;
+      isLockedBoardSync.current = false;
     },
   };
 
-  useImperativeHandle(ref, ()=>optTetrisController);
+  useImperativeHandle(ref, () => optTetrisController);
 
-  return null
-})
+  return null;
+});

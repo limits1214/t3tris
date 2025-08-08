@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TetrisBoard } from "./board";
+import { ActionHandler, TetrisBoard } from "./board";
 import { GameInput } from "./input";
 import { GameRender } from "./render";
 import type { BoardId, Transform } from "./type";
@@ -39,20 +39,37 @@ export class GameManager {
     this.input.init();
   }
 
-  setPlayer(boardId: BoardId, nickName: string) {
-    if (this.boards[boardId]) {
-      this.playerBoardId = boardId;
-      this.playerNickName = nickName;
-      this.input.delegation = this.boards[boardId].actionHandler;
-      this.gameLoop.delegation = this.boards[boardId].tickerHandler;
-    }
-  }
+  // setPlayer(boardId: BoardId, nickName: string) {
+  //   if (this.boards[boardId]) {
+  //     this.playerBoardId = boardId;
+  //     this.playerNickName = nickName;
+  //     this.input.delegation = this.boards[boardId].actionHandler;
+  //     this.gameLoop.delegation = this.boards[boardId].tickerHandler;
+  //   }
+  // }
 
-  createBoard(boardId: BoardId, nickName: string, transform: Transform) {
+  // createBoard(boardId: BoardId, nickName: string, transform: Transform) {
+  //   const newBoard = new TetrisBoard(this.render, boardId, nickName);
+  //   newBoard.init(transform);
+  //   this.boards[boardId] = newBoard;
+  // }
+
+  createPlayerBoard(boardId: BoardId, nickName: string) {
+    this.playerBoardId = boardId;
+    this.playerNickName = nickName;
     const newBoard = new TetrisBoard(this.render, boardId, nickName);
-    newBoard.init(transform);
+    newBoard.actionHandler = new ActionHandler(newBoard);
+    // newBoard.tickerHandler = new TickerHandler;
+    // newBoard.ctrl = new Ctrl
+    this.input.delegation = newBoard.actionHandler;
+    this.gameLoop.delegation = newBoard.tickerHandler;
+    newBoard.init(this.playerBoardTransform);
     this.boards[boardId] = newBoard;
   }
+
+  // createOtherBoard(boardId: BoardId, nickName: string) {
+  //   //
+  // }
 
   deleteBoard(boardId: BoardId) {
     this.boards[boardId]?.destroy();
@@ -61,12 +78,12 @@ export class GameManager {
 
   frame(delta: number) {
     this.input.frame(delta);
+    this.gameLoop.gameLoopUpdate(delta);
+
     for (const [, board] of Object.entries(this.boards)) {
       board?.timer.tick(delta);
-
       board?.renderHandler.frame();
     }
-    this.gameLoop.gameLoopUpdate(delta);
     this.render.updateInstancedMeshs();
   }
 

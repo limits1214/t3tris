@@ -21,7 +21,6 @@ import type {
 } from "tetris-lib/bindings";
 
 export class TetrisBoard {
-  render: GameRender;
   board: JsBoard = new JsBoard(10, 26);
   hold: Tetrimino | null = null;
   next: Tetrimino[] = [];
@@ -35,17 +34,16 @@ export class TetrisBoard {
   isTSpin = false;
 
   timer: Timer;
-  actionHandler: Actionhandler;
+  actionHandler?: ActionDelegation;
   renderHandler: RenderHandler;
-  tickerHandler: TickerHandler;
-  ctrl: Controller;
+  tickerHandler: TickerHandler; // TODO undefined
+  ctrl: TetrisBoardController;
   constructor(render: GameRender, boardId: BoardId, nickName: string) {
-    this.render = render;
     this.boardId = boardId;
     this.nickName = nickName;
     this.timer = new Timer(this.info);
-    this.actionHandler = new Actionhandler(this);
-    this.renderHandler = new RenderHandler(this);
+    // this.actionHandler = new Actionhandler(this);
+    this.renderHandler = new RenderHandler(this, render);
     this.tickerHandler = new TickerHandler(this);
     this.ctrl = new Controller(this);
   }
@@ -124,7 +122,7 @@ class Controller implements TetrisBoardController {
     throw new Error("Method not implemented.");
   }
   countdown(count: number): void {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not implemented." + count);
   }
   gameStart(): void {
     console.log("gameStart");
@@ -312,7 +310,7 @@ class TickerHandler implements TickerDelegation {
         this.placingDelayTick += 1;
         if (this.placingDelayTick >= 30) {
           this.isPlacingDelay = false;
-          const [clearLen, score] = this.placing();
+          const [, score] = this.placing();
 
           if (score) {
             this.tetrisBoard.ctrl.scoreEffect(score, this.tetrisBoard.combo);
@@ -373,10 +371,10 @@ class TickerHandler implements TickerDelegation {
       this.tetrisBoard.ctrl.lineClear();
 
       // combo
-      if (this.tetrisBoard.tickerHandler.comboTick > 0) {
+      if (this.comboTick > 0) {
         this.tetrisBoard.combo += 1;
       }
-      this.tetrisBoard.tickerHandler.comboTick = 150; //2.5sec
+      this.comboTick = 150; //2.5sec
     }
 
     //
@@ -443,7 +441,7 @@ class TickerHandler implements TickerDelegation {
 
         this.tetrisBoard.ctrl.spawn(nextTetr);
 
-        this.tetrisBoard.tickerHandler.stepTick = 999;
+        this.stepTick = 999;
 
         this.tetrisBoard.ctrl.addNext(
           this.tetrisBoard.getTetriminoFromSevenBag()
@@ -526,7 +524,7 @@ class TickerHandler implements TickerDelegation {
   }
 }
 
-class Actionhandler implements ActionDelegation {
+export class ActionHandler implements ActionDelegation {
   tetrisBoard;
   constructor(tetrisBoard: TetrisBoard) {
     this.tetrisBoard = tetrisBoard;
@@ -631,7 +629,7 @@ class Actionhandler implements ActionDelegation {
     this.tetrisBoard.tickerHandler.isPlacingDelay = false;
     this.tetrisBoard.renderHandler.isDirty = true;
 
-    const [clearLen, score] = this.tetrisBoard.tickerHandler.placing();
+    const [, score] = this.tetrisBoard.tickerHandler.placing();
     if (score) {
       this.tetrisBoard.ctrl.scoreEffect(score, this.tetrisBoard.combo);
     }
@@ -675,6 +673,7 @@ class Actionhandler implements ActionDelegation {
 }
 
 class RenderHandler {
+  render: GameRender;
   meshList: ("Grid" | "Case" | "Next" | "Hold" | "Cover")[] = [
     "Grid",
     "Case",
@@ -688,8 +687,9 @@ class RenderHandler {
   tetrisBoard;
   isScoreEffectOn = false;
   scoreEffectTimeout: number | null = null;
-  constructor(tetrisBoard: TetrisBoard) {
+  constructor(tetrisBoard: TetrisBoard, render: GameRender) {
     this.tetrisBoard = tetrisBoard;
+    this.render = render;
   }
   object = new THREE.Object3D();
   create(transform: Transform) {
@@ -729,7 +729,7 @@ class RenderHandler {
     this.meshList.forEach((each) => {
       CONSTANT.gfx.boardCoord[each].forEach((trs) => {
         const obj = trsToObj(trs);
-        this.tetrisBoard.render.pushInstancedMeshInfo(each, {
+        this.render.pushInstancedMeshInfo(each, {
           id: `${this.tetrisBoard.boardId}`,
           object: obj,
         });
@@ -739,11 +739,7 @@ class RenderHandler {
     this.textList.forEach((each) => {
       CONSTANT.gfx.boardCoord[each].forEach((trs) => {
         const obj = trsToObj(trs);
-        this.tetrisBoard.render.addText(
-          `${this.tetrisBoard.boardId}_${each}`,
-          each,
-          obj
-        );
+        this.render.addText(`${this.tetrisBoard.boardId}_${each}`, each, obj);
       });
     });
   }
@@ -765,7 +761,7 @@ class RenderHandler {
     this.tetrisBoard.showFallingHint();
 
     for (const tetrimino of this.tetriminos) {
-      this.tetrisBoard.render.removeInstancedMeshInfoByFilterId(
+      this.render.removeInstancedMeshInfoByFilterId(
         tetrimino,
         this.tetrisBoard.boardId
       );
@@ -783,7 +779,7 @@ class RenderHandler {
         obj.position.copy(finalPos);
         obj.quaternion.copy(finalQuat);
         obj.scale.copy(finalScale);
-        this.tetrisBoard.render.pushInstancedMeshInfo(next, {
+        this.render.pushInstancedMeshInfo(next, {
           id: `${this.tetrisBoard.boardId}`,
           object: obj,
         });
@@ -804,7 +800,7 @@ class RenderHandler {
         obj.position.copy(finalPos);
         obj.quaternion.copy(finalQuat);
         obj.scale.copy(finalScale);
-        this.tetrisBoard.render.pushInstancedMeshInfo(this.tetrisBoard.hold, {
+        this.render.pushInstancedMeshInfo(this.tetrisBoard.hold, {
           id: `${this.tetrisBoard.boardId}`,
           object: obj,
         });
@@ -831,7 +827,7 @@ class RenderHandler {
 
           const kind = tile["Falling"].kind;
 
-          this.tetrisBoard.render.pushInstancedMeshInfo(kind, {
+          this.render.pushInstancedMeshInfo(kind, {
             id: `${this.tetrisBoard.boardId}`,
             object: obj,
           });
@@ -850,7 +846,7 @@ class RenderHandler {
           const pid = tile.Placed as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
           const tetr = CONSTANT.gfx.placeIdMap[pid] as TetrisIMesh;
 
-          this.tetrisBoard.render.pushInstancedMeshInfo(tetr, {
+          this.render.pushInstancedMeshInfo(tetr, {
             id: `${this.tetrisBoard.boardId}`,
             object: obj,
           });
@@ -866,7 +862,7 @@ class RenderHandler {
           obj.quaternion.copy(finalQuat);
           obj.scale.copy(finalScale);
 
-          this.tetrisBoard.render.pushInstancedMeshInfo("Hint", {
+          this.render.pushInstancedMeshInfo("Hint", {
             id: `${this.tetrisBoard.boardId}`,
             object: obj,
           });
@@ -889,7 +885,7 @@ class RenderHandler {
   }
 
   updateInfoText() {
-    this.tetrisBoard.render.updateText(
+    this.render.updateText(
       `${this.tetrisBoard.boardId}_infoText`,
       this.infoTextMake(this.tetrisBoard.info)
     );
@@ -913,9 +909,7 @@ class RenderHandler {
       if (this.scoreEffectTimeout) {
         clearTimeout(this.scoreEffectTimeout);
       }
-      this.tetrisBoard.render.removeText(
-        `${this.tetrisBoard.boardId}_ScoreEffectText`
-      );
+      this.render.removeText(`${this.tetrisBoard.boardId}_ScoreEffectText`);
     }
 
     dummy.position.set(-4, -10, 0);
@@ -931,16 +925,14 @@ class RenderHandler {
     const txt = `${kind}${combo}`;
 
     this.isScoreEffectOn = true;
-    this.tetrisBoard.render.addText(
+    this.render.addText(
       `${this.tetrisBoard.boardId}_ScoreEffectText`,
       txt,
       obj
     );
 
     this.scoreEffectTimeout = setTimeout(() => {
-      this.tetrisBoard.render.removeText(
-        `${this.tetrisBoard.boardId}_ScoreEffectText`
-      );
+      this.render.removeText(`${this.tetrisBoard.boardId}_ScoreEffectText`);
       this.isScoreEffectOn = false;
     }, 1500);
   }
@@ -955,13 +947,13 @@ class RenderHandler {
 
   destroy() {
     [...this.meshList, ...this.tetriminos].forEach((each) => {
-      this.tetrisBoard.render.removeInstancedMeshInfoByFilterId(
+      this.render.removeInstancedMeshInfoByFilterId(
         each,
         `${this.tetrisBoard.boardId}`
       );
     });
     this.textList.forEach((each) => {
-      this.tetrisBoard.render.removeText(`${this.tetrisBoard.boardId}_${each}`);
+      this.render.removeText(`${this.tetrisBoard.boardId}_${each}`);
     });
   }
 }

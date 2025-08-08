@@ -41,16 +41,8 @@ export const ClientTetris = forwardRef<ClientTetrisController>((_, ref) => {
   });
 
   const clientTetrisController: ClientTetrisController = {
-    setPlayer(boardId, nickName) {
-      gameManager.current.setPlayer(boardId, nickName);
-    },
     createPlayerBoard(boardId, nickName) {
-      gameManager.current.createBoard(
-        boardId,
-        nickName,
-        gameManager.current.playerBoardTransform
-      );
-      gameManager.current.setPlayer(boardId, nickName);
+      gameManager.current.createPlayerBoard(boardId, nickName);
     },
     createOtherBoard(boardId, nickName) {
       // gameManager.current.createBoard(boardId, nickName);

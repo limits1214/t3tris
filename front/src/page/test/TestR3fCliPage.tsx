@@ -2,16 +2,10 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { button, folder, useControls } from "leva";
-import {
-  OrbitControls,
-  OrthographicCamera,
-  PerspectiveCamera,
-} from "@react-three/drei";
+import { OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { css } from "@emotion/react";
 import { useEffect, useRef } from "react";
 
-import * as THREE from "three";
-import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import React from "react";
 import {
   ClientTetris,
@@ -22,10 +16,6 @@ import { RaTimer } from "../../component/game/util";
 const LazyPerf = React.lazy(() => import("../../component/r3f/Perf"));
 
 const TestR3fCliPage = () => {
-  const boardCnt = useRef(0);
-  const cameraCnt = useRef(0);
-
-  const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   return (
     <div
       css={css`
@@ -111,9 +101,9 @@ const ThreeComponent = () => {
         ref.current?.boardTimerReset(get("boardId"));
       }),
     }),
-    // gameStart: button(() => {
-    //   // ref.current?.gameStart();
-    // }),
+    gameStart: button(() => {
+      ref.current?.gameStart();
+    }),
     boardSetup: button((get) => {
       ref.current?.setup(get("boardId"), {
         hold: "T",

@@ -1,4 +1,4 @@
-import type { Board, Tetrimino } from "tetris-lib/bindings";
+import type { Tetrimino } from "tetris-lib/bindings";
 import * as THREE from "three";
 
 export type BoardId = string;
@@ -67,7 +67,6 @@ export interface BoardDelegatin {
 export type BoardSetup = {
   hold: Tetrimino | null;
   next: Tetrimino[];
-  board?: Board;
 };
 
 export interface TickerDelegation {

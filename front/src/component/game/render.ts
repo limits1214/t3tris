@@ -117,7 +117,10 @@ export class GameRender {
     im.Garbage.material = this.makeLambertMat(CONSTANT.gfx.color.mesh.Garbage);
 
     im.Hint.geometry = tetriminoGeo;
-    im.Hint.material = this.makeLambertMat(CONSTANT.gfx.color.mesh.Hint);
+    im.Hint.material = this.makeLambertMat(CONSTANT.gfx.color.mesh.Hint, {
+      opacity: 0.7,
+      transparent: true,
+    });
     im.Hint.renderOrder = 999;
 
     im.I.geometry = tetriminoGeo;

@@ -19,13 +19,13 @@ export class GameLoop {
 
   gameLoopUpdate(delta: number) {
     this.accumulatedDelta += delta;
-    if (this.accumulatedDelta - this.lastTicking > this.oneTick) {
+    if (this.accumulatedDelta - this.lastTicking >= this.oneTick) {
       this.delegation?.ticking();
-      this.lastTicking = this.oneTick;
+      this.lastTicking += this.oneTick;
     }
   }
 
   gameLoopEnd() {
-    // this.delegation?.evtGameOver();
+    this.delegation?.endTicking();
   }
 }

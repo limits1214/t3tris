@@ -2,6 +2,9 @@ import type { ActionDelegation } from "./type";
 import { RaTimer } from "./util";
 
 export class GameInput {
+  moveFirstStuckDelay = (1 / 60) * 1000 * 8;
+  moveIntervalDelay = (1 / 60) * 1000 * 2;
+  softDropDelay = (1 / 60) * 1000 * 2;
   delegation: ActionDelegation | undefined;
   isActive = true;
   private handleKeyDown = this.keydown.bind(this);
@@ -19,45 +22,42 @@ export class GameInput {
   softDropInterval: number | null = null;
 
   keydown(e: KeyboardEvent) {
-    if (!this.isActive) return;
+    if (!this.isActive || e.repeat) return;
     const k = e.key;
-    // console.log(k);
     if (k === "a" || k === "ArrowLeft") {
-      if (this.moveSet.has("L")) {
-        return;
-      }
       const action = () => {
-        this.delegation?.actMoveLeft();
+        const cache = [...this.moveSet];
+        if (cache[cache.length - 1] === "L") {
+          this.delegation?.actMoveLeft();
+        }
       };
+
       this.moveSet.add("L");
       action();
       this.moveLeftTimeout = this.raTimer.setTimeout(() => {
         action();
         this.moveLeftInterval = this.raTimer.setInterval(() => {
-          if ([...this.moveSet][this.moveSet.size - 1] === "L") {
-            action();
-          }
-        }, 20);
-      }, 150);
+          action();
+        }, this.moveIntervalDelay);
+      }, this.moveFirstStuckDelay);
     }
 
     if (k === "d" || k === "ArrowRight") {
-      if (this.moveSet.has("R")) {
-        return;
-      }
       const action = () => {
-        this.delegation?.actMoveRight();
+        const cache = [...this.moveSet];
+        if (cache[cache.length - 1] === "R") {
+          this.delegation?.actMoveRight();
+        }
       };
+
       this.moveSet.add("R");
       action();
       this.moveRightTimeout = this.raTimer.setTimeout(() => {
         action();
         this.moveRightInterval = this.raTimer.setInterval(() => {
-          if ([...this.moveSet][this.moveSet.size - 1] === "R") {
-            action();
-          }
-        }, 20);
-      }, 150);
+          action();
+        }, this.moveIntervalDelay);
+      }, this.moveFirstStuckDelay);
     }
 
     if (k === "w" || k === "ArrowUp") {
@@ -82,8 +82,12 @@ export class GameInput {
       }
       this.delegation?.actSoftDrop();
       this.softDropInterval = this.raTimer.setInterval(() => {
-        this.delegation?.actSoftDrop();
-      }, 50);
+        try {
+          this.delegation?.actSoftDrop();
+        } catch {
+          //
+        }
+      }, this.softDropDelay);
     }
 
     if (k === "Shift") {

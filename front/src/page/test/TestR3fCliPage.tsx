@@ -74,7 +74,14 @@ const ThreeComponent = () => {
   // const controlsRef = useRef<OrbitControlsImpl>(null);
   useFrame((_state, delta) => {
     raTimer.current.frame(delta);
+    // heavyTask(50);
   });
+  function heavyTask(ms: number) {
+    const end = performance.now() + ms;
+    while (performance.now() < end) {
+      // 아무 것도 안 하고 CPU만 태움
+    }
+  }
 
   useControls({
     boardId: {
@@ -117,21 +124,21 @@ const ThreeComponent = () => {
       ref.current?.step(get("boardId"));
     }),
     testRaTimeout: button(() => {
-      console.log("fire");
-      const x = raTimer.current.setTimeout(() => {
-        console.log("ra timeout");
-      }, 1000);
-      setTimeout(() => {
-        console.log("Native timeout");
-      }, 1000);
-      raTimer.current.clearInterval(x);
-      const y = raTimer.current.setInterval(() => {
-        console.log("ra setInterval");
-      }, 1000);
-
-      setInterval(() => {
-        console.log("Native setInterval");
-      }, 1000);
+      heavyTask(500);
+      // console.log("fire");
+      // const x = raTimer.current.setTimeout(() => {
+      //   console.log("ra timeout");
+      // }, 1000);
+      // setTimeout(() => {
+      //   console.log("Native timeout");
+      // }, 1000);
+      // raTimer.current.clearInterval(x);
+      // const y = raTimer.current.setInterval(() => {
+      //   console.log("ra setInterval");
+      // }, 1000);
+      // setInterval(() => {
+      //   console.log("Native setInterval");
+      // }, 1000);
     }),
   });
   return (

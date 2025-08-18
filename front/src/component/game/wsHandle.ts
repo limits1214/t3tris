@@ -85,7 +85,7 @@ export class WsReceiver {
           this.gm.boards[k]?.ctrl.step();
         } else if (typeof action === "string" && action === "doStep") {
           if (k !== this.gm.mainBoardId) continue;
-          console.log("doStep");
+          console.log("doStep", document.hidden);
 
           if (this.gm.boards[k]) {
             try {
@@ -96,12 +96,13 @@ export class WsReceiver {
                 this.gm.boards[k].isPlacingDelay = true;
                 this.gm.boards[k].placingDelayTick = 0;
                 this.gm.boards[k].placingResetCnt = 15;
+              }
 
-                // out focus 일경우 강제 티킹해버리기 ticking 이 호출되지 않는다 hidden 이여서
-                if (document.hidden) {
-                  this.gm.boards[k].placingDelayTick = 999;
-                  this.gm.boards[k].tickerHandler?.ticking();
-                }
+              // out focus 일경우 강제 티킹해버리기 ticking 이 호출되지 않는다 hidden 이여서
+              if (document.hidden) {
+                this.gm.boards[k].isPlacingDelay = true;
+                this.gm.boards[k].placingDelayTick = 999;
+                this.gm.boards[k].tickerHandler?.ticking();
               }
             }
           }
@@ -202,9 +203,9 @@ export class WsReceiver {
           "doGarbageAdd" in action
         ) {
           // if (k !== this.gm.mainBoardId) continue;
-          // const empty = action["doGarbageAdd"].empty;
-          // console.log("doGarbageAdd", empty);
-          // this.gm.boards[k]?.ctrl.garbageAdd(empty);
+          const empty = action["doGarbageAdd"].empty;
+          console.log("doGarbageAdd", empty);
+          this.gm.boards[k]?.ctrl.garbageAdd(empty);
           // if (this.gm.boards[k]) {
           //   this.gm.boards[k].addGarbageQueue = [
           //     ...this.gm.boards[k].addGarbageQueue,
@@ -219,6 +220,12 @@ export class WsReceiver {
           // if (k === this.gm.mainBoardId) continue;
           // const empty = action["addGarbage"].empty;
           // this.gm.boards[k]?.ctrl.garbageAdd(empty);
+        } else if (typeof action === "string" && action === "doSpawnNext") {
+          if (k !== this.gm.mainBoardId) continue;
+          const isSuccess = this.gm.boards[k]?.spawnFromNext();
+          if (!isSuccess) {
+            this.gm.boards[k]?.ctrl.boardEnd();
+          }
         }
       }
     }

@@ -81,7 +81,7 @@ export class GameRender {
     im.EndCover.material = this.makeLambertMat(
       CONSTANT.gfx.color.mesh.EndCover,
       {
-        opacity: 0.7,
+        opacity: 0.5,
         transparent: true,
       }
     );
@@ -218,6 +218,16 @@ export class GameRender {
     });
     this.instancedMeshInfos[mType].objects = filteredArr;
     this.instancedMeshInfos[mType].isDirty = true;
+  }
+
+  public hasInstancedMeshInfoByFilterId(
+    mType: TetrisIMesh,
+    filterId: string
+  ): boolean {
+    const filteredArr = this.instancedMeshInfos[mType].objects.filter((f) => {
+      return !f.id.includes(filterId);
+    });
+    return filteredArr.length > 0;
   }
 
   public addText(id: string, txt: string, object: THREE.Object3D) {

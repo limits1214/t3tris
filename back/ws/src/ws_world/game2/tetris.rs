@@ -119,7 +119,7 @@ impl TetrisGame {
                 // return false;
             };
         }
-        self.push_action_buffer(TetrisGameActionType::AddGarbage { empty: empty });
+        // self.push_action_buffer(TetrisGameActionType::AddGarbage { empty: empty });
     }
     pub fn garbage_add(&mut self, clear_len: u8) {
         let mut is_garbage_changed = false;
@@ -188,14 +188,15 @@ impl TetrisGame {
         Ok(())
     }
 
-    pub fn line_clear(&mut self) {
+    pub fn line_clear(&mut self) -> usize {
         // TODO Attack
         let clear = self.board.try_line_clear();
-
+        let clear_len = clear.len();
         self.garbage_add(clear.len() as u8);
 
         self.board.apply_line_clear(clear);
         self.push_action_buffer(TetrisGameActionType::LineClear);
+        clear_len
     }
 
     pub fn placing(&mut self) {

@@ -33,6 +33,7 @@ export class TetrisBoard {
   combo: number = 0;
   sevenBag: Tetrimino[] = [];
   isBoardActive = false;
+  isAddEndCover = false;
   isCanHold = true;
   isTSpin = false;
   tick = 0;
@@ -87,6 +88,7 @@ export class TetrisBoard {
       this.timer.off();
       this.renderHandler.removeEndCover();
       this.renderHandler.addEndCover();
+      this.isAddEndCover = true;
     } else {
       this.timer.on();
     }
@@ -219,6 +221,7 @@ export class TetrisBoard {
       return false;
     }
   }
+
   spawnWithGameOverCheck(tetrimino: Tetrimino): boolean {
     const plan = this.board.trySpawnFalling(tetrimino) as TileAt[];
     for (const { location } of plan) {
@@ -367,31 +370,36 @@ class Controller implements TetrisBoardController {
     for (const e of empty) {
       if (!this.tb.board.pushGarbageLine(e)) {
         console.log("TODO: END");
+        this.boardEnd();
       }
     }
 
     // this.tb.addGarbageQueue = empty;
-    // if (this.tb.wsSender) {
-    //   this.tb.wsSender.wsSend({
-    //     addGarbage: {
-    //       empty: empty,
-    //     },
-    //   });
-    // }
+    if (this.tb.wsSender) {
+      this.tb.wsSender.wsSend({
+        addGarbageQueue: {
+          empty: empty,
+        },
+      });
+    }
     this.tb.renderHandler.isDirty = true;
   }
+
   boardStart(): void {
     console.log("boardStart");
     this.tb.timer.reset();
     this.tb.renderHandler.removeEndCover();
+    this.tb.isAddEndCover = false;
+    this.tb.renderHandler.removeGarbageQueue();
     this.tb.timer.on();
     this.tb.isBoardActive = true;
-    this.tb.spawnFromNext();
+    // this.tb.spawnFromNext();
   }
   boardEnd(elapsed?: number): void {
     console.log("gameEnd");
     this.tb.renderHandler.removeEndCover();
     this.tb.renderHandler.addEndCover();
+    this.tb.isAddEndCover = true;
     this.tb.timer.off();
     if (elapsed) {
       this.tb.info.time = elapsed;
@@ -630,6 +638,13 @@ export class MultiTickerHandler implements TickerDelegation {
   ticking(): void {
     if (!this.tb.isBoardActive) return;
 
+    if (!this.tb.board.getFallingBlocks().length) {
+      const isSuccess = this.tb.spawnFromNext();
+      if (!isSuccess) {
+        this.tb.ctrl.boardEnd();
+      }
+    }
+
     this.tb.tick += 1;
     this.tb.stepTick += 1;
 
@@ -641,16 +656,6 @@ export class MultiTickerHandler implements TickerDelegation {
       this.tb.combo = 0;
     }
 
-    // if (this.tb.addGarbageQueue.length) {
-    //   for (const e of this.tb.addGarbageQueue) {
-    //     if (!this.tb.board.pushGarbageLine(e)) {
-    //       console.log("TODO: END");
-    //     }
-    //   }
-    //   this.tb.addGarbageQueue = [];
-    //   this.tb.renderHandler.isDirty = true;
-    // }
-
     if (this.tb.isPlacingDelay) {
       try {
         this.tb.board.tryStep();
@@ -659,34 +664,12 @@ export class MultiTickerHandler implements TickerDelegation {
         if (this.tb.placingDelayTick >= 30) {
           this.tb.isPlacingDelay = false;
           const [, score] = this.tb.placing();
-
           if (score) {
             this.tb.ctrl.scoreEffect(score, this.tb.combo);
-          }
-
-          const isSuccess = this.tb.spawnFromNext();
-
-          if (!isSuccess) {
-            this.tb.ctrl.boardEnd();
           }
         }
       }
     }
-
-    // const lv = this.tb.info.level ?? 1;
-    // if (this.tb.stepTick >= CONSTANT.levelGravityTick[lv > 20 ? 20 : lv]) {
-    //   this.tb.stepTick = 0;
-
-    //   try {
-    //     this.tb.ctrl.step();
-    //   } catch {
-    //     if (!this.tb.isPlacingDelay) {
-    //       this.tb.isPlacingDelay = true;
-    //       this.tb.placingDelayTick = 0;
-    //       this.tb.placingResetCnt = 15;
-    //     }
-    //   }
-    // }
   }
 }
 
@@ -717,7 +700,6 @@ export class SoloTickerHandler implements TickerDelegation {
         setTimeout(() => {
           this.tb.ctrl.boardStart();
 
-          // this.tb.spawnFromNext();
           this.tb.stepTick = 999;
         }, 1000);
       }, 1000);
@@ -726,6 +708,13 @@ export class SoloTickerHandler implements TickerDelegation {
 
   ticking() {
     if (!this.tb.isBoardActive) return;
+
+    if (!this.tb.board.getFallingBlocks().length) {
+      const isSuccess = this.tb.spawnFromNext();
+      if (!isSuccess) {
+        this.tb.ctrl.boardEnd();
+      }
+    }
 
     this.tb.tick += 1;
     this.tb.stepTick += 1;
@@ -749,13 +738,6 @@ export class SoloTickerHandler implements TickerDelegation {
 
           if (score) {
             this.tb.ctrl.scoreEffect(score, this.tb.combo);
-          }
-
-          //
-          const isSuccess = this.tb.spawnFromNext();
-
-          if (!isSuccess) {
-            this.tb.ctrl.boardEnd();
           }
         }
       }
@@ -887,12 +869,6 @@ export class ActionHandler implements ActionDelegation {
     if (score) {
       this.tb.ctrl.scoreEffect(score, this.tb.combo);
     }
-
-    const isSuccess = this.tb.spawnFromNext();
-
-    if (!isSuccess) {
-      this.tb.ctrl.boardEnd();
-    }
   }
   actHold(): void {
     if (!this.tb.isBoardActive) return;
@@ -916,7 +892,6 @@ export class ActionHandler implements ActionDelegation {
       if (firstFalling) {
         this.tb.ctrl.addHold(firstFalling.falling.kind);
         this.tb.ctrl.removeFalling();
-        this.tb.spawnFromNext();
       }
     }
 
@@ -1180,6 +1155,17 @@ class RenderHandler {
     );
   }
 
+  removeGarbageQueue() {
+    this.render.removeInstancedMeshInfoByFilterId(
+      "GarbageQueue",
+      `${this.tetrisBoard.boardId}`
+    );
+    this.render.removeInstancedMeshInfoByFilterId(
+      "GarbageReady",
+      `${this.tetrisBoard.boardId}`
+    );
+  }
+
   move(newTransform: Transform) {
     // "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
     /*
@@ -1250,6 +1236,15 @@ class RenderHandler {
         });
       });
     });
+
+    this.garbageQueueSet(this.tetrisBoard.garbageQueue);
+
+    if (this.tetrisBoard.isAddEndCover) {
+      this.removeEndCover();
+      this.addEndCover();
+    } else {
+      this.removeEndCover();
+    }
 
     // tetrimino
     this.update();

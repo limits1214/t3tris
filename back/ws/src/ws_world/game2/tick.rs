@@ -137,20 +137,16 @@ fn game_loop(
                     }
                 }
 
-                match game.game_type {
-                    WsWorldGameType::Multi40Line => {
-                        if tetris.clear_line >= 40 {
-                            tetris.is_board_end = true;
-                            tetris.line_40_clear = true;
+                if matches!(game.game_type, WsWorldGameType::Multi40Line) {
+                    if tetris.clear_line >= 40 {
+                        tetris.is_board_end = true;
+                        tetris.line_40_clear = true;
 
-                            tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
-                                kind: BoardEndKind::Line40Clear,
-                                elapsed: tetris.elapsed,
-                            });
-                        }
+                        tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                            kind: BoardEndKind::Line40Clear,
+                            elapsed: tetris.elapsed,
+                        });
                     }
-
-                    _ => {}
                 }
 
                 if tetris.step_tick >= level_to_gravity_tick(tetris.level) {
@@ -163,6 +159,24 @@ fn game_loop(
             tetris.is_board_end = false;
 
             tetris.push_action_buffer(TetrisGameActionType::BoardStart);
+        }
+    }
+
+    // battle last check
+    if matches!(game.game_type, WsWorldGameType::MultiBattle) {
+        let mut not_end_boards = game
+            .tetries
+            .iter_mut()
+            .filter(|f| !f.1.is_board_end)
+            .collect::<Vec<_>>();
+        if not_end_boards.len() == 1 {
+            let (_, tetris) = not_end_boards.get_mut(0).unwrap();
+            tetris.is_board_end = true;
+            tetris.battle_win = true;
+            tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                kind: BoardEndKind::BattleWinner,
+                elapsed: tetris.elapsed,
+            });
         }
     }
 

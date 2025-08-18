@@ -995,8 +995,6 @@ class RenderHandler {
     const finalEuler = new THREE.Euler();
     const finalScale = new THREE.Vector3();
 
-    this.tetrisBoard.showFallingHint();
-
     for (const tetrimino of this.tetriminos) {
       this.render.removeInstancedMeshInfoByFilterId(
         tetrimino,
@@ -1402,6 +1400,7 @@ class RenderHandler {
 
   frame() {
     if (this.isDirty) {
+      this.tetrisBoard.showFallingHint();
       this.update();
       this.isDirty = false;
     }

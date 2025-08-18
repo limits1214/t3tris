@@ -85,7 +85,9 @@ export class WsReceiver {
           this.gm.boards[k]?.ctrl.step();
         } else if (typeof action === "string" && action === "doStep") {
           if (k !== this.gm.mainBoardId) continue;
-          console.log("doStep", document.hidden);
+          // board end 했는데 doStep해버리면 rust js, recursive use of an object detected which would lead to unsafe aliasing in rust 에러발생
+          if (!this.gm.boards[k]?.isBoardActive) continue;
+          // console.log("doStep", document.hidden);
 
           if (this.gm.boards[k]) {
             try {

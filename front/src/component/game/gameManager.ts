@@ -5,26 +5,27 @@ import { GameRender } from "./render";
 import type { BoardId, Transform } from "./type";
 import type { Font } from "three/examples/jsm/loaders/FontLoader.js";
 import { GameLoop } from "./gameLoop";
+import { WsReceiver, WsSender } from "./wsHandle";
+import { GameBoardLayout } from "./boardLayout";
 
 export class GameManager {
-  render: GameRender;
-  input: GameInput;
+  render: GameRender = new GameRender();
+  input: GameInput = new GameInput();
   boards: Partial<Record<BoardId, TetrisBoard>> = {};
-  gameLoop: GameLoop;
+  gameLoop: GameLoop = new GameLoop();
+  wsReceiver: WsReceiver = new WsReceiver(this);
+  wsSender: WsSender = new WsSender(this);
+  layout: GameBoardLayout = new GameBoardLayout(this);
 
-  playerBoardId: BoardId | undefined;
-  playerNickName: string | undefined;
-  playerBoardTransform: Transform = {
+  mainBoardId: BoardId | undefined;
+  mainNickName: string | undefined;
+  mainBoardTransform: Transform = {
     position: [-4.5, 15.5, 0],
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
   };
 
-  constructor() {
-    this.render = new GameRender();
-    this.input = new GameInput();
-    this.gameLoop = new GameLoop();
-  }
+  constructor() {}
 
   init({
     tetriminoGeo,
@@ -39,41 +40,69 @@ export class GameManager {
     this.input.init();
   }
 
-  // setPlayer(boardId: BoardId, nickName: string) {
-  //   if (this.boards[boardId]) {
-  //     this.playerBoardId = boardId;
-  //     this.playerNickName = nickName;
-  //     this.input.delegation = this.boards[boardId].actionHandler;
-  //     this.gameLoop.delegation = this.boards[boardId].tickerHandler;
-  //   }
-  // }
-
-  // createBoard(boardId: BoardId, nickName: string, transform: Transform) {
-  //   const newBoard = new TetrisBoard(this.render, boardId, nickName);
-  //   newBoard.init(transform);
-  //   this.boards[boardId] = newBoard;
-  // }
-
-  createPlayerBoard(boardId: BoardId, nickName: string) {
-    this.playerBoardId = boardId;
-    this.playerNickName = nickName;
+  createMultiPlayerBoard(boardId: BoardId, nickName: string) {
+    this.mainBoardId = boardId;
+    this.mainNickName = nickName;
     const newBoard = new TetrisBoard(this.render, boardId, nickName);
     newBoard.actionHandler = new ActionHandler(newBoard);
-    // newBoard.tickerHandler = new TickerHandler;
-    // newBoard.ctrl = new Ctrl
     this.input.delegation = newBoard.actionHandler;
     this.gameLoop.delegation = newBoard.tickerHandler;
-    newBoard.init(this.playerBoardTransform);
+    newBoard.wsSender = this.wsSender;
+    newBoard.init(this.mainBoardTransform);
     this.boards[boardId] = newBoard;
   }
 
-  // createOtherBoard(boardId: BoardId, nickName: string) {
-  //   //
-  // }
+  createMultiSubBoard(boardId: BoardId, nickName: string) {
+    this.layout.subBoardLayoutPacking(1);
+    const newBoard = new TetrisBoard(this.render, boardId, nickName);
+    newBoard.actionHandler = new ActionHandler(newBoard);
+    this.boards[boardId] = newBoard;
+    let trs;
+    for (const slot of this.layout.subBoardTransformLayout) {
+      if (slot.boardId === null) {
+        trs = slot.transform;
+        slot.boardId = boardId;
+        break;
+      }
+    }
+    if (trs) {
+      newBoard.init(trs);
+    }
+  }
+
+  createPlayerBoard(boardId: BoardId, nickName: string) {
+    this.mainBoardId = boardId;
+    this.mainNickName = nickName;
+    const newBoard = new TetrisBoard(this.render, boardId, nickName);
+    newBoard.actionHandler = new ActionHandler(newBoard);
+    this.input.delegation = newBoard.actionHandler;
+    this.gameLoop.delegation = newBoard.tickerHandler;
+
+    newBoard.init(this.mainBoardTransform);
+    this.boards[boardId] = newBoard;
+  }
+
+  createSubBoard(boardId: BoardId, nickName: string) {
+    const newBoard = new TetrisBoard(this.render, boardId, nickName);
+    newBoard.actionHandler = new ActionHandler(newBoard);
+    newBoard.init(this.mainBoardTransform);
+    this.boards[boardId] = newBoard;
+  }
 
   deleteBoard(boardId: BoardId) {
     this.boards[boardId]?.destroy();
     delete this.boards[boardId];
+
+    this.layout.subBoardTransformLayout.forEach((item) => {
+      if (item.boardId === boardId) {
+        item.boardId = null;
+      }
+    });
+    this.layout.subBoardLayoutPacking(0);
+  }
+
+  moveBoard(boardId: BoardId, newTransform: Transform) {
+    this.boards[boardId]?.renderHandler.move(newTransform);
   }
 
   frame(delta: number) {
@@ -87,12 +116,17 @@ export class GameManager {
     this.render.updateInstancedMeshs();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onMessage(_msg: string) {
-    //
+  setWsSender(sender: (msg: string) => void) {
+    this.wsSender.sender = sender;
   }
-  sendMessage() {
-    //
+  setWsSenderGameId(gameId: string | undefined) {
+    if (gameId) {
+      this.wsSender.gameId = gameId;
+    }
+  }
+
+  onWsMessage(msg: string) {
+    this.wsReceiver.onWsMessage(msg);
   }
 
   destroy() {

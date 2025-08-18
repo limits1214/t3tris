@@ -10,7 +10,10 @@ use crate::{
     ws_world::{
         WsData,
         connections::{WsConnections, WsWorldUser},
-        game::tetris::{BoardEndKind, TetrisGame, TetrisGameActionType},
+        game2::{
+            model::{BoardEndKind, TetrisGameActionType},
+            tetris::TetrisGame,
+        },
         model::{
             GameId, RoomId, WsId, WsWorldGame, WsWorldGameStatus, WsWorldGameType, WsWorldRoom,
             WsWorldRoomStatus, WsWorldRoomUser,

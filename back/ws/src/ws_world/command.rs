@@ -1,3 +1,5 @@
+use tetris_lib::Tetrimino;
+
 use crate::app::state::ArcWsAppState;
 
 pub enum WsWorldCommand {
@@ -34,6 +36,35 @@ pub enum GameActionType {
     HardDrop,
     SoftDrop,
     Hold,
+    Step,
+    LineClear,
+    Placing,
+    RemoveFalling,
+    ShiftNext {
+        next: Tetrimino,
+    },
+    PushNext {
+        next: Tetrimino,
+    },
+    Setup {
+        next: Vec<Tetrimino>,
+        hold: Option<Tetrimino>,
+    },
+    Spawn {
+        spawn: Tetrimino,
+    },
+    AddHold {
+        hold: Tetrimino,
+    },
+    SetInfo {
+        level: Option<u32>,
+        score: Option<u32>,
+        line: Option<u32>,
+    },
+    ScoreEffect {
+        kind: String,
+        combo: u32,
+    },
 }
 
 pub enum Ws {

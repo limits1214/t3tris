@@ -13,7 +13,8 @@ pub mod command;
 pub mod model;
 
 mod connections;
-pub mod game;
+// pub mod game;
+pub mod game2;
 mod lobby;
 mod pubsub;
 mod room;
@@ -69,11 +70,12 @@ impl WsWorld {
                         world.pubsub.pubsub_cleanup();
                         room::room_cleanup(&world.connections, &mut world.data, &mut world.pubsub);
                         if let Some(arc_app_state) = &world.arc_app_state {
-                            game::game_cleanup(&world.connections,  &mut world.data, &mut world.pubsub, arc_app_state.clone());
+                            game2::game_cleanup(&world.connections,  &mut world.data, &mut world.pubsub, arc_app_state.clone());
                         }
                     }
                     _ = game_ticker_timer.tick() => {
-                        game::tick(&world.connections, &mut world.data, &mut world.pubsub);
+                        // game2::tick(&world.connections, &mut world.data, &mut world.pubsub);
+                        game2::tick(&world.connections, &mut world.data, &mut world.pubsub);
                     }
                     _ = ping_validation_timer.tick() => {
                         ws::ping_validation(&mut world.connections, &mut world.data, &mut world.pubsub);
@@ -206,7 +208,16 @@ fn process(
                 game_id,
                 action,
             } => {
-                game::action::action(
+                // game::action::action(
+                //     connections,
+                //     data,
+                //     pubsub,
+                //     WsId(ws_id),
+                //     GameId(game_id),
+                //     action,
+                // );
+
+                game2::action(
                     connections,
                     data,
                     pubsub,
@@ -220,28 +231,28 @@ fn process(
                 room_id,
                 game_id,
             } => {
-                game::sync(
-                    connections,
-                    data,
-                    pubsub,
-                    WsId(ws_id),
-                    RoomId(room_id),
-                    GameId(game_id),
-                );
+                // game::sync(
+                //     connections,
+                //     data,
+                //     pubsub,
+                //     WsId(ws_id),
+                //     RoomId(room_id),
+                //     GameId(game_id),
+                // );
             }
             Game::BoardSync {
                 ws_id,
                 room_id,
                 game_id,
             } => {
-                game::board_sync(
-                    connections,
-                    data,
-                    pubsub,
-                    WsId(ws_id),
-                    RoomId(room_id),
-                    GameId(game_id),
-                );
+                // game::board_sync(
+                //     connections,
+                //     data,
+                //     pubsub,
+                //     WsId(ws_id),
+                //     RoomId(room_id),
+                //     GameId(game_id),
+                // );
             }
         },
         WsWorldCommand::Pubsub(cmd) => match cmd {

@@ -43,7 +43,7 @@ async fn init_axum() {
             CorsLayer::new()
                 .allow_origin([
                     "http://localhost:5173".parse().unwrap(),
-                    "http://192.168.25.5:5173".parse().unwrap(),
+                    "http://192.168.25.21:5173".parse().unwrap(),
                     "http://192.168.25.28:5173".parse().unwrap(),
                     "http://localhost:4173".parse().unwrap(),
                 ])

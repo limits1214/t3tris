@@ -94,6 +94,9 @@ const ThreeComponent = () => {
     createPlayerBoard: button((get) => {
       ref.current?.createPlayerBoard(get("boardId"), get("boardId"));
     }),
+    creatSubBoard: button((get) => {
+      ref.current?.createSubBoard(get("boardId"), get("boardId"));
+    }),
     deleteBoard: button((get) => {
       ref.current?.deleteBoard(get("boardId"));
     }),
@@ -115,6 +118,14 @@ const ThreeComponent = () => {
       ref.current?.setup(get("boardId"), {
         hold: "T",
         next: ["I", "J", "L", "O", "S"],
+      });
+    }),
+
+    boardMove: button((get) => {
+      ref.current?.moveBoard(get("boardId"), {
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1.5, 1.5, 1.5],
       });
     }),
     spawnFromNext: button((get) => {

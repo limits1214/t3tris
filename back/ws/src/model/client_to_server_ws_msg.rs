@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tetris_lib::Tetrimino;
 
 /// client -> server
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,7 +52,7 @@ pub enum ClientToServerWsMsg {
     #[serde(rename_all = "camelCase")]
     GameAction {
         game_id: String,
-        input: GameActionInput,
+        // input: GameActionInput,
         action: GameActionType,
     },
     #[serde(rename_all = "camelCase")]
@@ -76,6 +77,35 @@ pub enum GameActionType {
     HardDrop,
     SoftDrop,
     Hold,
+    Step,
+    LineClear,
+    Placing,
+    RemoveFalling,
+    ShiftNext {
+        next: Tetrimino,
+    },
+    PushNext {
+        next: Tetrimino,
+    },
+    Setup {
+        next: Vec<Tetrimino>,
+        hold: Option<Tetrimino>,
+    },
+    Spawn {
+        spawn: Tetrimino,
+    },
+    AddHold {
+        hold: Tetrimino,
+    },
+    SetInfo {
+        level: Option<u32>,
+        score: Option<u32>,
+        line: Option<u32>,
+    },
+    ScoreEffect {
+        kind: String,
+        combo: u32,
+    },
 }
 
 impl From<GameActionType> for crate::ws_world::command::GameActionType {
@@ -88,6 +118,17 @@ impl From<GameActionType> for crate::ws_world::command::GameActionType {
             GameActionType::RotateRight => Self::RotateRight,
             GameActionType::HardDrop => Self::HardDrop,
             GameActionType::SoftDrop => Self::SoftDrop,
+            GameActionType::Step => Self::Step,
+            GameActionType::LineClear => Self::LineClear,
+            GameActionType::Placing => Self::Placing,
+            GameActionType::RemoveFalling => Self::RemoveFalling,
+            GameActionType::ShiftNext { next } => Self::ShiftNext { next },
+            GameActionType::PushNext { next } => Self::PushNext { next },
+            GameActionType::Setup { next, hold } => Self::Setup { next, hold },
+            GameActionType::Spawn { spawn } => Self::Spawn { spawn },
+            GameActionType::AddHold { hold } => Self::AddHold { hold },
+            GameActionType::SetInfo { level, score, line } => Self::SetInfo { level, score, line },
+            GameActionType::ScoreEffect { kind, combo } => Self::ScoreEffect { kind, combo },
         }
     }
 }

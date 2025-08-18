@@ -248,6 +248,12 @@ export class GameRender {
     }
   }
 
+  public moveText(id: string, object: THREE.Object3D) {
+    this.texts[id]?.position.copy(object.position);
+    this.texts[id]?.rotation.copy(object.rotation);
+    this.texts[id]?.scale.copy(object.scale);
+  }
+
   public updateText(id: string, txt: string) {
     const text = this.texts[id];
     if (text) {

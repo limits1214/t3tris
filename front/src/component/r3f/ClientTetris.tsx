@@ -5,13 +5,18 @@ import * as THREE from "three";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { GameManager } from "../game/gameManager";
 import { CONSTANT } from "../game/constant";
-import type { BoardId, BoardSetup } from "../game/type";
+import type { BoardId, BoardSetup, Transform } from "../game/type";
+import type { TetrisBoard } from "../game/board";
 
 export type ClientTetrisController = {
+  createMulitPlayerBoard: (boardId: BoardId, nickName: string) => void;
+  createMultiSubBoard: (boardId: BoardId, nickName: string) => void;
   createPlayerBoard: (boardId: BoardId, nickName: string) => void;
-  createOtherBoard: (boardId: BoardId, nickName: string) => void;
+  createSubBoard: (boardId: BoardId, nickName: string) => void;
+  moveBoard: (boardId: BoardId, newTransform: Transform) => void;
   deleteBoard: (boardId: BoardId) => void;
   setPlayer: (boardId: BoardId, nickName: string) => void;
+  getBoards: () => Partial<Record<BoardId, TetrisBoard>>;
   boardTimerOn: (boardId: BoardId) => void;
   boardTimerOff: (boardId: BoardId) => void;
   boardTimerReset: (boardId: BoardId) => void;
@@ -21,8 +26,16 @@ export type ClientTetrisController = {
   spawnFromHold: (boardId: BoardId) => void;
   step: (boardId: BoardId) => void;
   setup: (boardId: BoardId, setup: BoardSetup) => void;
+  onWsMessage: (msg: string) => void;
+  setWsSenderGameId: (gameId: string | undefined) => void;
 };
-export const ClientTetris = forwardRef<ClientTetrisController>((_, ref) => {
+export type ClientTetrisParam = {
+  send: (msg: string) => void;
+};
+export const ClientTetris = forwardRef<
+  ClientTetrisController,
+  ClientTetrisParam
+>(({ send }, ref) => {
   const gameManager = useRef(new GameManager());
   const { nodes } = useGLTF(CONSTANT.gfx.url.tetriminoGlb);
   const font3d = useLoader(FontLoader, CONSTANT.gfx.url.font3d);
@@ -31,10 +44,11 @@ export const ClientTetris = forwardRef<ClientTetrisController>((_, ref) => {
     const gm = gameManager.current;
     const tetriminoGeo = (nodes.Cube as THREE.Mesh).geometry;
     gm.init({ tetriminoGeo, scene, font3d });
+    gm.setWsSender(send);
     return () => {
       gm.destroy();
     };
-  }, [font3d, nodes.Cube, scene]);
+  }, [font3d, nodes.Cube, scene, send]);
 
   useFrame((_state, delta) => {
     gameManager.current.frame(delta);
@@ -44,8 +58,8 @@ export const ClientTetris = forwardRef<ClientTetrisController>((_, ref) => {
     createPlayerBoard(boardId, nickName) {
       gameManager.current.createPlayerBoard(boardId, nickName);
     },
-    createOtherBoard(boardId, nickName) {
-      // gameManager.current.createBoard(boardId, nickName);
+    createSubBoard(boardId, nickName) {
+      gameManager.current.createSubBoard(boardId, nickName);
     },
     deleteBoard(boardId) {
       gameManager.current.deleteBoard(boardId);
@@ -76,6 +90,25 @@ export const ClientTetris = forwardRef<ClientTetrisController>((_, ref) => {
     },
     setup(boardId: BoardId, setup: BoardSetup) {
       gameManager.current.boards[boardId]?.controller.setup(setup);
+    },
+    onWsMessage(msg) {
+      gameManager.current.onWsMessage(msg);
+    },
+    createMulitPlayerBoard(boardId, nickName) {
+      gameManager.current.createMultiPlayerBoard(boardId, nickName);
+    },
+    createMultiSubBoard(boardId, nickName) {
+      gameManager.current.createMultiSubBoard(boardId, nickName);
+    },
+    setWsSenderGameId(gameId) {
+      gameManager.current.setWsSenderGameId(gameId);
+    },
+    getBoards() {
+      return gameManager.current.boards;
+    },
+
+    moveBoard(boardId, newTransform) {
+      gameManager.current.moveBoard(boardId, newTransform);
     },
   };
 

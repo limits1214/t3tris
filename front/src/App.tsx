@@ -4,6 +4,7 @@ import HomePage from "./page/HomePage.tsx";
 import React from "react";
 
 const LazyRoomPage = React.lazy(() => import("./page/RoomPage.tsx"));
+const LazyRoom2Page = React.lazy(() => import("./page/Room2Page.tsx"));
 
 const LazyTestPage = React.lazy(() => import("./page/test/TestPage.tsx"));
 const LazyTestAuthPage = React.lazy(
@@ -24,6 +25,9 @@ function App() {
           <Route index element={<HomePage />}></Route>
           <Route path="room/:roomId">
             <Route index element={<LazyRoomPage />}></Route>
+          </Route>
+          <Route path="room2/:roomId">
+            <Route index element={<LazyRoom2Page />}></Route>
           </Route>
         </Route>
         <Route path="test">

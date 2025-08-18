@@ -1380,7 +1380,12 @@ class RenderHandler {
     obj.position.copy(finalPos);
     obj.quaternion.copy(finalQuat);
     obj.scale.copy(finalScale);
-    const txt = `${kind}${combo}`;
+    let txt;
+    if (combo) {
+      txt = `${kind}\n${combo} Combo`;
+    } else {
+      txt = `${kind}`;
+    }
 
     this.isScoreEffectOn = true;
     this.render.addText(

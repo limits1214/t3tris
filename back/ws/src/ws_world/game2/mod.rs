@@ -5,6 +5,7 @@ pub mod tick;
 use std::collections::HashMap;
 
 pub use action::action;
+use common::repository::game_room_backup::{InsertGameRoomBackupArg, insert_game_room_backup};
 pub use tick::tick;
 
 use crate::{
@@ -25,7 +26,71 @@ pub fn game_cleanup(
     _pubsub: &mut WsPubSub,
     arc_app_state: ArcWsAppState,
 ) {
-    // TODO!
+    let backup_game_ids = data
+        .games
+        .iter()
+        .filter(|f| f.1.is_deleted && !f.1.is_backuped)
+        .map(|m| m.0)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    for backup_game_id in &backup_game_ids {
+        let db_pool = arc_app_state.0.common.db_pool.clone();
+        if let Some(game) = data.games.get_mut(&backup_game_id) {
+            let room_id = game.room_id.to_string();
+            let game_id = game.game_id.to_string();
+            let ws_ids = game
+                .tetries
+                .iter()
+                .map(|m| m.1.ws_id.to_string())
+                .collect::<Vec<_>>();
+            let user_ids = game
+                .tetries
+                .iter()
+                .map(|m| m.1.user_id.to_string())
+                .collect::<Vec<_>>();
+            let ws_ids = serde_json::to_value(&ws_ids).unwrap_or_default();
+            let user_ids = serde_json::to_value(&user_ids).unwrap_or_default();
+            let data = serde_json::to_value(&game).unwrap_or_default();
+
+            tracing::info!("[game_cleanup - backup] game_id: {game_id:?} cleanup");
+            game.is_backuped = true;
+            tokio::spawn(async move {
+                if let Ok(mut conn) = db_pool.clone().acquire().await {
+                    let res = insert_game_room_backup(
+                        &mut conn,
+                        InsertGameRoomBackupArg {
+                            room_id: &room_id,
+                            game_id: &game_id,
+                            ws_ids: &ws_ids,
+                            user_ids: &user_ids,
+                            data: &data,
+                        },
+                    )
+                    .await;
+
+                    if let Err(e) = res {
+                        tracing::error!(
+                            "[game_cleanup - backup] insert fail, e: {e:?}, game_id: {game_id:?}, data: {data:?}"
+                        );
+                    }
+                }
+            });
+        }
+    }
+
+    let delete_target_game = data
+        .games
+        .iter()
+        .filter(|(_, g)| g.is_deleted && g.is_backuped)
+        .map(|(_, g)| (g.game_id.clone(), g.room_id.clone()))
+        .collect::<Vec<_>>();
+
+    for (game_id, room_id) in delete_target_game {
+        if data.rooms.get(&room_id).is_none() {
+            data.games.remove(&game_id);
+        }
+    }
 }
 
 pub fn board_sync(

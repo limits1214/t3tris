@@ -143,13 +143,13 @@ impl TetrisGame {
 
         let mut add_gargabe = vec![];
         loop {
+            let x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                .choose(&mut rand::rng())
+                .unwrap();
             if let Some(front) = self.garbage_queue.pop_front() {
                 is_garbage_changed = true;
                 if matches!(front.kind, GarbageQueueKind::Ready) {
                     for _ in 0..front.line {
-                        let x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-                            .choose(&mut rand::rng())
-                            .unwrap();
                         add_gargabe.push(*x);
                     }
                 } else {

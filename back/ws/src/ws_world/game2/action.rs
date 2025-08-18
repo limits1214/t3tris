@@ -1,6 +1,11 @@
+use std::f64::consts::E;
+
+use rand::seq::IndexedRandom;
+
 use crate::ws_world::{
     command::GameActionType,
     connections::WsConnections,
+    game2::model::{TetrisScore, attack_line},
     model::{GameId, WsData, WsId, WsWorldGameStatus, WsWorldGameType},
     pubsub::WsPubSub,
     util::err_publish,
@@ -167,7 +172,75 @@ pub fn action(
             tetris.set_info(level, score, line);
         }
         GameActionType::ScoreEffect { kind, combo } => {
+            match game.game_type {
+                WsWorldGameType::MultiBattle => {
+                    let score = match kind.as_str() {
+                        "TSpinZero" => Some(TetrisScore::TSpinZero),
+                        "TSpinSingle" => Some(TetrisScore::TSpinSingle),
+                        "TSpinDouble" => Some(TetrisScore::TSpinDouble),
+                        "TSpinTriple" => Some(TetrisScore::TSpinTriple),
+                        "Single" => Some(TetrisScore::Single),
+                        "Double" => Some(TetrisScore::Double),
+                        "Triple" => Some(TetrisScore::Triple),
+                        "Tetris" => Some(TetrisScore::Tetris),
+                        _ => None,
+                    };
+
+                    if let Some(score) = score {
+                        let attack_line = attack_line(score);
+                        if let Some(attack_line) = attack_line {
+                            let targets = other_tetris
+                                .iter()
+                                .filter(|(f, g)| **f != ws_id && !g.is_board_end)
+                                .map(|t| t.0)
+                                .cloned()
+                                .collect::<Vec<_>>();
+
+                            if let Some(target) = targets.choose(&mut rand::rng()) {
+                                if let Some((_, target_game)) =
+                                    other_tetris.iter_mut().find(|f| f.0 == target)
+                                {
+                                    target_game.garbage_queueing(attack_line, ws_id.to_string());
+                                }
+                            }
+                        }
+                    }
+                    // if !tetris.garbage_add(clear_len as u8) {
+                    //     tetris.is_board_end = true;
+                    //     tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                    //         kind: BoardEndKind::SpawnImpossible,
+                    //         elapsed: tetris.elapsed,
+                    //     });
+                    // }
+                    // if let Some(score) = score {
+                    //     let attack_line = attack_line(score);
+                    //     if let Some(attack_line) = attack_line {
+                    //         let targets = other_tetris
+                    //             .iter()
+                    //             .filter(|(f, g)| **f != ws_id && !g.is_board_end)
+                    //             .map(|t| t.0)
+                    //             .cloned()
+                    //             .collect::<Vec<_>>();
+
+                    //         if let Some(target) = targets.choose(&mut rand::rng()) {
+                    //             if let Some((_, target_game)) =
+                    //                 other_tetris.iter_mut().find(|f| f.0 == target)
+                    //             {
+                    //                 target_game.garbage_queueing(attack_line, ws_id.to_string());
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                }
+                _ => {}
+            }
             tetris.score_effect(kind, combo);
+        }
+        GameActionType::BoardEnd => {
+            tetris.board_end();
+        }
+        GameActionType::AddGarbageQueue { empty } => {
+            tetris.add_garbage(empty);
         }
     };
 }

@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
-use rand::Rng;
+use rand::{Rng, seq::IndexedRandom};
 use serde::{Deserialize, Serialize};
 use tetris_lib::{Board, SpawnError, StepError, Tetrimino, Tile, TileAt};
 
 use crate::ws_world::{
-    game2::model::{GarbageQueue, TetrisGameAction, TetrisGameActionType},
+    game2::model::{GarbageQueue, GarbageQueueKind, TetrisGameAction, TetrisGameActionType},
     model::{UserId, WsId},
 };
 
@@ -40,6 +40,8 @@ pub struct TetrisGame {
     pub combo_tick: u32,
     //
     pub garbage_queue: VecDeque<GarbageQueue>,
+
+    pub attack_list: VecDeque<u8>,
 
     //
     pub line_40_clear: bool,
@@ -78,6 +80,7 @@ impl TetrisGame {
             battle_win: false,
             seven_bag: VecDeque::new(),
             act_seq: 0,
+            attack_list: VecDeque::new(),
         }
     }
     pub fn push_action_buffer(&mut self, action: TetrisGameActionType) {
@@ -97,6 +100,80 @@ impl TetrisGame {
     pub fn board_reset(&mut self) {
         self.board = Board::new(10, 26);
     }
+
+    pub fn garbage_queueing(&mut self, attack_line: u8, from: String) {
+        self.garbage_queue.push_back(GarbageQueue {
+            from,
+            line: attack_line,
+            tick: self.tick,
+            kind: GarbageQueueKind::Queued,
+        });
+
+        self.push_action_buffer(TetrisGameActionType::GarbageQueue {
+            queue: self.garbage_queue.clone().into(),
+        });
+    }
+    pub fn add_garbage(&mut self, empty: Vec<u8>) {
+        for x in &empty {
+            if !self.board.push_garbage_line(*x as usize) {
+                // return false;
+            };
+        }
+        self.push_action_buffer(TetrisGameActionType::AddGarbage { empty: empty });
+    }
+    pub fn garbage_add(&mut self, clear_len: u8) {
+        let mut is_garbage_changed = false;
+
+        let mut temp = clear_len;
+        loop {
+            let front = self.garbage_queue.pop_front();
+            if let Some(mut front) = front {
+                is_garbage_changed = true;
+                if let Some(v) = temp.checked_sub(front.line) {
+                    temp = v;
+                } else {
+                    front.line = front.line - temp;
+                    self.garbage_queue.push_front(front);
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        let mut add_gargabe = vec![];
+        loop {
+            if let Some(front) = self.garbage_queue.pop_front() {
+                is_garbage_changed = true;
+                if matches!(front.kind, GarbageQueueKind::Ready) {
+                    for _ in 0..front.line {
+                        let x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                            .choose(&mut rand::rng())
+                            .unwrap();
+                        add_gargabe.push(*x);
+                    }
+                } else {
+                    self.garbage_queue.push_front(front);
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        if is_garbage_changed {
+            self.push_action_buffer(TetrisGameActionType::GarbageQueue {
+                queue: self.garbage_queue.clone().into(),
+            });
+        }
+        if !add_gargabe.is_empty() {
+            // for x in &add_gargabe {
+            //     if !self.board.push_garbage_line(*x as usize) {
+            //         return false;
+            //     };
+            // }
+            self.push_action_buffer(TetrisGameActionType::DoGarbageAdd { empty: add_gargabe });
+        }
+    }
 }
 
 impl TetrisGame {
@@ -112,7 +189,11 @@ impl TetrisGame {
     }
 
     pub fn line_clear(&mut self) {
+        // TODO Attack
         let clear = self.board.try_line_clear();
+
+        self.garbage_add(clear.len() as u8);
+
         self.board.apply_line_clear(clear);
         self.push_action_buffer(TetrisGameActionType::LineClear);
     }
@@ -269,5 +350,38 @@ impl TetrisGame {
     }
     pub fn score_effect(&mut self, kind: String, combo: u32) {
         self.push_action_buffer(TetrisGameActionType::ScoreEffect { kind, combo });
+    }
+
+    pub fn board_end(&mut self) {
+        self.is_board_end = true;
+        self.push_action_buffer(TetrisGameActionType::BoardEnd {
+            kind: super::model::BoardEndKind::SpawnImpossible,
+            elapsed: self.elapsed,
+        });
+    }
+
+    // TODO: boardEmpty to 0 mapping for reduce msg size
+    pub fn game_sync_data(&self) -> serde_json::Value {
+        let next = self.next.clone();
+        let board = self.board.board().clone();
+        let hold = self.hold.clone();
+        let garbage_q = self.garbage_queue.clone();
+        let score = self.score;
+        let level = self.level;
+        let line = self.clear_line;
+        let is_board_end = self.is_board_end;
+        let elapsed = self.elapsed;
+
+        serde_json::json!({
+            "next": next,
+            "board": board,
+            "hold": hold,
+            "garbageQueue": garbage_q,
+            "score": score,
+            "level": level,
+            "line": line,
+            "isBoardEnd": is_board_end,
+            "elapsed": elapsed
+        })
     }
 }

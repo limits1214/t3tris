@@ -29,7 +29,8 @@ pub enum TetrisGameActionType {
     End {
         //
     },
-    GameStart,
+    BoardStart,
+    Ticking,
     PushNext {
         next: Tetrimino,
     },
@@ -70,10 +71,13 @@ pub enum TetrisGameActionType {
         combo: u32,
         line: u32,
     },
-    Garbage {
+    GarbageQueue {
         queue: Vec<GarbageQueue>,
     },
-    GarbageAdd {
+    AddGarbage {
+        empty: Vec<u8>,
+    },
+    DoGarbageAdd {
         empty: Vec<u8>,
     },
     BoardEnd {
@@ -91,6 +95,9 @@ pub enum TetrisGameActionType {
         kind: String,
         combo: u32,
     },
+    // GameEnd {
+    //     elapsed: u128,
+    // },
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BoardEndKind {

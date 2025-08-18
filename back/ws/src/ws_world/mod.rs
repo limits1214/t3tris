@@ -231,14 +231,14 @@ fn process(
                 room_id,
                 game_id,
             } => {
-                // game::sync(
-                //     connections,
-                //     data,
-                //     pubsub,
-                //     WsId(ws_id),
-                //     RoomId(room_id),
-                //     GameId(game_id),
-                // );
+                game2::game_sync(
+                    connections,
+                    data,
+                    pubsub,
+                    WsId(ws_id),
+                    RoomId(room_id),
+                    GameId(game_id),
+                );
             }
             Game::BoardSync {
                 ws_id,

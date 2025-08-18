@@ -1,8 +1,13 @@
 import * as THREE from "three";
-import { ActionHandler, SoloTickerHandler, TetrisBoard } from "./board";
+import {
+  ActionHandler,
+  MultiTickerHandler,
+  SoloTickerHandler,
+  TetrisBoard,
+} from "./board";
 import { GameInput } from "./input";
 import { GameRender } from "./render";
-import type { BoardId, Transform } from "./type";
+import type { BoardId, BoardSyncData, Transform } from "./type";
 import type { Font } from "three/examples/jsm/loaders/FontLoader.js";
 import { GameLoop } from "./gameLoop";
 import { WsReceiver, WsSender } from "./wsHandle";
@@ -40,11 +45,18 @@ export class GameManager {
     this.input.init();
   }
 
+  multiGameSync(syncData: Record<BoardId, BoardSyncData>) {
+    for (const [boardId, data] of Object.entries(syncData)) {
+      this.boards[boardId]?.boardSync(data);
+    }
+  }
+
   createMultiPlayerBoard(boardId: BoardId, nickName: string) {
     this.mainBoardId = boardId;
     this.mainNickName = nickName;
     const newBoard = new TetrisBoard(this.render, boardId, nickName);
     newBoard.actionHandler = new ActionHandler(newBoard);
+    newBoard.tickerHandler = new MultiTickerHandler(newBoard);
     this.input.delegation = newBoard.actionHandler;
     this.gameLoop.delegation = newBoard.tickerHandler;
     newBoard.wsSender = this.wsSender;

@@ -106,6 +106,10 @@ pub enum GameActionType {
         kind: String,
         combo: u32,
     },
+    BoardEnd,
+    AddGarbageQueue {
+        empty: Vec<u8>,
+    },
 }
 
 impl From<GameActionType> for crate::ws_world::command::GameActionType {
@@ -129,6 +133,8 @@ impl From<GameActionType> for crate::ws_world::command::GameActionType {
             GameActionType::AddHold { hold } => Self::AddHold { hold },
             GameActionType::SetInfo { level, score, line } => Self::SetInfo { level, score, line },
             GameActionType::ScoreEffect { kind, combo } => Self::ScoreEffect { kind, combo },
+            GameActionType::BoardEnd => Self::BoardEnd,
+            GameActionType::AddGarbageQueue { empty } => Self::AddGarbageQueue { empty },
         }
     }
 }

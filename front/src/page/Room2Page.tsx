@@ -1,6 +1,16 @@
 /** @jsxImportSource @emotion/react */
 
-import { Box, Button, Flex, Tabs, Text, TextField } from "@radix-ui/themes";
+import {
+  Box,
+  Button,
+  Dialog,
+  Flex,
+  Select,
+  Table,
+  Tabs,
+  Text,
+  TextField,
+} from "@radix-ui/themes";
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -16,7 +26,7 @@ import {
 } from "@react-three/drei";
 import { css } from "@emotion/react";
 import { MobileButton } from "../component/MobileButton";
-import { useRoomStore } from "../store/useRoomStore";
+import { useRoomStore, type GameResult } from "../store/useRoomStore";
 import { useWsStore } from "../store/useWsStore";
 import { useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
@@ -96,6 +106,7 @@ type GameBoardParam = {
   isOrth: boolean;
 };
 const GameBoard = ({ isOrth }: GameBoardParam) => {
+  const { roomId } = useParams();
   const ref = useRef<ClientTetrisController>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const orthoCameraRef = useRef<THREE.OrthographicCamera>(null);
@@ -105,17 +116,18 @@ const GameBoard = ({ isOrth }: GameBoardParam) => {
   const myNickName = useWsUserStore((s) => s.wsNickName);
   const [cameraX, setCameraX] = useState(0);
   const send = useWsStore((s) => s.send);
-  useEffect(() => {
-    const cur = ref.current;
-    if (myWsId && myNickName) {
-      cur?.createMulitPlayerBoard(myWsId, myNickName);
-    }
-    return () => {
-      if (myWsId) {
-        cur?.deleteBoard(myWsId);
-      }
-    };
-  }, [myNickName, myWsId]);
+  // useEffect(() => {
+  //   const cur = ref.current;
+  //   if (myWsId && myNickName) {
+  //     cur?.createMulitPlayerBoard(myWsId, myNickName);
+  //   }
+  //   return () => {
+  //     if (myWsId) {
+  //       cur?.deleteBoard(myWsId);
+  //     }
+  //   };
+  // }, [myNickName, myWsId]);
+
   useEffect(() => {
     setGameRef(ref);
   }, [setGameRef]);
@@ -155,10 +167,26 @@ const GameBoard = ({ isOrth }: GameBoardParam) => {
           // cur?.boardCreateBySlot(wsId, { nickName });
           cur?.createMultiSubBoard(wsId, nickName);
         }
-
         if (wsId === myWsId) {
           // TODO
           // handleSync();
+
+          const handleGameSync = () => {
+            if (roomId) {
+              const nowGameId = games[games.length - 1];
+              if (nowGameId) {
+                const obj = {
+                  type: "gameSync",
+                  data: {
+                    gameId: nowGameId,
+                    roomId,
+                  },
+                };
+                send(JSON.stringify(obj));
+              }
+            }
+          };
+          handleGameSync();
         }
       }
     }
@@ -169,6 +197,14 @@ const GameBoard = ({ isOrth }: GameBoardParam) => {
       cur?.deleteBoard(k);
     }
   }, [myWsId, roomUsers]);
+
+  useEffect(() => {
+    if (roomUsers.length === 1) {
+      setCameraX(0);
+    } else {
+      setCameraX(13);
+    }
+  }, [roomUsers]);
   return (
     <>
       {/* camera */}
@@ -315,6 +351,18 @@ const HUDRoomInfo = () => {
       send(JSON.stringify(obj));
     }
   };
+  const handleGameTypeChange = (gameType: string) => {
+    if (roomId) {
+      const obj = {
+        type: "roomGameTypeChange",
+        data: {
+          roomId,
+          gameType,
+        },
+      };
+      send(JSON.stringify(obj));
+    }
+  };
   return (
     <Flex direction="column">
       <Text>방제목: {roomName}</Text>
@@ -327,6 +375,23 @@ const HUDRoomInfo = () => {
         </Button>
       ) : (
         <></>
+      )}
+      {isHost && (
+        <Select.Root
+          defaultValue={roomGameType ?? "MultiScore"}
+          onValueChange={handleGameTypeChange}
+          disabled={roomStatus !== "Waiting"}
+        >
+          <Select.Trigger />
+          <Select.Content>
+            <Select.Group>
+              <Select.Label>GameType</Select.Label>
+              <Select.Item value="MultiScore">Score</Select.Item>
+              <Select.Item value="Multi40Line">40Line</Select.Item>
+              <Select.Item value="MultiBattle">Battle(최소 2명)</Select.Item>
+            </Select.Group>
+          </Select.Content>
+        </Select.Root>
       )}
     </Flex>
   );
@@ -472,7 +537,115 @@ const HUDChats = () => {
 };
 
 const HUDResults = () => {
-  return <Flex>Result</Flex>;
+  const roomGameResult = useRoomStore((s) => s.gameResult);
+  return (
+    <Flex
+      direction="column"
+      css={css`
+        /* width: 15vw; */
+        max-height: 400px;
+        overflow-y: auto;
+      `}
+    >
+      {roomGameResult.map((r, idx) => (
+        <GameResultDialog key={idx} idx={idx} gameResult={r} />
+      ))}
+    </Flex>
+  );
+};
+
+/* 
+
+MultiScore result
+[[ws_id, nick_name, score]], order score 
+
+Multi40Line result
+[[ws_id, nick_name, elapsed, is_40_clear]], order is_40_clear, elapsed
+
+MultiBattle result
+[[ws_id, nick_name, elapsed, is_battle_wind]], order elapsed
+*/
+type GameResultDialogProp = {
+  idx: number;
+  gameResult: GameResult;
+};
+const GameResultDialog = ({ idx, gameResult }: GameResultDialogProp) => {
+  const roomIsGameResultOpen = useRoomStore((s) => s.isGameResultOpen);
+  const roomSetIsGameResultOpen = useRoomStore((s) => s.setIsGameResultOpen);
+  const roomGameResult = useRoomStore((s) => s.gameResult);
+
+  // open 제어는 최신 result만 적용되게
+  return (
+    <Dialog.Root
+      open={
+        roomGameResult.length === idx + 1 ? roomIsGameResultOpen : undefined
+      }
+      onOpenChange={
+        roomGameResult.length === idx + 1 ? roomSetIsGameResultOpen : undefined
+      }
+    >
+      <Dialog.Trigger>
+        <Button
+          variant="classic"
+          color="bronze"
+          onKeyDown={(e) => {
+            if (e.code === "Space") {
+              e.preventDefault();
+            }
+          }}
+          css={css`
+            margin-top: 3px;
+          `}
+        >
+          #{idx + 1} {gameResult.gameType}
+        </Button>
+      </Dialog.Trigger>
+
+      <Dialog.Content>
+        <Dialog.Title>
+          #{idx + 1} {gameResult.gameType} Result
+        </Dialog.Title>
+
+        <Table.Root
+          css={css`
+            max-height: 400px;
+            overflow-y: auto;
+          `}
+        >
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>No</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>NickName</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Elapsed</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Score</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Line</Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+
+          <Table.Body>
+            {gameResult.gameResultInfo.map((r, idx) => (
+              <Table.Row key={idx}>
+                <Table.RowHeaderCell>{idx + 1}</Table.RowHeaderCell>
+                <Table.Cell>{r.nickName}</Table.Cell>
+                <Table.Cell>{`${format(
+                  new Date(r.elapsed ?? 0),
+                  "mm:ss:SS"
+                )}`}</Table.Cell>
+                <Table.Cell>{r.score}</Table.Cell>
+                <Table.Cell>{r.clearLine}</Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+
+        <Flex gap="3" mt="4" justify="end">
+          <Dialog.Close>
+            <Button>Close</Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
 };
 
 const HUDMobileButton = () => {

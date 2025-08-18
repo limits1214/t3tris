@@ -9,6 +9,8 @@ import type {
   Transform,
   TickerDelegation,
   BoardSetup,
+  BoardSyncData,
+  GarbageQueue,
 } from "./type";
 import * as THREE from "three";
 import { JsBoard } from "tetris-lib";
@@ -40,6 +42,9 @@ export class TetrisBoard {
   placingDelayTick = 0;
   placingResetCnt = CONSTANT.rule.placingResetCnt;
 
+  // addGarbageQueue: number[] = [];
+  garbageQueue: GarbageQueue[] = [];
+
   timer: Timer;
   actionHandler?: ActionDelegation;
   renderHandler: RenderHandler;
@@ -55,6 +60,38 @@ export class TetrisBoard {
     this.renderHandler = new RenderHandler(this, render);
     // this.tickerHandler = new SoloTickerHandler(this);
     this.ctrl = new Controller(this);
+  }
+
+  boardSync(syncData: BoardSyncData) {
+    // boardSet
+    for (const [lineIdx, line] of syncData.board.entries()) {
+      for (const [tileIdx, tile] of line.entries()) {
+        this.board.setLocation(tileIdx, lineIdx, tile);
+      }
+    }
+    // hold set
+    this.hold = syncData.hold;
+
+    // next set
+    this.next = syncData.next;
+    // TODO garbage q set
+
+    // score set
+    this.info.level = syncData.level;
+    this.info.score = syncData.score;
+    this.info.line = syncData.line;
+    this.info.time = syncData.elapsed / 1000;
+    this.timer.set(this.info.time);
+
+    if (syncData.isBoardEnd) {
+      this.timer.off();
+      this.renderHandler.removeEndCover();
+      this.renderHandler.addEndCover();
+    } else {
+      this.timer.on();
+    }
+
+    this.renderHandler.isDirty = true;
   }
 
   getTetriminoFromSevenBag(): Tetrimino {
@@ -96,14 +133,13 @@ export class TetrisBoard {
         );
       }
 
-      this.ctrl.lineClear();
-
       // combo
       if (this.comboTick > 0) {
         this.combo += 1;
       }
       this.comboTick = 150; //2.5sec
     }
+    this.ctrl.lineClear();
 
     //
     let score = null;
@@ -160,6 +196,7 @@ export class TetrisBoard {
 
   spawnFromNext(): boolean {
     console.log("spawnFromNext");
+
     const nextTetr = this.ctrl.shiftNext();
     if (nextTetr) {
       try {
@@ -253,7 +290,6 @@ export class TetrisBoard {
 
   init(transform: Transform) {
     this.renderHandler.create(transform);
-    console.log(this.nickName);
     this.renderHandler.updateNickNameText(this.nickName);
   }
 
@@ -267,8 +303,8 @@ interface TetrisBoardController {
   setup(setup: BoardSetup): void;
   sync(): void;
   countdown(count: number): void;
-  gameStart(): void;
-  gameEnd(): void;
+  boardStart(): void;
+  boardEnd(elapsed?: number): void;
   shiftNext(): Tetrimino | undefined;
   pushNext(tetrimino: Tetrimino): void;
   spawn(tetrimino: Tetrimino): void;
@@ -285,6 +321,8 @@ interface TetrisBoardController {
   hardDrop(): number;
   addHold(tetrimino: Tetrimino): void;
   removeFalling(): void;
+  garbageQueue(gq: GarbageQueue[]): void;
+  garbageAdd(empty: number[]): void;
   //addGargabeQueue
 }
 
@@ -321,16 +359,47 @@ class Controller implements TetrisBoardController {
   countdown(count: number): void {
     throw new Error("Method not implemented." + count);
   }
-  gameStart(): void {
-    console.log("gameStart");
+  garbageQueue(gq: GarbageQueue[]): void {
+    this.tb.garbageQueue = gq;
+    this.tb.renderHandler.garbageQueueSet(gq);
+  }
+  garbageAdd(empty: number[]): void {
+    for (const e of empty) {
+      if (!this.tb.board.pushGarbageLine(e)) {
+        console.log("TODO: END");
+      }
+    }
+
+    // this.tb.addGarbageQueue = empty;
+    // if (this.tb.wsSender) {
+    //   this.tb.wsSender.wsSend({
+    //     addGarbage: {
+    //       empty: empty,
+    //     },
+    //   });
+    // }
+    this.tb.renderHandler.isDirty = true;
+  }
+  boardStart(): void {
+    console.log("boardStart");
     this.tb.timer.reset();
+    this.tb.renderHandler.removeEndCover();
     this.tb.timer.on();
     this.tb.isBoardActive = true;
+    this.tb.spawnFromNext();
   }
-  gameEnd(): void {
+  boardEnd(elapsed?: number): void {
     console.log("gameEnd");
+    this.tb.renderHandler.removeEndCover();
+    this.tb.renderHandler.addEndCover();
     this.tb.timer.off();
+    if (elapsed) {
+      this.tb.info.time = elapsed;
+    }
     this.tb.isBoardActive = false;
+    if (this.tb.wsSender) {
+      this.tb.wsSender.wsSend("boardEnd");
+    }
   }
   shiftNext(): Tetrimino | undefined {
     const next = this.tb.next.shift();
@@ -531,6 +600,9 @@ class Timer {
       }
     }
   }
+  set(time: number) {
+    this.timerAccumulate = time;
+  }
   on() {
     this.isTimerOn = true;
   }
@@ -541,6 +613,80 @@ class Timer {
     this.timerAccumulate = 0;
     this.timerLastUpdated = 0;
     this.info.time = 0;
+  }
+}
+
+export class MultiTickerHandler implements TickerDelegation {
+  tb: TetrisBoard;
+  constructor(tetrisBoard: TetrisBoard) {
+    this.tb = tetrisBoard;
+  }
+  initTicking(): void {
+    // throw new Error("Method not implemented.");
+  }
+  endTicking(): void {
+    // throw new Error("Method not implemented.");
+  }
+  ticking(): void {
+    if (!this.tb.isBoardActive) return;
+
+    this.tb.tick += 1;
+    this.tb.stepTick += 1;
+
+    // combo tick
+    if (this.tb.comboTick > 0) {
+      this.tb.comboTick -= 1;
+    } else {
+      this.tb.comboTick = 0;
+      this.tb.combo = 0;
+    }
+
+    // if (this.tb.addGarbageQueue.length) {
+    //   for (const e of this.tb.addGarbageQueue) {
+    //     if (!this.tb.board.pushGarbageLine(e)) {
+    //       console.log("TODO: END");
+    //     }
+    //   }
+    //   this.tb.addGarbageQueue = [];
+    //   this.tb.renderHandler.isDirty = true;
+    // }
+
+    if (this.tb.isPlacingDelay) {
+      try {
+        this.tb.board.tryStep();
+      } catch {
+        this.tb.placingDelayTick += 1;
+        if (this.tb.placingDelayTick >= 30) {
+          this.tb.isPlacingDelay = false;
+          const [, score] = this.tb.placing();
+
+          if (score) {
+            this.tb.ctrl.scoreEffect(score, this.tb.combo);
+          }
+
+          const isSuccess = this.tb.spawnFromNext();
+
+          if (!isSuccess) {
+            this.tb.ctrl.boardEnd();
+          }
+        }
+      }
+    }
+
+    // const lv = this.tb.info.level ?? 1;
+    // if (this.tb.stepTick >= CONSTANT.levelGravityTick[lv > 20 ? 20 : lv]) {
+    //   this.tb.stepTick = 0;
+
+    //   try {
+    //     this.tb.ctrl.step();
+    //   } catch {
+    //     if (!this.tb.isPlacingDelay) {
+    //       this.tb.isPlacingDelay = true;
+    //       this.tb.placingDelayTick = 0;
+    //       this.tb.placingResetCnt = 15;
+    //     }
+    //   }
+    // }
   }
 }
 
@@ -569,9 +715,9 @@ export class SoloTickerHandler implements TickerDelegation {
       setTimeout(() => {
         console.log("1");
         setTimeout(() => {
-          this.tb.ctrl.gameStart();
+          this.tb.ctrl.boardStart();
 
-          this.tb.spawnFromNext();
+          // this.tb.spawnFromNext();
           this.tb.stepTick = 999;
         }, 1000);
       }, 1000);
@@ -609,7 +755,7 @@ export class SoloTickerHandler implements TickerDelegation {
           const isSuccess = this.tb.spawnFromNext();
 
           if (!isSuccess) {
-            this.tb.ctrl.gameEnd();
+            this.tb.ctrl.boardEnd();
           }
         }
       }
@@ -745,7 +891,7 @@ export class ActionHandler implements ActionDelegation {
     const isSuccess = this.tb.spawnFromNext();
 
     if (!isSuccess) {
-      this.tb.ctrl.gameEnd();
+      this.tb.ctrl.boardEnd();
     }
   }
   actHold(): void {
@@ -763,7 +909,7 @@ export class ActionHandler implements ActionDelegation {
       }
       this.tb.ctrl.removeFalling();
 
-      this.tb.spawnFromNext();
+      this.tb.ctrl.spawn(hold);
     } else {
       const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
       const firstFalling = fallings.shift();
@@ -788,7 +934,17 @@ class RenderHandler {
     "Cover",
   ];
   textList: ("nickNameText" | "infoText")[] = ["infoText", "nickNameText"];
-  tetriminos: TetrisIMesh[] = ["I", "O", "T", "J", "L", "S", "Z", "Hint"];
+  tetriminos: TetrisIMesh[] = [
+    "I",
+    "O",
+    "T",
+    "J",
+    "L",
+    "S",
+    "Z",
+    "Hint",
+    "Garbage",
+  ];
   isDirty = false;
   tetrisBoard;
   isScoreEffectOn = false;
@@ -979,6 +1135,51 @@ class RenderHandler {
     }
   }
 
+  addEndCover() {
+    const group = new THREE.Group();
+    group.position.copy(this.object.position);
+    group.rotation.copy(this.object.rotation);
+    group.scale.copy(this.object.scale);
+
+    const dummy = new THREE.Object3D();
+    group.add(dummy);
+
+    const finalPos = new THREE.Vector3();
+    const finalQuat = new THREE.Quaternion();
+    const finalScale = new THREE.Vector3();
+
+    const trsToObj = (trs: { position: number[]; scale: number[] }) => {
+      const position = trs.position as [number, number, number];
+      const scale = trs.scale as [number, number, number];
+      dummy.position.set(...position);
+      dummy.scale.set(...scale);
+
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldScale(finalScale);
+      dummy.getWorldQuaternion(finalQuat);
+
+      const obj = new THREE.Object3D();
+      obj.position.copy(finalPos);
+      obj.quaternion.copy(finalQuat);
+      obj.scale.copy(finalScale);
+      return obj;
+    };
+
+    CONSTANT.gfx.boardCoord["EndCover"].forEach((trs) => {
+      const obj = trsToObj(trs);
+      this.render.pushInstancedMeshInfo("EndCover", {
+        id: `${this.tetrisBoard.boardId}`,
+        object: obj,
+      });
+    });
+  }
+  removeEndCover() {
+    this.render.removeInstancedMeshInfoByFilterId(
+      "EndCover",
+      `${this.tetrisBoard.boardId}`
+    );
+  }
+
   move(newTransform: Transform) {
     // "Cover" |"CoverLine"| "Case" | "E" | "H" | "GarbageQueue" | "GarbageReady" | "Garbage" |Tetrimino;
     /*
@@ -1052,6 +1253,80 @@ class RenderHandler {
 
     // tetrimino
     this.update();
+  }
+
+  garbageQueueSet(garbageQueue: GarbageQueue[]) {
+    const group = new THREE.Group();
+    group.position.copy(this.object.position);
+    group.rotation.copy(this.object.rotation);
+    group.scale.copy(this.object.scale);
+
+    const dummy = new THREE.Object3D();
+    group.add(dummy);
+
+    const finalPos = new THREE.Vector3();
+    const finalQuat = new THREE.Quaternion();
+    const finalScale = new THREE.Vector3();
+    // const finalEuler = new THREE.Euler();
+
+    const trsToObj = (trs: { position: number[]; scale: number[] }) => {
+      const position = trs.position as [number, number, number];
+      const scale = trs.scale as [number, number, number];
+      dummy.position.set(...position);
+      dummy.scale.set(...scale);
+
+      dummy.getWorldPosition(finalPos);
+      dummy.getWorldScale(finalScale);
+      dummy.getWorldQuaternion(finalQuat);
+
+      const obj = new THREE.Object3D();
+      obj.position.copy(finalPos);
+      obj.quaternion.copy(finalQuat);
+      obj.scale.copy(finalScale);
+      return obj;
+    };
+
+    this.render.removeInstancedMeshInfoByFilterId(
+      "GarbageQueue",
+      `${this.tetrisBoard.boardId}`
+    );
+    this.render.removeInstancedMeshInfoByFilterId(
+      "GarbageReady",
+      `${this.tetrisBoard.boardId}`
+    );
+
+    const yBase = -26;
+    let y = 0;
+    console.log("garbageQueue", garbageQueue);
+    for (const gq of garbageQueue) {
+      for (let i = 0; i < gq.line; i++) {
+        y += 1;
+        // dummy.position.set(-1.0, yBase + y, 0);
+        // dummy.scale.set(0.5, 1, 1);
+
+        // dummy.getWorldPosition(finalPos);
+        // dummy.getWorldQuaternion(finalQuat);
+        // finalEuler.setFromQuaternion(finalQuat);
+        // dummy.getWorldScale(finalScale);
+
+        const obj = trsToObj({
+          position: [-1, yBase + y, 0],
+          scale: [0.5, 1, 1],
+        });
+
+        if (gq.kind === "Queued") {
+          this.render.pushInstancedMeshInfo("GarbageQueue", {
+            id: `${this.tetrisBoard.boardId}`,
+            object: obj,
+          });
+        } else if (gq.kind === "Ready") {
+          this.render.pushInstancedMeshInfo("GarbageReady", {
+            id: `${this.tetrisBoard.boardId}`,
+            object: obj,
+          });
+        }
+      }
+    }
   }
 
   infoTextMake({ level, score, time, line }: InfoData) {
@@ -1140,6 +1415,10 @@ class RenderHandler {
         `${this.tetrisBoard.boardId}`
       );
     });
+    this.render.removeInstancedMeshInfoByFilterId(
+      "EndCover",
+      `${this.tetrisBoard.boardId}`
+    );
     this.textList.forEach((each) => {
       this.render.removeText(`${this.tetrisBoard.boardId}_${each}`);
     });

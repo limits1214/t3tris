@@ -1,4 +1,4 @@
-import type { Tetrimino } from "tetris-lib/bindings";
+import type { Board, Tetrimino } from "tetris-lib/bindings";
 import * as THREE from "three";
 
 export type BoardId = string;
@@ -74,3 +74,18 @@ export interface TickerDelegation {
   ticking(): void;
   endTicking(): void;
 }
+export type BoardSyncData = {
+  board: Board;
+  garbageQueue: GarbageQueue[];
+  hold: Tetrimino | null;
+  level: number;
+  next: Tetrimino[];
+  score: number;
+  line: number;
+  isBoardEnd: boolean;
+  elapsed: number;
+};
+export type GarbageQueue = {
+  kind: "Queued" | "Ready";
+  line: number;
+};

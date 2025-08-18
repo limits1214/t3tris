@@ -65,6 +65,10 @@ pub enum GameActionType {
         kind: String,
         combo: u32,
     },
+    BoardEnd,
+    AddGarbageQueue {
+        empty: Vec<u8>,
+    },
 }
 
 pub enum Ws {

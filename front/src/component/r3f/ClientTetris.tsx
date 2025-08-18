@@ -5,7 +5,12 @@ import * as THREE from "three";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { GameManager } from "../game/gameManager";
 import { CONSTANT } from "../game/constant";
-import type { BoardId, BoardSetup, Transform } from "../game/type";
+import type {
+  BoardId,
+  BoardSetup,
+  BoardSyncData,
+  Transform,
+} from "../game/type";
 import type { TetrisBoard } from "../game/board";
 
 export type ClientTetrisController = {
@@ -28,6 +33,7 @@ export type ClientTetrisController = {
   setup: (boardId: BoardId, setup: BoardSetup) => void;
   onWsMessage: (msg: string) => void;
   setWsSenderGameId: (gameId: string | undefined) => void;
+  gameSync: (gameSyncData: Record<string, BoardSyncData>) => void;
 };
 export type ClientTetrisParam = {
   send: (msg: string) => void;
@@ -109,6 +115,9 @@ export const ClientTetris = forwardRef<
 
     moveBoard(boardId, newTransform) {
       gameManager.current.moveBoard(boardId, newTransform);
+    },
+    gameSync(gameSyncData) {
+      gameManager.current.multiGameSync(gameSyncData);
     },
   };
 

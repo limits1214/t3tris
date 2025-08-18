@@ -10,7 +10,7 @@ use crate::{
     ws_world::{
         connections::WsConnections,
         game2::{
-            model::{TetrisGameActionType, level_to_gravity_tick},
+            model::{BoardEndKind, GarbageQueueKind, TetrisGameActionType, level_to_gravity_tick},
             tetris::TetrisGame,
         },
         model::{
@@ -102,53 +102,67 @@ fn game_loop(
 ) {
     for (_, (_, tetris)) in game.tetries.iter_mut().enumerate() {
         if tetris.is_started {
-            tetris.elapsed = game.elapsed.as_millis() - 3000;
-            // tick
-            tetris.tick += 1;
+            if !tetris.is_board_end {
+                // tetris.push_action_buffer(TetrisGameActionType::Ticking);
+                tetris.elapsed = game.elapsed.as_millis() - 3000;
+                // tick
+                tetris.tick += 1;
 
-            // step tick
-            tetris.step_tick += 1;
+                // step tick
+                tetris.step_tick += 1;
 
-            // combo tick
-            if tetris.combo_tick > 0 {
-                tetris.combo_tick -= 1;
-            } else {
-                tetris.combo_tick = 0;
-                tetris.combo = 0;
-            }
+                // combo tick
+                if tetris.combo_tick > 0 {
+                    tetris.combo_tick -= 1;
+                } else {
+                    tetris.combo_tick = 0;
+                    tetris.combo = 0;
+                }
 
-            if tetris.step_tick >= level_to_gravity_tick(tetris.level) {
-                tetris.step_tick = 0;
-                // tetris.push_action_buffer(TetrisGameActionType::DoStep);
-                // match tetris.step() {
-                //     Ok(_) => {
-                //         tetris.push_action_buffer(TetrisGameActionType::Step);
-                //     }
-                //     Err(err) => match err {
-                //         tetris_lib::StepError::Blocked(_) | tetris_lib::StepError::OutOfBounds => {
-                //             if !tetris.is_placing_delay {
-                //                 tetris.is_placing_delay = true;
-                //                 tetris.placing_delay_tick = 0;
-                //                 tetris.placing_reset_cnt = 15;
-                //             }
-                //         }
-                //         tetris_lib::StepError::InvalidShape => {}
-                //     },
-                // }
+                // garbage queue->ready tick
+                if matches!(game.game_type, WsWorldGameType::MultiBattle) {
+                    let mut garbage_ready = false;
+                    for gq in tetris.garbage_queue.iter_mut() {
+                        if matches!(gq.kind, GarbageQueueKind::Queued)
+                            && tetris.tick > gq.tick + 180
+                        {
+                            gq.kind = GarbageQueueKind::Ready;
+                            garbage_ready = true;
+                        }
+                    }
+                    if garbage_ready {
+                        tetris.push_action_buffer(TetrisGameActionType::GarbageQueue {
+                            queue: tetris.garbage_queue.clone().into(),
+                        });
+                    }
+                }
+
+                match game.game_type {
+                    WsWorldGameType::Multi40Line => {
+                        if tetris.clear_line >= 40 {
+                            tetris.is_board_end = true;
+                            tetris.line_40_clear = true;
+
+                            tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                                kind: BoardEndKind::Line40Clear,
+                                elapsed: tetris.elapsed,
+                            });
+                        }
+                    }
+
+                    _ => {}
+                }
+
+                if tetris.step_tick >= level_to_gravity_tick(tetris.level) {
+                    tetris.step_tick = 0;
+                    tetris.push_action_buffer(TetrisGameActionType::DoStep);
+                }
             }
         } else {
             tetris.is_started = true;
             tetris.is_board_end = false;
-            // tetris.tick = 0;
-            // tetris.step_tick = 999;
-            // tetris.setup();
-            // let next_tetr = tetris.shift_next();
-            // if let Some(next_tetr) = next_tetr {
-            //     tetris.spawn(next_tetr);
-            //     tetris.push_next();
-            //     tetris.push_action_buffer(TetrisGameActionType::GameStart);
-            // }
-            tetris.push_action_buffer(TetrisGameActionType::GameStart);
+
+            tetris.push_action_buffer(TetrisGameActionType::BoardStart);
         }
     }
 
@@ -173,6 +187,7 @@ fn game_loop(
     // 게임 종료
     let is_game_end = game.tetries.iter_mut().all(|(_, game)| game.is_board_end);
     if is_game_end {
+        tracing::info!("gameEnd");
         game_end(connections, rooms, game, pubsub);
     }
 }

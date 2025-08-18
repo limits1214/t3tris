@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ActionHandler, TetrisBoard } from "./board";
+import { ActionHandler, SoloTickerHandler, TetrisBoard } from "./board";
 import { GameInput } from "./input";
 import { GameRender } from "./render";
 import type { BoardId, Transform } from "./type";
@@ -75,6 +75,7 @@ export class GameManager {
     this.mainNickName = nickName;
     const newBoard = new TetrisBoard(this.render, boardId, nickName);
     newBoard.actionHandler = new ActionHandler(newBoard);
+    newBoard.tickerHandler = new SoloTickerHandler(newBoard);
     this.input.delegation = newBoard.actionHandler;
     this.gameLoop.delegation = newBoard.tickerHandler;
 

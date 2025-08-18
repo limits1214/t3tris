@@ -33,12 +33,19 @@ export class TetrisBoard {
   isBoardActive = false;
   isCanHold = true;
   isTSpin = false;
+  tick = 0;
+  stepTick = 0;
+  comboTick = 0;
+  isPlacingDelay = false;
+  placingDelayTick = 0;
+  placingResetCnt = CONSTANT.rule.placingResetCnt;
 
   timer: Timer;
   actionHandler?: ActionDelegation;
   renderHandler: RenderHandler;
-  tickerHandler: TickerHandler; // TODO undefined
+  tickerHandler?: TickerDelegation; // TODO undefined
   ctrl: TetrisBoardController;
+
   wsSender: WsSender | undefined;
   constructor(render: GameRender, boardId: BoardId, nickName: string) {
     this.boardId = boardId;
@@ -46,7 +53,7 @@ export class TetrisBoard {
     this.timer = new Timer(this.info);
     // this.actionHandler = new Actionhandler(this);
     this.renderHandler = new RenderHandler(this, render);
-    this.tickerHandler = new TickerHandler(this);
+    // this.tickerHandler = new SoloTickerHandler(this);
     this.ctrl = new Controller(this);
   }
 
@@ -63,6 +70,182 @@ export class TetrisBoard {
     return this.sevenBag.shift()!;
   }
 
+  placing(): [number, string | null] {
+    this.ctrl.placing();
+
+    const clear = this.board.tryLineClear() as number[];
+    const clearlen = clear.length;
+
+    if (clear.length) {
+      if (this.info.line !== undefined) {
+        this.info.line += clearlen;
+      } else {
+        this.info.line = 0;
+      }
+
+      if (this.info.level !== undefined) {
+        const clamp = (value: number, min: number, max: number) => {
+          return Math.min(Math.max(value, min), max);
+        };
+        const LVUP_LINE = 10;
+
+        this.info.level = clamp(
+          Math.floor(this.info.line / LVUP_LINE) + 1,
+          1,
+          20
+        );
+      }
+
+      this.ctrl.lineClear();
+
+      // combo
+      if (this.comboTick > 0) {
+        this.combo += 1;
+      }
+      this.comboTick = 150; //2.5sec
+    }
+
+    //
+    let score = null;
+    let scoreNum = 0;
+    if (this.isTSpin) {
+      if (clearlen === 0) {
+        score = "TSpinZero";
+        scoreNum = CONSTANT.score["TSpinZero"];
+      } else if (clearlen === 1) {
+        score = "TSpinSingle";
+        scoreNum = CONSTANT.score["TSpinSingle"];
+      } else if (clearlen === 2) {
+        score = "TSpinDouble";
+        scoreNum = CONSTANT.score["TSpinDouble"];
+      } else if (clearlen === 3) {
+        score = "TSpinTriple";
+        scoreNum = CONSTANT.score["TSpinTriple"];
+      }
+    } else {
+      if (clearlen === 1) {
+        score = "Single";
+        scoreNum = CONSTANT.score["Single"];
+      } else if (clearlen === 2) {
+        score = "Double";
+        scoreNum = CONSTANT.score["Double"];
+      } else if (clearlen === 3) {
+        score = "Triple";
+        scoreNum = CONSTANT.score["Triple"];
+      } else if (clearlen === 4) {
+        score = "Tetris";
+        scoreNum = CONSTANT.score["Tetris"];
+      }
+    }
+
+    if (score) {
+      const lv = this.info.level ?? 1;
+      if (this.info.score !== undefined) {
+        this.info.score += scoreNum * lv + 200 * this.combo;
+      }
+    }
+
+    this.ctrl.setInfo({
+      line: this.info.line,
+      level: this.info.level,
+      score: this.info.score,
+    });
+
+    this.isCanHold = true;
+    this.isTSpin = false;
+
+    this.renderHandler.isDirty = true;
+    return [clearlen, score];
+  }
+
+  spawnFromNext(): boolean {
+    console.log("spawnFromNext");
+    const nextTetr = this.ctrl.shiftNext();
+    if (nextTetr) {
+      try {
+        if (!this.spawnWithGameOverCheck(nextTetr)) {
+          return false;
+        }
+
+        this.ctrl.spawn(nextTetr);
+
+        this.stepTick = 999;
+
+        this.ctrl.pushNext(this.getTetriminoFromSevenBag());
+
+        this.renderHandler.isDirty = true;
+        return true;
+      } catch {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  spawnWithGameOverCheck(tetrimino: Tetrimino): boolean {
+    const plan = this.board.trySpawnFalling(tetrimino) as TileAt[];
+    for (const { location } of plan) {
+      if (
+        (this.board.getLocation(location.x, location.y) as Tile) !== "Empty"
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  tSpinCheck() {
+    const fallings = this.board.getFallingBlocks() as FallingBlockAt[];
+
+    if (fallings.length && fallings[0].falling.kind === "T") {
+      //
+      let isTSpin = false;
+      let is3Corner = false;
+
+      const offsets = [
+        [-1, -1],
+        [1, 1],
+        [1, -1],
+        [-1, 1],
+      ];
+
+      const centerLoc = fallings
+        .filter((f) => f.falling.id === 2)
+        .map((m) => m.location);
+
+      let placedCnt = 0;
+      if (centerLoc.length) {
+        const b = this.board;
+        for (const [x, y] of offsets) {
+          const findX = centerLoc[0].x + x;
+          const findY = centerLoc[0].y + y;
+          if (findX < b.xLen && findY < b.yLen) {
+            const tile = b.getLocation(findX, findY) as Tile;
+            if (typeof tile === "object" && "Placed" in tile) {
+              placedCnt += 1;
+            } else {
+              //
+            }
+          } else {
+            //wall
+            placedCnt += 1;
+          }
+        }
+
+        if (placedCnt >= 3) {
+          is3Corner = true;
+        }
+      }
+
+      if (is3Corner) {
+        isTSpin = true;
+      }
+      return isTSpin;
+    } else {
+      return false;
+    }
+  }
   showFallingHint() {
     this.board.removeFallingHint();
     this.board.showFallingHint();
@@ -143,7 +326,6 @@ class Controller implements TetrisBoardController {
     this.tb.timer.reset();
     this.tb.timer.on();
     this.tb.isBoardActive = true;
-    this.tb.tickerHandler.spawnFromNext();
   }
   gameEnd(): void {
     console.log("gameEnd");
@@ -362,16 +544,10 @@ class Timer {
   }
 }
 
-class TickerHandler implements TickerDelegation {
-  tick = 0;
-  stepTick = 0;
-  comboTick = 0;
-  isPlacingDelay = false;
-  placingDelayTick = 0;
-  placingResetCnt = CONSTANT.rule.placingResetCnt;
-  tetrisBoard: TetrisBoard;
+export class SoloTickerHandler implements TickerDelegation {
+  tb: TetrisBoard;
   constructor(tetrisBoard: TetrisBoard) {
-    this.tetrisBoard = tetrisBoard;
+    this.tb = tetrisBoard;
   }
   endTicking(): void {
     // throw new Error("Method not implemented.");
@@ -380,10 +556,10 @@ class TickerHandler implements TickerDelegation {
     const next = Array(5)
       .fill(null)
       .map(() => {
-        return this.tetrisBoard.getTetriminoFromSevenBag();
+        return this.tb.getTetriminoFromSevenBag();
       });
 
-    this.tetrisBoard.ctrl.setup({
+    this.tb.ctrl.setup({
       hold: null,
       next: next,
     });
@@ -393,264 +569,84 @@ class TickerHandler implements TickerDelegation {
       setTimeout(() => {
         console.log("1");
         setTimeout(() => {
-          this.tetrisBoard.ctrl.gameStart();
-          this.stepTick = 999;
+          this.tb.ctrl.gameStart();
+
+          this.tb.spawnFromNext();
+          this.tb.stepTick = 999;
         }, 1000);
       }, 1000);
     }, 1000);
   }
 
   ticking() {
-    if (!this.tetrisBoard.isBoardActive) return;
+    if (!this.tb.isBoardActive) return;
 
-    this.tick += 1;
-    this.stepTick += 1;
+    this.tb.tick += 1;
+    this.tb.stepTick += 1;
 
     // combo tick
-    if (this.comboTick > 0) {
-      this.comboTick -= 1;
+    if (this.tb.comboTick > 0) {
+      this.tb.comboTick -= 1;
     } else {
-      this.comboTick = 0;
-      this.tetrisBoard.combo = 0;
+      this.tb.comboTick = 0;
+      this.tb.combo = 0;
     }
 
-    if (this.isPlacingDelay) {
+    if (this.tb.isPlacingDelay) {
       try {
-        this.tetrisBoard.board.tryStep();
+        this.tb.board.tryStep();
       } catch {
-        this.placingDelayTick += 1;
-        if (this.placingDelayTick >= 30) {
-          this.isPlacingDelay = false;
-          const [, score] = this.placing();
+        this.tb.placingDelayTick += 1;
+        if (this.tb.placingDelayTick >= 30) {
+          this.tb.isPlacingDelay = false;
+          const [, score] = this.tb.placing();
 
           if (score) {
-            this.tetrisBoard.ctrl.scoreEffect(score, this.tetrisBoard.combo);
+            this.tb.ctrl.scoreEffect(score, this.tb.combo);
           }
 
           //
-          const isSuccess = this.spawnFromNext();
+          const isSuccess = this.tb.spawnFromNext();
 
           if (!isSuccess) {
-            this.tetrisBoard.ctrl.gameEnd();
+            this.tb.ctrl.gameEnd();
           }
         }
       }
     }
 
-    const lv = this.tetrisBoard.info.level ?? 1;
-    if (this.stepTick >= CONSTANT.levelGravityTick[lv > 20 ? 20 : lv]) {
-      this.stepTick = 0;
+    const lv = this.tb.info.level ?? 1;
+    if (this.tb.stepTick >= CONSTANT.levelGravityTick[lv > 20 ? 20 : lv]) {
+      this.tb.stepTick = 0;
 
       try {
-        this.tetrisBoard.ctrl.step();
+        this.tb.ctrl.step();
       } catch {
-        if (!this.isPlacingDelay) {
-          this.isPlacingDelay = true;
-          this.placingDelayTick = 0;
-          this.placingResetCnt = 15;
+        if (!this.tb.isPlacingDelay) {
+          this.tb.isPlacingDelay = true;
+          this.tb.placingDelayTick = 0;
+          this.tb.placingResetCnt = 15;
         }
       }
-    }
-  }
-
-  placing(): [number, string | null] {
-    this.tetrisBoard.ctrl.placing();
-
-    const clear = this.tetrisBoard.board.tryLineClear() as number[];
-    const clearlen = clear.length;
-
-    if (clear.length) {
-      if (this.tetrisBoard.info.line !== undefined) {
-        this.tetrisBoard.info.line += clearlen;
-      } else {
-        this.tetrisBoard.info.line = 0;
-      }
-
-      if (this.tetrisBoard.info.level !== undefined) {
-        const clamp = (value: number, min: number, max: number) => {
-          return Math.min(Math.max(value, min), max);
-        };
-        const LVUP_LINE = 10;
-
-        this.tetrisBoard.info.level = clamp(
-          Math.floor(this.tetrisBoard.info.line / LVUP_LINE) + 1,
-          1,
-          20
-        );
-      }
-
-      this.tetrisBoard.ctrl.lineClear();
-
-      // combo
-      if (this.comboTick > 0) {
-        this.tetrisBoard.combo += 1;
-      }
-      this.comboTick = 150; //2.5sec
-    }
-
-    //
-    let score = null;
-    let scoreNum = 0;
-    if (this.tetrisBoard.isTSpin) {
-      if (clearlen === 0) {
-        score = "TSpinZero";
-        scoreNum = CONSTANT.score["TSpinZero"];
-      } else if (clearlen === 1) {
-        score = "TSpinSingle";
-        scoreNum = CONSTANT.score["TSpinSingle"];
-      } else if (clearlen === 2) {
-        score = "TSpinDouble";
-        scoreNum = CONSTANT.score["TSpinDouble"];
-      } else if (clearlen === 3) {
-        score = "TSpinTriple";
-        scoreNum = CONSTANT.score["TSpinTriple"];
-      }
-    } else {
-      if (clearlen === 1) {
-        score = "Single";
-        scoreNum = CONSTANT.score["Single"];
-      } else if (clearlen === 2) {
-        score = "Double";
-        scoreNum = CONSTANT.score["Double"];
-      } else if (clearlen === 3) {
-        score = "Triple";
-        scoreNum = CONSTANT.score["Triple"];
-      } else if (clearlen === 4) {
-        score = "Tetris";
-        scoreNum = CONSTANT.score["Tetris"];
-      }
-    }
-
-    if (score) {
-      const lv = this.tetrisBoard.info.level ?? 1;
-      if (this.tetrisBoard.info.score !== undefined) {
-        this.tetrisBoard.info.score +=
-          scoreNum * lv + 200 * this.tetrisBoard.combo;
-      }
-    }
-
-    this.tetrisBoard.ctrl.setInfo({
-      line: this.tetrisBoard.info.line,
-      level: this.tetrisBoard.info.level,
-      score: this.tetrisBoard.info.score,
-    });
-
-    this.tetrisBoard.isCanHold = true;
-    this.tetrisBoard.isTSpin = false;
-
-    this.tetrisBoard.renderHandler.isDirty = true;
-    return [clearlen, score];
-  }
-
-  spawnFromNext(): boolean {
-    console.log("spawnFromNext");
-    const nextTetr = this.tetrisBoard.ctrl.shiftNext();
-    if (nextTetr) {
-      try {
-        if (!this.spawnWithGameOverCheck(nextTetr)) {
-          return false;
-        }
-
-        this.tetrisBoard.ctrl.spawn(nextTetr);
-
-        this.stepTick = 999;
-
-        this.tetrisBoard.ctrl.pushNext(
-          this.tetrisBoard.getTetriminoFromSevenBag()
-        );
-
-        this.tetrisBoard.renderHandler.isDirty = true;
-        return true;
-      } catch {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  }
-  spawnWithGameOverCheck(tetrimino: Tetrimino): boolean {
-    const plan = this.tetrisBoard.board.trySpawnFalling(tetrimino) as TileAt[];
-    for (const { location } of plan) {
-      if (
-        (this.tetrisBoard.board.getLocation(location.x, location.y) as Tile) !==
-        "Empty"
-      ) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  tSpinCheck() {
-    const fallings =
-      this.tetrisBoard.board.getFallingBlocks() as FallingBlockAt[];
-
-    if (fallings.length && fallings[0].falling.kind === "T") {
-      //
-      let isTSpin = false;
-      let is3Corner = false;
-
-      const offsets = [
-        [-1, -1],
-        [1, 1],
-        [1, -1],
-        [-1, 1],
-      ];
-
-      const centerLoc = fallings
-        .filter((f) => f.falling.id === 2)
-        .map((m) => m.location);
-
-      let placedCnt = 0;
-      if (centerLoc.length) {
-        const b = this.tetrisBoard.board;
-        for (const [x, y] of offsets) {
-          const findX = centerLoc[0].x + x;
-          const findY = centerLoc[0].y + y;
-          if (findX < b.xLen && findY < b.yLen) {
-            const tile = b.getLocation(findX, findY) as Tile;
-            if (typeof tile === "object" && "Placed" in tile) {
-              placedCnt += 1;
-            } else {
-              //
-            }
-          } else {
-            //wall
-            placedCnt += 1;
-          }
-        }
-
-        if (placedCnt >= 3) {
-          is3Corner = true;
-        }
-      }
-
-      if (is3Corner) {
-        isTSpin = true;
-      }
-      return isTSpin;
-    } else {
-      return false;
     }
   }
 }
 
 export class ActionHandler implements ActionDelegation {
-  tetrisBoard;
+  tb;
   constructor(tetrisBoard: TetrisBoard) {
-    this.tetrisBoard = tetrisBoard;
+    this.tb = tetrisBoard;
   }
   actMoveLeft(): void {
-    if (!this.tetrisBoard.isBoardActive) return;
+    if (!this.tb.isBoardActive) return;
     try {
-      this.tetrisBoard.ctrl.moveLeft();
+      this.tb.ctrl.moveLeft();
 
-      if (this.tetrisBoard.tickerHandler.placingResetCnt > 0) {
-        this.tetrisBoard.tickerHandler.placingDelayTick = 0;
-        this.tetrisBoard.tickerHandler.placingResetCnt -= 1;
+      if (this.tb.placingResetCnt > 0) {
+        this.tb.placingDelayTick = 0;
+        this.tb.placingResetCnt -= 1;
       }
-      this.tetrisBoard.renderHandler.isDirty = true;
+      this.tb.renderHandler.isDirty = true;
     } catch (e) {
       if (e instanceof Error) {
         // console.error(e.message); // OK
@@ -660,16 +656,16 @@ export class ActionHandler implements ActionDelegation {
     }
   }
   actMoveRight(): void {
-    if (!this.tetrisBoard.isBoardActive) return;
+    if (!this.tb.isBoardActive) return;
     try {
-      this.tetrisBoard.ctrl.moveRight();
+      this.tb.ctrl.moveRight();
 
-      if (this.tetrisBoard.tickerHandler.placingResetCnt > 0) {
-        this.tetrisBoard.tickerHandler.placingDelayTick = 0;
-        this.tetrisBoard.tickerHandler.placingResetCnt -= 1;
+      if (this.tb.placingResetCnt > 0) {
+        this.tb.placingDelayTick = 0;
+        this.tb.placingResetCnt -= 1;
       }
 
-      this.tetrisBoard.renderHandler.isDirty = true;
+      this.tb.renderHandler.isDirty = true;
     } catch (e) {
       if (e instanceof Error) {
         // console.error(e.message); // OK
@@ -679,18 +675,18 @@ export class ActionHandler implements ActionDelegation {
     }
   }
   actRotateLeft(): void {
-    if (!this.tetrisBoard.isBoardActive) return;
+    if (!this.tb.isBoardActive) return;
     try {
-      this.tetrisBoard.ctrl.rotateLeft();
+      this.tb.ctrl.rotateLeft();
 
-      this.tetrisBoard.isTSpin = this.tetrisBoard.tickerHandler.tSpinCheck();
+      this.tb.isTSpin = this.tb.tSpinCheck();
 
-      if (this.tetrisBoard.tickerHandler.placingResetCnt > 0) {
-        this.tetrisBoard.tickerHandler.placingDelayTick = 0;
-        this.tetrisBoard.tickerHandler.placingResetCnt -= 1;
+      if (this.tb.placingResetCnt > 0) {
+        this.tb.placingDelayTick = 0;
+        this.tb.placingResetCnt -= 1;
       }
 
-      this.tetrisBoard.renderHandler.isDirty = true;
+      this.tb.renderHandler.isDirty = true;
     } catch (e) {
       if (e instanceof Error) {
         // console.error(e.message); // OK
@@ -701,18 +697,18 @@ export class ActionHandler implements ActionDelegation {
   }
 
   actRotateRight(): void {
-    if (!this.tetrisBoard.isBoardActive) return;
+    if (!this.tb.isBoardActive) return;
     try {
-      this.tetrisBoard.ctrl.rotateRight();
+      this.tb.ctrl.rotateRight();
 
-      this.tetrisBoard.isTSpin = this.tetrisBoard.tickerHandler.tSpinCheck();
+      this.tb.isTSpin = this.tb.tSpinCheck();
 
-      if (this.tetrisBoard.tickerHandler.placingResetCnt > 0) {
-        this.tetrisBoard.tickerHandler.placingDelayTick = 0;
-        this.tetrisBoard.tickerHandler.placingResetCnt -= 1;
+      if (this.tb.placingResetCnt > 0) {
+        this.tb.placingDelayTick = 0;
+        this.tb.placingResetCnt -= 1;
       }
 
-      this.tetrisBoard.renderHandler.isDirty = true;
+      this.tb.renderHandler.isDirty = true;
     } catch (e) {
       if (e instanceof Error) {
         // console.error(e.message); // OK
@@ -722,65 +718,63 @@ export class ActionHandler implements ActionDelegation {
     }
   }
   actSoftDrop(): void {
-    if (!this.tetrisBoard.isBoardActive) return;
-    this.tetrisBoard.ctrl.step();
+    if (!this.tb.isBoardActive) return;
+    this.tb.ctrl.step();
 
-    if (this.tetrisBoard.info.score !== undefined) {
-      this.tetrisBoard.info.score += CONSTANT.score.SoftDrop;
+    if (this.tb.info.score !== undefined) {
+      this.tb.info.score += CONSTANT.score.SoftDrop;
     }
     //TODO setinfo
   }
   actHardDrop(): void {
-    if (!this.tetrisBoard.isBoardActive) return;
-    const dropcnt = this.tetrisBoard.ctrl.hardDrop();
+    if (!this.tb.isBoardActive) return;
+    const dropcnt = this.tb.ctrl.hardDrop();
 
-    if (this.tetrisBoard.info.score !== undefined) {
-      this.tetrisBoard.info.score += CONSTANT.score.HardDrop * dropcnt;
+    if (this.tb.info.score !== undefined) {
+      this.tb.info.score += CONSTANT.score.HardDrop * dropcnt;
     }
 
-    this.tetrisBoard.tickerHandler.isPlacingDelay = false;
-    this.tetrisBoard.renderHandler.isDirty = true;
+    this.tb.isPlacingDelay = false;
+    this.tb.renderHandler.isDirty = true;
 
-    const [, score] = this.tetrisBoard.tickerHandler.placing();
+    const [, score] = this.tb.placing();
     if (score) {
-      this.tetrisBoard.ctrl.scoreEffect(score, this.tetrisBoard.combo);
+      this.tb.ctrl.scoreEffect(score, this.tb.combo);
     }
 
-    const isSuccess = this.tetrisBoard.tickerHandler.spawnFromNext();
+    const isSuccess = this.tb.spawnFromNext();
 
     if (!isSuccess) {
-      this.tetrisBoard.ctrl.gameEnd();
+      this.tb.ctrl.gameEnd();
     }
   }
   actHold(): void {
-    if (!this.tetrisBoard.isBoardActive) return;
-    if (!this.tetrisBoard.isCanHold) {
+    if (!this.tb.isBoardActive) return;
+    if (!this.tb.isCanHold) {
       return;
     }
-    this.tetrisBoard.isCanHold = false;
-    const hold = this.tetrisBoard.hold;
+    this.tb.isCanHold = false;
+    const hold = this.tb.hold;
     if (hold) {
-      const fallings =
-        this.tetrisBoard.board.getFallingBlocks() as FallingBlockAt[];
+      const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
       const firstFalling = fallings.shift();
       if (firstFalling) {
-        this.tetrisBoard.ctrl.addHold(firstFalling.falling.kind);
+        this.tb.ctrl.addHold(firstFalling.falling.kind);
       }
-      this.tetrisBoard.ctrl.removeFalling();
+      this.tb.ctrl.removeFalling();
 
-      this.tetrisBoard.tickerHandler.spawnFromNext();
+      this.tb.spawnFromNext();
     } else {
-      const fallings =
-        this.tetrisBoard.board.getFallingBlocks() as FallingBlockAt[];
+      const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
       const firstFalling = fallings.shift();
       if (firstFalling) {
-        this.tetrisBoard.ctrl.addHold(firstFalling.falling.kind);
-        this.tetrisBoard.ctrl.removeFalling();
-        this.tetrisBoard.tickerHandler.spawnFromNext();
+        this.tb.ctrl.addHold(firstFalling.falling.kind);
+        this.tb.ctrl.removeFalling();
+        this.tb.spawnFromNext();
       }
     }
 
-    this.tetrisBoard.tickerHandler.isPlacingDelay = false;
+    this.tb.isPlacingDelay = false;
   }
 }
 

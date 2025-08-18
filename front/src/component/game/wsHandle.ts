@@ -1,7 +1,4 @@
-import type { Tetrimino } from "tetris-lib/bindings";
-import type { TetrisBoard } from "./board";
 import type { GameManager } from "./gameManager";
-import type { BoardId } from "./type";
 
 export class WsSender {
   gm: GameManager;

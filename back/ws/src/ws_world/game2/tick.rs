@@ -149,10 +149,10 @@ fn game_loop(
                     }
                 }
 
-                if tetris.step_tick >= level_to_gravity_tick(tetris.level) {
-                    tetris.step_tick = 0;
-                    tetris.push_action_buffer(TetrisGameActionType::DoStep);
-                }
+                // if tetris.step_tick >= level_to_gravity_tick(tetris.level) {
+                //     tetris.step_tick = 0;
+                //     tetris.push_action_buffer(TetrisGameActionType::DoStep);
+                // }
             }
         } else {
             tetris.is_started = true;

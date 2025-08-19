@@ -5,7 +5,7 @@ import { Text, Flex, Grid, TextField, Button, Dialog } from "@radix-ui/themes";
 import { useAuthStore } from "../store/useAuthStore";
 import { useEffect, useRef, useState } from "react";
 import { getUserInfo, type UserInfo } from "../api/user";
-import { guestLogin, serverLogout } from "../api/auth";
+import { getWsToken, guestLogin, serverLogout } from "../api/auth";
 import { useWsStore } from "../store/useWsStore";
 import { useLobbyStore } from "../store/useLobbyStore";
 import { format } from "date-fns";
@@ -14,13 +14,16 @@ import { ReadyState } from "react-use-websocket";
 import { useNavigate } from "react-router-dom";
 import { useWsUserStore } from "../store/useWsUserStore";
 import { gameTypeMap } from "./RoomPage";
+import { readyStateString } from "../util/ws";
 
 const HomePage = () => {
   const send = useWsStore((s) => s.send);
+  const readyState = useWsStore((s) => s.readyState);
   const isInitialWsLoginEnd = useWsUserStore((s) => s.isInitialWsLoginEnd);
   const wsReadyState = useWsStore((s) => s.readyState);
   const updateLobbyChats = useLobbyStore((s) => s.updateLobbyChats);
-
+  const setWsToken = useWsStore((s) => s.setWsToken);
+  const navigate = useNavigate();
   useEffect(() => {
     if (wsReadyState === ReadyState.OPEN) {
       console.log("lobby sub");
@@ -75,14 +78,46 @@ const HomePage = () => {
             margin-top: 1rem;
           `}
         >
-          <Text
-            css={css`
-              font-size: 1.5rem;
-            `}
-          >
-            T3TRIS
-          </Text>
-          <CreateRoom />
+          <Flex>
+            <Text
+              css={css`
+                font-size: 1.5rem;
+              `}
+            >
+              T3TRIS
+            </Text>
+          </Flex>
+          <Flex>
+            서버: {readyStateString(readyState)}
+            {readyState !== ReadyState.OPEN && (
+              <Button
+                onClick={() => {
+                  const connect = async () => {
+                    try {
+                      const wsToken = await getWsToken();
+                      setWsToken(wsToken);
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  };
+                  connect();
+                }}
+              >
+                재연결
+              </Button>
+            )}
+          </Flex>
+          <Flex>
+            <Button
+              css={css`
+                margin-right: 1rem;
+              `}
+              onClick={() => navigate("/single")}
+            >
+              싱글플레이
+            </Button>
+            {readyState === ReadyState.OPEN && <CreateRoom />}
+          </Flex>
         </Flex>
         <Flex
           direction="column"
@@ -94,19 +129,21 @@ const HomePage = () => {
           <RoomList />
         </Flex>
       </Flex>
-      <Flex
-        direction="column"
-        css={css`
-          width: 30vw;
-          @media (max-width: 768px) {
-            display: none;
-          }
-        `}
-      >
-        <MyInfo />
-        <CurrentUser />
-        <LobbyChat />
-      </Flex>
+      {readyState === ReadyState.OPEN && (
+        <Flex
+          direction="column"
+          css={css`
+            width: 30vw;
+            @media (max-width: 768px) {
+              display: none;
+            }
+          `}
+        >
+          <MyInfo />
+          <CurrentUser />
+          <LobbyChat />
+        </Flex>
+      )}
     </Flex>
   );
 };
@@ -213,6 +250,8 @@ const CreateRoom = () => {
 };
 
 const MyInfo = () => {
+  const readyState = useWsStore((s) => s.readyState);
+
   const { logout, setAuth } = useAuthStore();
   const wsUserId = useWsUserStore((s) => s.wsUserId);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -265,62 +304,64 @@ const MyInfo = () => {
     }
   };
   return (
-    <Flex
-      direction="row"
-      css={css`
-        padding: 1rem;
-        flex: 1;
-        border: 1px solid black;
-        border-radius: 10px;
-      `}
-    >
-      {wsUserId && userInfo ? (
-        <>
-          {/*
+    readyState === ReadyState.OPEN && (
+      <Flex
+        direction="row"
+        css={css`
+          padding: 1rem;
+          flex: 1;
+          border: 1px solid black;
+          border-radius: 10px;
+        `}
+      >
+        {wsUserId && userInfo ? (
+          <>
+            {/*
             <Avatar fallback="A" css={css`flex: 1; height: 100%`}>asdf</Avatar>
           */}
-          <Flex
-            css={css`
-              flex: 1;
-            `}
-            align="center"
-            justify="center"
-          >
-            {/*
+            <Flex
+              css={css`
+                flex: 1;
+              `}
+              align="center"
+              justify="center"
+              direction="column"
+            >
+              {/*
               <Text>{userInfo?.userId}</Text>
             */}
-            <Text>닉네임: {userInfo?.nickName}</Text>
-            <Button onClick={handleLogout}>로그아웃</Button>
-          </Flex>
-        </>
-      ) : (
-        <>
-          <Flex
-            direction="column"
-            css={css`
-              flex: 1;
-              justify-content: center;
-              align-items: ;
-            `}
-          >
-            <Flex direction="column">
-              <Text>닉네임</Text>
-              <TextField.Root
-                placeholder="닉네임 최소 2글자 이상"
-                onChange={(e) => setNickName(e.target.value)}
-                maxLength={10}
-                minLength={2}
-              />
-              <Flex justify="end">
-                <Button onClick={handleGuestLogin}>게스트 로그인</Button>
-              </Flex>
+              <Text>닉네임: {userInfo?.nickName}</Text>
+              <Button onClick={handleLogout}>로그아웃</Button>
             </Flex>
-            {/* <Text>OR</Text>
+          </>
+        ) : (
+          <>
+            <Flex
+              direction="column"
+              css={css`
+                flex: 1;
+                justify-content: center;
+              `}
+            >
+              <Flex direction="column">
+                <Text>닉네임</Text>
+                <TextField.Root
+                  placeholder="닉네임 최소 2글자 이상"
+                  onChange={(e) => setNickName(e.target.value)}
+                  maxLength={10}
+                  minLength={2}
+                />
+                <Flex justify="end">
+                  <Button onClick={handleGuestLogin}>게스트 로그인</Button>
+                </Flex>
+              </Flex>
+              {/* <Text>OR</Text>
             <GoogleLoginButton /> */}
-          </Flex>
-        </>
-      )}
-    </Flex>
+            </Flex>
+          </>
+        )}
+      </Flex>
+    )
   );
 };
 
@@ -417,49 +458,55 @@ const RoomListItem = ({
 };
 
 const CurrentUser = () => {
+  const readyState = useWsStore((s) => s.readyState);
   const lobbyUsers = useLobbyStore((s) => s.lobbyUsers);
   return (
-    <Flex
-      direction="column"
-      css={css`
-        flex: 2;
-        border: 1px solid black;
-        min-height: 0;
-        border-radius: 10px;
-        padding: 0.5rem;
-      `}
-    >
-      <Text>접속자</Text>
+    readyState === ReadyState.OPEN && (
       <Flex
         direction="column"
         css={css`
-          overflow: auto;
+          flex: 2;
+          border: 1px solid black;
+          min-height: 0;
+          border-radius: 10px;
+          padding: 0.5rem;
         `}
       >
-        {lobbyUsers.map((lobbyUser) => (
-          <Flex key={lobbyUser.wsId}>
-            <Text>{lobbyUser.nickName}</Text>
-          </Flex>
-        ))}
+        <Text>접속자</Text>
+        <Flex
+          direction="column"
+          css={css`
+            overflow: auto;
+          `}
+        >
+          {lobbyUsers.map((lobbyUser) => (
+            <Flex key={lobbyUser.wsId}>
+              <Text>{lobbyUser.nickName}</Text>
+            </Flex>
+          ))}
+        </Flex>
       </Flex>
-    </Flex>
+    )
   );
 };
 
 const LobbyChat = () => {
+  const readyState = useWsStore((s) => s.readyState);
   return (
-    <Flex
-      direction="column"
-      css={css`
-        flex: 2;
-        border: 1px solid black;
-        min-height: 0;
-        border-radius: 10px;
-        padding: 0.5rem;
-      `}
-    >
-      <Chat />
-    </Flex>
+    readyState === ReadyState.OPEN && (
+      <Flex
+        direction="column"
+        css={css`
+          flex: 2;
+          border: 1px solid black;
+          min-height: 0;
+          border-radius: 10px;
+          padding: 0.5rem;
+        `}
+      >
+        <Chat />
+      </Flex>
+    )
   );
 };
 

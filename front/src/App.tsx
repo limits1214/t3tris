@@ -17,12 +17,16 @@ const LazyTestR3fOptPage = React.lazy(
 const LazyTestR3fCliPage = React.lazy(
   () => import("./page/test/TestR3fCliPage.tsx")
 );
+const LazySinglePage = React.lazy(() => import("./page/RoomSinglePage.tsx"));
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="" element={<DefaultLayout />}>
           <Route index element={<HomePage />}></Route>
+          <Route path="single">
+            <Route index element={<LazySinglePage />}></Route>
+          </Route>
           <Route path="room/:roomId">
             <Route index element={<LazyRoomPage />}></Route>
           </Route>

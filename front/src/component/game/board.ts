@@ -664,12 +664,54 @@ export class MultiTickerHandler implements TickerDelegation {
         if (this.tb.placingDelayTick >= 30) {
           this.tb.isPlacingDelay = false;
           const [, score] = this.tb.placing();
+
           if (score) {
             this.tb.ctrl.scoreEffect(score, this.tb.combo);
           }
         }
       }
     }
+
+    const lv = this.tb.info.level ?? 1;
+    if (this.tb.stepTick >= CONSTANT.levelGravityTick[lv > 20 ? 20 : lv]) {
+      this.tb.stepTick = 0;
+
+      try {
+        this.tb.ctrl.step();
+      } catch {
+        if (!this.tb.isPlacingDelay) {
+          this.tb.isPlacingDelay = true;
+          this.tb.placingDelayTick = 0;
+          this.tb.placingResetCnt = 15;
+        }
+      }
+    }
+
+    // this.tb.tick += 1;
+    // this.tb.stepTick += 1;
+
+    // // combo tick
+    // if (this.tb.comboTick > 0) {
+    //   this.tb.comboTick -= 1;
+    // } else {
+    //   this.tb.comboTick = 0;
+    //   this.tb.combo = 0;
+    // }
+
+    // if (this.tb.isPlacingDelay) {
+    //   try {
+    //     this.tb.board.tryStep();
+    //   } catch {
+    //     this.tb.placingDelayTick += 1;
+    //     if (this.tb.placingDelayTick >= 30) {
+    //       this.tb.isPlacingDelay = false;
+    //       const [, score] = this.tb.placing();
+    //       if (score) {
+    //         this.tb.ctrl.scoreEffect(score, this.tb.combo);
+    //       }
+    //     }
+    //   }
+    // }
   }
 }
 
@@ -692,18 +734,21 @@ export class SoloTickerHandler implements TickerDelegation {
       hold: null,
       next: next,
     });
-    console.log("3");
-    setTimeout(() => {
-      console.log("2");
-      setTimeout(() => {
-        console.log("1");
-        setTimeout(() => {
-          this.tb.ctrl.boardStart();
 
-          this.tb.stepTick = 999;
-        }, 1000);
-      }, 1000);
-    }, 1000);
+    this.tb.ctrl.boardStart();
+    this.tb.stepTick = 999;
+    // console.log("3");
+    // setTimeout(() => {
+    //   console.log("2");
+    //   setTimeout(() => {
+    //     console.log("1");
+    //     setTimeout(() => {
+    //       this.tb.ctrl.boardStart();
+
+    //       this.tb.stepTick = 999;
+    //     }, 1000);
+    //   }, 1000);
+    // }, 1000);
   }
 
   ticking() {

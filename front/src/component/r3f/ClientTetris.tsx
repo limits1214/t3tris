@@ -36,7 +36,7 @@ export type ClientTetrisController = {
   gameSync: (gameSyncData: Record<string, BoardSyncData>) => void;
 };
 export type ClientTetrisParam = {
-  send: (msg: string) => void;
+  send?: (msg: string) => void;
 };
 export const ClientTetris = forwardRef<
   ClientTetrisController,
@@ -50,7 +50,10 @@ export const ClientTetris = forwardRef<
     const gm = gameManager.current;
     const tetriminoGeo = (nodes.Cube as THREE.Mesh).geometry;
     gm.init({ tetriminoGeo, scene, font3d });
-    gm.setWsSender(send);
+    if (send) {
+      gm.setWsSender(send);
+    }
+
     return () => {
       gm.destroy();
     };

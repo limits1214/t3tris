@@ -15,7 +15,7 @@ export class WsSender {
   gameId: string | undefined;
 
   wsSend(action: unknown) {
-    console.log("wsSend!", action, this.gameId);
+    // console.log("wsSend!", action, this.gameId);
     if (this.gameId) {
       const obj = {
         type: "gameAction",

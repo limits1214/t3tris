@@ -4,7 +4,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { button, folder, useControls } from "leva";
 import { OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { css } from "@emotion/react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 import React from "react";
 import {

@@ -192,7 +192,7 @@ const HUD = ({
           <Button
             variant="classic"
             onClick={() => {
-              tetrisRef.current?.gameStart("Player");
+              tetrisRef.current?.gameStart();
             }}
           >
             GAME START

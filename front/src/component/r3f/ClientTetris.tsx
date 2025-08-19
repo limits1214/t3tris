@@ -20,15 +20,14 @@ export type ClientTetrisController = {
   createSubBoard: (boardId: BoardId, nickName: string) => void;
   moveBoard: (boardId: BoardId, newTransform: Transform) => void;
   deleteBoard: (boardId: BoardId) => void;
-  setPlayer: (boardId: BoardId, nickName: string) => void;
+
   getBoards: () => Partial<Record<BoardId, TetrisBoard>>;
   boardTimerOn: (boardId: BoardId) => void;
   boardTimerOff: (boardId: BoardId) => void;
   boardTimerReset: (boardId: BoardId) => void;
-  gameStart: (boardId: BoardId) => void;
-  gameEnd: (boardId: BoardId) => void;
+  gameStart: () => void;
+
   spawnFromNext: (boardId: BoardId) => void;
-  spawnFromHold: (boardId: BoardId) => void;
   step: (boardId: BoardId) => void;
   setup: (boardId: BoardId, setup: BoardSetup) => void;
   onWsMessage: (msg: string) => void;
@@ -82,23 +81,19 @@ export const ClientTetris = forwardRef<
     boardTimerReset: function (boardId: BoardId): void {
       gameManager.current.boards[boardId]?.timer.reset();
     },
-    gameStart(boardId: BoardId) {
+    gameStart() {
       gameManager.current.gameLoop.gameLoopStart();
     },
-    gameEnd(boardId: BoardId) {
-      throw new Error("Function not implemented.");
-    },
+
     spawnFromNext: function (boardId: BoardId): void {
-      gameManager.current.boards[boardId]?.controller.spawnFromNext();
+      gameManager.current.boards[boardId]?.spawnFromNext();
     },
-    spawnFromHold: function (boardId: BoardId): void {
-      throw new Error("Function not implemented.");
-    },
+
     step: function (boardId: BoardId): void {
-      gameManager.current.boards[boardId]?.controller.step();
+      gameManager.current.boards[boardId]?.ctrl.step();
     },
     setup(boardId: BoardId, setup: BoardSetup) {
-      gameManager.current.boards[boardId]?.controller.setup(setup);
+      gameManager.current.boards[boardId]?.ctrl.setup(setup);
     },
     onWsMessage(msg) {
       gameManager.current.onWsMessage(msg);

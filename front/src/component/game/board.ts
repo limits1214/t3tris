@@ -197,7 +197,7 @@ export class TetrisBoard {
   }
 
   spawnFromNext(): boolean {
-    console.log("spawnFromNext");
+    // console.log("spawnFromNext");
 
     const nextTetr = this.ctrl.shiftNext();
     if (nextTetr) {
@@ -369,12 +369,10 @@ class Controller implements TetrisBoardController {
   garbageAdd(empty: number[]): void {
     for (const e of empty) {
       if (!this.tb.board.pushGarbageLine(e)) {
-        console.log("TODO: END");
         this.boardEnd();
       }
     }
 
-    // this.tb.addGarbageQueue = empty;
     if (this.tb.wsSender) {
       this.tb.wsSender.wsSend({
         addGarbageQueue: {
@@ -515,7 +513,6 @@ class Controller implements TetrisBoardController {
     b.applyMoveFalling(b.tryMoveFalling("Left"));
 
     this.tb.renderHandler.isDirty = true;
-    console.log("moveLeft act", this.tb.wsSender);
     if (this.tb.wsSender) {
       this.tb.wsSender.wsSend("moveLeft");
     }

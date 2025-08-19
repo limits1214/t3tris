@@ -217,7 +217,7 @@ const GameBoard = () => {
   const setGameRef = useGameStore((s) => s.setGameRef);
 
   useEffect(() => {
-    setGameRef(ref);
+    // setGameRef(ref);
   }, [setGameRef]);
 
   useEffect(() => {

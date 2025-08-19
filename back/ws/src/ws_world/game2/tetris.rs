@@ -48,6 +48,7 @@ pub struct TetrisGame {
     pub battle_win: bool,
     pub seven_bag: VecDeque<Tetrimino>,
     pub act_seq: u32,
+    pub last_step_tick: u32,
 }
 impl TetrisGame {
     pub fn new(ws_id: WsId, user_id: UserId, nick_name: String) -> Self {
@@ -81,6 +82,7 @@ impl TetrisGame {
             seven_bag: VecDeque::new(),
             act_seq: 0,
             attack_list: VecDeque::new(),
+            last_step_tick: 0,
         }
     }
     pub fn push_action_buffer(&mut self, action: TetrisGameActionType) {
@@ -185,6 +187,7 @@ impl TetrisGame {
             }
             Err(err) => Err(err)?,
         };
+        self.last_step_tick = self.tick;
         Ok(())
     }
 

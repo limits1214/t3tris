@@ -367,6 +367,7 @@ const MyInfo = () => {
 };
 
 const RoomList = () => {
+  const readyState = useWsStore((s) => s.readyState);
   const [loginWarnOpen, setLoginWarnOpen] = useState(false);
   const lobbyRooms = useLobbyStore((s) => s.rooms);
   return (
@@ -394,15 +395,17 @@ const RoomList = () => {
           overflow: auto;
         `}
       >
-        <Grid rows="2" columns="2">
-          {lobbyRooms.map((roomInfo) => (
-            <RoomListItem
-              key={roomInfo.roomId}
-              roomInfo={roomInfo}
-              setLoginWarnOpen={setLoginWarnOpen}
-            />
-          ))}
-        </Grid>
+        {readyState === ReadyState.OPEN && (
+          <Grid rows="2" columns="2">
+            {lobbyRooms.map((roomInfo) => (
+              <RoomListItem
+                key={roomInfo.roomId}
+                roomInfo={roomInfo}
+                setLoginWarnOpen={setLoginWarnOpen}
+              />
+            ))}
+          </Grid>
+        )}
       </Flex>
       <LoginWarnDialog
         open={loginWarnOpen}

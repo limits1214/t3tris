@@ -302,6 +302,11 @@ const HUD = () => {
         >
           <Button
             onClick={() => setIsRoomUiHide(!isRoomUiHide)}
+            onKeyDown={(e) => {
+              if (e.code === "Space") {
+                e.preventDefault();
+              }
+            }}
             css={css`
               width: 32px;
               height: 32px;

@@ -149,6 +149,14 @@ fn game_loop(
                     }
                 }
 
+                // 10초 동안 step 이 안올라오면 퇴장
+                if tetris.step_tick - tetris.last_step_tick > 600 {
+                    tetris.push_action_buffer(TetrisGameActionType::BoardEnd {
+                        kind: BoardEndKind::SpawnImpossible,
+                        elapsed: tetris.elapsed,
+                    });
+                }
+
                 // if tetris.step_tick >= level_to_gravity_tick(tetris.level) {
                 //     tetris.step_tick = 0;
                 //     tetris.push_action_buffer(TetrisGameActionType::DoStep);
@@ -201,7 +209,7 @@ fn game_loop(
     // 게임 종료
     let is_game_end = game.tetries.iter_mut().all(|(_, game)| game.is_board_end);
     if is_game_end {
-        tracing::info!("gameEnd");
+        // tracing::info!("gameEnd");
         game_end(connections, rooms, game, pubsub);
     }
 }

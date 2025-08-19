@@ -84,7 +84,7 @@ const HomePage = () => {
                 font-size: 1.5rem;
               `}
             >
-              tetris
+              TETRIS
             </Text>
           </Flex>
           <Flex>

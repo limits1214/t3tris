@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from "@emotion/react";
-import { Box, Button, Flex } from "@radix-ui/themes";
+import { Box, Button, Dialog, Flex } from "@radix-ui/themes";
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -218,6 +218,7 @@ const HUDRoomButton = () => {
       `}
     >
       <Button onClick={() => navigate("/")}>나가기</Button>
+      <Help></Help>
     </Flex>
   );
 };
@@ -237,5 +238,50 @@ const HUDMobileButton = () => {
     >
       <MobileButton />
     </Box>
+  );
+};
+
+const Help = () => {
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger>
+        <Button
+          variant="classic"
+          color="cyan"
+          onKeyDown={(e) => {
+            if (e.code === "Space") {
+              e.preventDefault();
+            }
+          }}
+        >
+          Help
+        </Button>
+      </Dialog.Trigger>
+
+      <Dialog.Content maxWidth="450px">
+        <Dialog.Title>Help</Dialog.Title>
+        <strong>조작법</strong> <br />
+        블럭 왼쪽 움직이기: 화살표 왼키 <br />
+        블럭 오른쪽 움직이기: 화살표 오른키 <br />
+        블럭 시계방향 회전: 화살표 위키 <br />
+        블럭 반시계방향 회전: Z 키 <br />
+        블럭 소프트 드랍: 화살표 아래키 <br />
+        블럭 하드 드랍: 스페이스바 <br />
+        블럭 홀드: 시프트키 <br />
+        <br />
+        <br />
+        <strong>마우스</strong>
+        <br />
+        휠: 카메라 줌 인아웃
+        <br />
+        좌,우: 카메라 이동
+        <br />
+        <Flex gap="3" mt="4" justify="end">
+          <Dialog.Close>
+            <Button>Close</Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 };

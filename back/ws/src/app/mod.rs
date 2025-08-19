@@ -46,6 +46,7 @@ async fn init_axum() {
                     "http://192.168.25.26:5173".parse().unwrap(),
                     "http://192.168.25.28:5173".parse().unwrap(),
                     "http://localhost:4173".parse().unwrap(),
+                    "https://limits1214.github.io".parse().unwrap(),
                 ])
                 .allow_credentials(true)
                 .allow_methods([

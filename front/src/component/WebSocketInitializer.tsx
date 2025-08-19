@@ -56,8 +56,12 @@ const WebSocketInitializer = () => {
   // }, []);
 
   const { sendMessage, readyState } = useWebSocket(getSocketUrl, {
-    // shouldReconnect: () => false,
-
+    shouldReconnect: (closeEvent) => {
+      // 정상 종료(1000)면 재연결 안 함
+      return closeEvent.code !== 1000;
+    },
+    reconnectAttempts: 4000,
+    reconnectInterval: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
     onOpen: () => {
       console.log("ws on open");
       const afterOpen = async () => {

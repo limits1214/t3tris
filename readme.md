@@ -1,9 +1,6 @@
 t3tris
 ..
-https://t3tris.duckdns.org
-
-
-
+https://limits1214.github.io/t3tris/
 
 
 

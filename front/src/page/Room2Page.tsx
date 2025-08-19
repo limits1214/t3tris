@@ -32,6 +32,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useGameStore } from "../store/useGameStore";
 import { useWsUserStore } from "../store/useWsUserStore";
+import { ReadyState } from "react-use-websocket";
 
 const Room2Page = () => {
   const { roomId } = useParams();
@@ -40,6 +41,16 @@ const Room2Page = () => {
   const roomClear = useRoomStore((s) => s.clear);
   const roomSetGameResult = useRoomStore((s) => s.setRoomGameResult);
   const setServerGameMsg = useGameStore((s) => s.setServerGameMsg);
+  const readyState = useWsStore((s) => s.readyState);
+  const navigate = useNavigate();
+
+  //ws 끊어지면 홈으로
+  useEffect(() => {
+    if (readyState === ReadyState.CLOSED) {
+      navigate("/");
+    }
+  }, [navigate, readyState]);
+
   useEffect(() => {
     const roomEnter = (roomId: string) => {
       const obj = {

@@ -1460,6 +1460,14 @@ class RenderHandler {
       "EndCover",
       `${this.tetrisBoard.boardId}`
     );
+    this.render.removeInstancedMeshInfoByFilterId(
+      "GarbageQueue",
+      `${this.tetrisBoard.boardId}`
+    );
+    this.render.removeInstancedMeshInfoByFilterId(
+      "GarbageReady",
+      `${this.tetrisBoard.boardId}`
+    );
     this.textList.forEach((each) => {
       this.render.removeText(`${this.tetrisBoard.boardId}_${each}`);
     });

@@ -2,37 +2,37 @@
 
 import { Outlet, useNavigate } from "react-router-dom";
 import WebSocketInitializer from "../component/WebSocketInitializer";
-import { useAuthStore } from "../store/useAuthStore";
+// import { useAuthStore } from "../store/useAuthStore";
 import { useEffect, useState } from "react";
-import { getWsToken, tokenRefresh } from "../api/auth";
+import { getWsToken } from "../api/auth";
 import { useWsStore } from "../store/useWsStore";
 import { Button, Dialog, Flex } from "@radix-ui/themes";
 import { ReadyState } from "react-use-websocket";
 import { readyStateString } from "../util/ws";
 
 const DefaultLayout = () => {
-  const isInitialRefreshDone = useAuthStore((s) => s.isInitialRefreshDone);
-  const setIsInitialRefeshDone = useAuthStore((s) => s.setIsInitialRefeshDone);
-  const setAuth = useAuthStore((s) => s.setAuth);
+  // const isInitialRefreshDone = useAuthStore((s) => s.isInitialRefreshDone);
+  // const setIsInitialRefeshDone = useAuthStore((s) => s.setIsInitialRefeshDone);
+  // const setAuth = useAuthStore((s) => s.setAuth);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const token = await tokenRefresh();
-        setAuth(token);
-      } catch (e) {
-        console.error(e);
-      }
-      setIsInitialRefeshDone();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       const token = await tokenRefresh();
+  //       setAuth(token);
+  //     } catch (e) {
+  //       console.error(e);
+  //     }
+  //     setIsInitialRefeshDone();
+  //   })();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   // const readyState = useWsStore((s) => s.readyState);
 
-  if (!isInitialRefreshDone) {
-    return <></>;
-  }
+  // if (!isInitialRefreshDone) {
+  //   return <></>;
+  // }
 
   return (
     <>

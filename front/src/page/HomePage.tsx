@@ -252,7 +252,7 @@ const CreateRoom = () => {
 const MyInfo = () => {
   const readyState = useWsStore((s) => s.readyState);
 
-  const { logout, setAuth } = useAuthStore();
+  const { logout, setAccessToken, setRefreshToken } = useAuthStore();
   const wsUserId = useWsUserStore((s) => s.wsUserId);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const send = useWsStore((s) => s.send);
@@ -271,8 +271,9 @@ const MyInfo = () => {
       return;
     }
     try {
-      const accessToken = await guestLogin(nickName);
-      setAuth(accessToken);
+      const [accessToken, refreshToken] = await guestLogin(nickName);
+      setAccessToken(accessToken);
+      setRefreshToken(refreshToken);
 
       const userInfo = await getUserInfo();
       console.log(userInfo);

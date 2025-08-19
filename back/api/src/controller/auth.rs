@@ -6,11 +6,18 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use axum_extra::{extract::CookieJar, headers::UserAgent, TypedHeader};
+use axum_extra::{
+    extract::CookieJar,
+    headers::{authorization::Bearer, Authorization, UserAgent},
+    TypedHeader,
+};
 use common::{
     dto::{
         request::auth::{EmailLoginRequest, EmailSignupRequest, GuestLoginRequest, OAuthCallback},
-        response::{auth::AccessTokenResponse, ApiResponse},
+        response::{
+            auth::{AccessAndRefreshTokenResponse, AccessTokenResponse},
+            ApiResponse,
+        },
     },
     error::{AppResult, AuthError},
     extractor::db::DbConn,
@@ -39,9 +46,9 @@ pub async fn guest_login(
     DbConn(mut conn): DbConn,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     XForwardedFor(x_forwarded): XForwardedFor,
-    jar: CookieJar,
+    _jar: CookieJar,
     Json(j): Json<GuestLoginRequest>,
-) -> AppResult<(CookieJar, Json<ApiResponse<AccessTokenResponse>>)> {
+) -> AppResult<Json<ApiResponse<AccessAndRefreshTokenResponse>>> {
     j.validate()?;
 
     let mut tx = common::util::dbtx::begin(&mut conn).await?;
@@ -57,10 +64,18 @@ pub async fn guest_login(
 
     common::util::dbtx::commit(tx).await?;
 
-    // refresh_token 쿠키 세팅 + 응답 반환
-    let refresh_token_cookie = util::cookie::gen_refresh_token_cookie(refresh_token);
-    let res_json = ApiResponse::ok(AccessTokenResponse { access_token });
-    Ok((jar.add(refresh_token_cookie), Json(res_json)))
+    // {
+    //     // refresh_token 쿠키 세팅 + 응답 반환
+    //     let refresh_token_cookie = util::cookie::gen_refresh_token_cookie(refresh_token);
+    //     let res_json = ApiResponse::ok(AccessTokenResponse { access_token });
+    //     Ok((jar.add(refresh_token_cookie), Json(res_json)))
+    // }
+
+    let res_json = ApiResponse::ok(AccessAndRefreshTokenResponse {
+        access_token,
+        refresh_token,
+    });
+    Ok(Json(res_json))
 }
 
 /// 이메일 가입 핸들러
@@ -120,14 +135,22 @@ pub async fn email_login(
 /// - refresh token 쿠키가 존재해야 한다.
 pub async fn access_token_refresh(
     DbConn(mut conn): DbConn,
-    jar: CookieJar,
+    _jar: CookieJar,
+    TypedHeader(Authorization(bearer)): TypedHeader<Authorization<Bearer>>,
 ) -> AppResult<Json<ApiResponse<AccessTokenResponse>>> {
-    let refresh_token_cookie = jar
-        .get(REFRESH_TOKEN)
-        .ok_or(AuthError::RefreshTokenNotExists)?;
+    // let refresh_token_cookie = jar
+    //     .get(REFRESH_TOKEN)
+    //     .ok_or(AuthError::RefreshTokenNotExists)?;
 
-    let access_token =
-        service::auth::refrsh_access_token(&mut conn, refresh_token_cookie.value()).await?;
+    // {
+    //     let access_token =
+    //         service::auth::refrsh_access_token(&mut conn, refresh_token_cookie.value()).await?;
+    //     let res_json = ApiResponse::ok(AccessTokenResponse { access_token });
+    //     Ok(Json(res_json))
+    // }
+    let refresh_token_str = bearer.token();
+    let access_token = service::auth::refrsh_access_token(&mut conn, refresh_token_str).await?;
+
     let res_json = ApiResponse::ok(AccessTokenResponse { access_token });
     Ok(Json(res_json))
 }

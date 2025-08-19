@@ -1,37 +1,47 @@
-import { create } from 'zustand'
-// import { persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 type AuthState = {
-  isInitialRefreshDone: boolean,
-  isAuthenticated: boolean,
-  accessToken: string | null,
-  setAuth: (token: string ) => void,
-  logout: () => void,
-  setIsInitialRefeshDone: () => void,
-}
+  // isInitialRefreshDone: boolean;
+  // isAuthenticated: boolean;
+  accessToken: string | null;
+  refreshToken: string | null;
+  setAccessToken: (token: string) => void;
+  setRefreshToken: (token: string) => void;
+  // setAuth: (token: string) => void;
+  logout: () => void;
+  // setIsInitialRefeshDone: () => void;
+};
 
 export const useAuthStore = create<AuthState>()(
-  // persist(
+  persist(
     (set) => ({
-      isInitialRefreshDone: false,
-      isAuthenticated: false,
+      // isInitialRefreshDone: false,
+      // isAuthenticated: false,
       accessToken: null,
-      setAuth: (token: string) => {
-        set({isAuthenticated: true, accessToken: token})
+      refreshToken: null,
+      setAccessToken(token) {
+        set({ accessToken: token });
       },
+      setRefreshToken(token) {
+        set({ refreshToken: token });
+      },
+      // setAuth: (token: string) => {
+      //   set({ isAuthenticated: true, accessToken: token });
+      // },
       logout: () => {
-        set({isAuthenticated: false, accessToken: null})
+        set({ accessToken: null, refreshToken: null });
       },
-      setIsInitialRefeshDone: () => {
-        set({isInitialRefreshDone: true})
-      }
+      // setIsInitialRefeshDone: () => {
+      //   set({ isInitialRefreshDone: true });
+      // },
     }),
-    // {
-    //   name: 'auth-store',
-    //   partialize: (state) =>({
-    //     isAuthenticated: state.isAuthenticated,
-    //     accessToken: state.accessToken
-    //   })
-    // }
-  // )
-)
+    {
+      name: "auth-store",
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
+    }
+  )
+);

@@ -6,7 +6,7 @@ compose up 하기전에 볼륨매핑한곳에 미리 두기
 certbot tls 발급
 ```bash
 VOL_MOUNT_PATH=/home/ec2-user
-DOMAIN=tetris.duckdns.org
+DOMAIN=t3tris.duckdns.org
 EMAIL=lsy969999@gmail.com
 
 sudo docker run --rm \
@@ -23,7 +23,7 @@ sudo docker run --rm \
 certbot tls 갱신
 ```
 VOL_MOUNT_PATH=/home/ec2-user
-DOMAIN=tetris.duckdns.org
+DOMAIN=t3tris.duckdns.org
 EMAIL=lsy969999@gmail.com
 
 sudo docker run --rm \

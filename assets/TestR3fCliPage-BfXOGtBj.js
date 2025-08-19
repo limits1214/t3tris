@@ -1,5 +1,5 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/Perf-ck5EojeO.js","assets/index-B3wLd9-D.js","assets/index-B7GaFbHf.css","assets/leva.esm-QkAMYWHR.js"])))=>i.map(i=>d[i]);
-import{s as d,x as a,t as i,C as m,ae as u,af as l,O as b,D as h,r as c,ah as f,F as p}from"./index-B3wLd9-D.js";import{u as I,b as t,f as T}from"./leva.esm-QkAMYWHR.js";import{R,C}from"./ClientTetris-DmX7tOjY.js";const x=u.lazy(()=>l(()=>import("./Perf-ck5EojeO.js"),__vite__mapDeps([0,1,2,3]))),y=()=>d("div",{css:i`
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/Perf-CBaZKfPo.js","assets/index-BOwiaHXp.js","assets/index-B7GaFbHf.css","assets/leva.esm-ksTLvVe6.js"])))=>i.map(i=>d[i]);
+import{s as d,x as a,t as i,C as m,ae as u,af as l,O as b,D as h,r as c,ah as f,F as p}from"./index-BOwiaHXp.js";import{u as I,b as t,f as T}from"./leva.esm-ksTLvVe6.js";import{R,C}from"./ClientTetris-CKcAKz96.js";const x=u.lazy(()=>l(()=>import("./Perf-CBaZKfPo.js"),__vite__mapDeps([0,1,2,3]))),y=()=>d("div",{css:i`
         height: 100dvh;
       `,children:[a("h1",{css:i`
           position: absolute;

@@ -4,6 +4,33 @@ on:
   workflow_dispatch:
 
 jobs:
+  ghpage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run build script
+        run: |
+          cargo install wasm-pack
+
+          chmod +x back/tetris-lib/wasm_pkg_build.bash
+          chmod +x front/build_docker_front.bash
+
+          cd back/tetris-lib
+          ./wasm_pkg_build.bash
+          cd ../..
+
+          cd front
+          ./build_docker_front.bash
+          cd ..
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./front/build
+
   build-docker-image:
     # runs-on: ubuntu-latest
     runs-on: ubuntu-22.04-arm

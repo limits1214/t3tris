@@ -42,7 +42,7 @@ export const ClientTetris = forwardRef<
   ClientTetrisParam
 >(({ send }, ref) => {
   const gameManager = useRef(new GameManager());
-  const { nodes } = useGLTF(CONSTANT.gfx.url.tetriminoGlb);
+  const { nodes } = useGLTF("/t3tris" + CONSTANT.gfx.url.tetriminoGlb);
   const font3d = useLoader(FontLoader, CONSTANT.gfx.url.font3d);
   const { scene } = useThree();
   useEffect(() => {

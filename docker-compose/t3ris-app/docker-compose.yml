@@ -1,8 +1,8 @@
 services:
   front:
     # build: ../../front
-    image: ghcr.io/limits1214/t3tris-front:latest
-    container_name: t3tris-front
+    image: ghcr.io/limits1214/tetris-front:latest
+    container_name: tetris-front
     # restart: always
     networks:
       - shared
@@ -11,14 +11,14 @@ services:
     # build:
     #   context: ../../back
     #   dockerfile: api/Dockerfile
-    image: ghcr.io/limits1214/t3tris-back-api:latest
-    container_name: t3tris-back-api
+    image: ghcr.io/limits1214/tetris-back-api:latest
+    container_name: tetris-back-api
     environment:
       ENV__REDIS__REDIS_URL: ${REDIS_URL}
       ENV__DATABASE__DATABASE_URL: ${DATABASE_URL}
     # restart: always
     volumes:
-      - ${VOL_MOUNT_PATH}/t3tris-app-docker-volume/back-api/logs:/app/logs
+      - ${VOL_MOUNT_PATH}/tetris-app-docker-volume/back-api/logs:/app/logs
     networks:
       - shared
 
@@ -26,18 +26,18 @@ services:
     # build:
     #   context: ../../back
     #   dockerfile: api/Dockerfile
-    image: ghcr.io/limits1214/t3tris-back-ws:latest
-    container_name: t3tris-back-ws
+    image: ghcr.io/limits1214/tetris-back-ws:latest
+    container_name: tetris-back-ws
     environment:
       ENV__REDIS__REDIS_URL: ${REDIS_URL}
       ENV__DATABASE__DATABASE_URL: ${DATABASE_URL}
     # restart: always
     volumes:
-      - ${VOL_MOUNT_PATH}/t3tris-app-docker-volume/back-ws/logs:/app/logs
+      - ${VOL_MOUNT_PATH}/tetris-app-docker-volume/back-ws/logs:/app/logs
     networks:
       - shared
 
 networks:
   shared:
-    name: t3tris-shared-net
+    name: tetris-shared-net
     external: true

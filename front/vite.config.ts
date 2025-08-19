@@ -4,7 +4,7 @@ import wasm from "vite-plugin-wasm";
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: "/t3tris/",
+  base: "/tetris/",
   plugins: [react(), wasm()],
   build: {
     target: "esnext",

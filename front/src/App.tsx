@@ -20,7 +20,7 @@ const LazyTestR3fCliPage = React.lazy(
 const LazySinglePage = React.lazy(() => import("./page/RoomSinglePage.tsx"));
 function App() {
   return (
-    <BrowserRouter basename="/t3tris">
+    <BrowserRouter basename="/tetris">
       <Routes>
         <Route path="" element={<DefaultLayout />}>
           <Route index element={<HomePage />}></Route>

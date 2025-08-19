@@ -28,7 +28,7 @@ RUN cargo build --release \
 FROM alpine
 
 WORKDIR /app
-COPY --from=builder /workspace/target/aarch64-unknown-linux-musl/release/t3tris-ws /app/t3tris-ws
+COPY --from=builder /workspace/target/aarch64-unknown-linux-musl/release/tetris-ws /app/tetris-ws
 COPY --from=builder /workspace/ws/Settings.toml /app/Settings.toml
 EXPOSE 4001
-ENTRYPOINT ["/app/t3tris-ws"]
+ENTRYPOINT ["/app/tetris-ws"]

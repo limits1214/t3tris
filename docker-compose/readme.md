@@ -2,7 +2,7 @@ compose up 전
 
 1. docker network 생성
 ```
-docker network create tetris-shared-net
+docker network create t3tris-shared-net
 ```
 
 2. infra up

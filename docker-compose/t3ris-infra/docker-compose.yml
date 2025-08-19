@@ -42,5 +42,5 @@ services:
 
 networks:
   shared:
-    name: tetris-shared-net
+    name: t3tris-shared-net
     external: true

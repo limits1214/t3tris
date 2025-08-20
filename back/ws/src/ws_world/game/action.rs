@@ -107,7 +107,7 @@ pub fn action(
             tetris.set_info(level, score, line);
         }
         GameActionType::ScoreEffect { kind, combo } => {
-            if !matches!(game.game_type, WsWorldGameType::MultiBattle) {
+            if matches!(game.game_type, WsWorldGameType::MultiBattle) {
                 let score = match kind.as_str() {
                     "TSpinZero" => Some(TetrisScore::TSpinZero),
                     "TSpinSingle" => Some(TetrisScore::TSpinSingle),

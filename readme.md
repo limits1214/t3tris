@@ -8,7 +8,7 @@ https://github.com/user-attachments/assets/df358c39-61f4-4af4-bdda-00abfd9d875d
 
 
 ## 🤸 테스트 주소
-https://limits1214.github.io/tetris/
+https://limits1214.github.io/tetris/  
 AWS 요금때문에 서버를 껏을수도 있습니다.🥲 (싱글플레이는 가능)
 
 ## 💻 사용스택

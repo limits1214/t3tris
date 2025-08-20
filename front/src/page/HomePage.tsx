@@ -4,7 +4,7 @@ import { css } from "@emotion/react";
 import { Text, Flex, Grid, TextField, Button, Dialog } from "@radix-ui/themes";
 import { useAuthStore } from "../store/useAuthStore";
 import { useEffect, useRef, useState } from "react";
-import { getUserInfo, type UserInfo } from "../api/user";
+import { getUserInfo } from "../api/user";
 import { getWsToken, guestLogin, serverLogout } from "../api/auth";
 import { useWsStore } from "../store/useWsStore";
 import { useLobbyStore } from "../store/useLobbyStore";

@@ -194,6 +194,11 @@ const HUD = ({
             onClick={() => {
               tetrisRef.current?.gameStart();
             }}
+            onKeyDown={(e) => {
+              if (e.code === "Space") {
+                e.preventDefault();
+              }
+            }}
           >
             GAME START
           </Button>

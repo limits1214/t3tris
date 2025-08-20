@@ -288,8 +288,8 @@ export class TetrisBoard {
   }
   showFallingHint() {
     if (!this.isBoardActive) return;
-    // this.board.removeFallingHint();
-    // this.board.showFallingHint();
+    this.board.removeFallingHint();
+    this.board.showFallingHint();
   }
 
   init(transform: Transform) {
@@ -796,6 +796,8 @@ export class ActionHandler implements ActionDelegation {
   }
   actMoveLeft(): void {
     if (!this.tb.isBoardActive) return;
+    const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
+    if (fallings.length === 0) return;
     try {
       this.tb.ctrl.moveLeft();
 
@@ -814,6 +816,8 @@ export class ActionHandler implements ActionDelegation {
   }
   actMoveRight(): void {
     if (!this.tb.isBoardActive) return;
+    const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
+    if (fallings.length === 0) return;
     try {
       this.tb.ctrl.moveRight();
 
@@ -833,6 +837,8 @@ export class ActionHandler implements ActionDelegation {
   }
   actRotateLeft(): void {
     if (!this.tb.isBoardActive) return;
+    const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
+    if (fallings.length === 0) return;
     try {
       this.tb.ctrl.rotateLeft();
 
@@ -855,6 +861,8 @@ export class ActionHandler implements ActionDelegation {
 
   actRotateRight(): void {
     if (!this.tb.isBoardActive) return;
+    const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
+    if (fallings.length === 0) return;
     try {
       this.tb.ctrl.rotateRight();
 
@@ -876,14 +884,16 @@ export class ActionHandler implements ActionDelegation {
   }
   actSoftDrop(): void {
     if (!this.tb.isBoardActive) return;
+    const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
+    if (fallings.length === 0) return;
     try {
       this.tb.ctrl.step();
 
       if (this.tb.info.score !== undefined) {
         this.tb.info.score += CONSTANT.score.SoftDrop;
       }
-    } catch (e) {
-      console.error("actSoftDrop", e);
+    } catch {
+      // console.error("actSoftDrop", e);
     }
 
     //TODO setinfo
@@ -909,6 +919,8 @@ export class ActionHandler implements ActionDelegation {
   }
   actHold(): void {
     if (!this.tb.isBoardActive) return;
+    const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
+    if (fallings.length === 0) return;
     if (!this.tb.isCanHold) {
       return;
     }

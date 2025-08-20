@@ -496,7 +496,15 @@ const HUDRoomInfo = () => {
         </Select.Root>
       )}
       {isHost && roomStatus === "Waiting" ? (
-        <Button variant="classic" onClick={handleGameStart}>
+        <Button
+          variant="classic"
+          onClick={handleGameStart}
+          onKeyDown={(e) => {
+            if (e.code === "Space") {
+              e.preventDefault();
+            }
+          }}
+        >
           GAME START
         </Button>
       ) : (

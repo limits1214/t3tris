@@ -217,7 +217,9 @@ const HUDRoomButton = () => {
         justify-content: space-between;
       `}
     >
-      <Button onClick={() => navigate("/")}>나가기</Button>
+      <Button color="crimson" variant="soft" onClick={() => navigate("/")}>
+        나가기
+      </Button>
       <Help></Help>
     </Flex>
   );

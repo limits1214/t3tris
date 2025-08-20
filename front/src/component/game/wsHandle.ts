@@ -41,7 +41,7 @@ export class WsReceiver {
 
   onWsMessage(msg: string) {
     const { type, data } = JSON.parse(msg);
-    if (type !== "gameAction2") {
+    if (type !== "gameAction") {
       return;
     }
     for (const [k, v] of Object.entries(data.action as string | object)) {

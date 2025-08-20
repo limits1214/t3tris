@@ -2,10 +2,10 @@ use std::collections::VecDeque;
 
 use rand::{Rng, seq::IndexedRandom};
 use serde::{Deserialize, Serialize};
-use tetris_lib::{Board, SpawnError, StepError, Tetrimino, Tile, TileAt};
+use tetris_lib::{Board, SpawnError, StepError, Tetrimino};
 
 use crate::ws_world::{
-    game2::model::{GarbageQueue, GarbageQueueKind, TetrisGameAction, TetrisGameActionType},
+    game::model::{GarbageQueue, GarbageQueueKind, TetrisGameAction, TetrisGameActionType},
     model::{UserId, WsId},
 };
 
@@ -121,7 +121,6 @@ impl TetrisGame {
                 // return false;
             };
         }
-        // self.push_action_buffer(TetrisGameActionType::AddGarbage { empty: empty });
     }
     pub fn garbage_add(&mut self, clear_len: u8) {
         let mut is_garbage_changed = false;
@@ -168,11 +167,6 @@ impl TetrisGame {
             });
         }
         if !add_gargabe.is_empty() {
-            // for x in &add_gargabe {
-            //     if !self.board.push_garbage_line(*x as usize) {
-            //         return false;
-            //     };
-            // }
             self.push_action_buffer(TetrisGameActionType::DoGarbageAdd { empty: add_gargabe });
         }
     }
@@ -192,7 +186,6 @@ impl TetrisGame {
     }
 
     pub fn line_clear(&mut self) -> usize {
-        // TODO Attack
         let clear = self.board.try_line_clear();
         let clear_len = clear.len();
         self.garbage_add(clear.len() as u8);
@@ -238,28 +231,7 @@ impl TetrisGame {
         self.next.push_back(tetrimino);
         self.push_action_buffer(TetrisGameActionType::PushNext { next: tetrimino });
     }
-    pub fn spawn_from_next(&mut self) {
-        let next_tetr = self.shift_next();
-        if let Some(next_tetr) = next_tetr {
-            //
-        }
-    }
-    fn spawn_with_game_over_check(&mut self, tetr: Tetrimino) -> Result<bool, SpawnError> {
-        let new_tiles = self.board.try_spawn_falling(tetr)?;
-        for TileAt { location, .. } in &new_tiles {
-            if !matches!(self.board.location(location.x, location.y), Tile::Empty) {
-                // self.is_board_end = true;
-                // self.push_action_buffer(TetrisGameActionType::BoardEnd {
-                //     kind: BoardEndKind::SpawnImpossible,
-                //     elapsed: self.elapsed - 3000,
-                // });
-                return Ok(false);
-            }
-        }
-        self.step_tick = 9999;
-        self.board.apply_spawn_falling(new_tiles);
-        Ok(true)
-    }
+
     pub fn spawn(&mut self, tetrimino: Tetrimino) -> Result<(), SpawnError> {
         let new_tiles = self.board.try_spawn_falling(tetrimino)?;
         self.board.apply_spawn_falling(new_tiles);
@@ -267,11 +239,6 @@ impl TetrisGame {
         Ok(())
     }
     pub fn setup(&mut self, next: Vec<Tetrimino>, hold: Option<Tetrimino>) {
-        // for _ in 0..5 {
-        //     let tetrimino = self.rand_tetrimino();
-        //     self.next.push_back(tetrimino);
-        // }
-
         self.next.extend(next);
         self.hold = hold;
         self.push_action_buffer(TetrisGameActionType::Setup {

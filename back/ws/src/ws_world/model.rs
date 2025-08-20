@@ -7,7 +7,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::ws_world::game2::tetris::TetrisGame;
+use crate::ws_world::game::tetris::TetrisGame;
 
 macro_rules! define_id_type {
     ($name: ident) => {

@@ -14,7 +14,7 @@ pub mod model;
 
 mod connections;
 // pub mod game;
-pub mod game2;
+pub mod game;
 mod lobby;
 mod pubsub;
 mod room;
@@ -70,12 +70,12 @@ impl WsWorld {
                         world.pubsub.pubsub_cleanup();
                         room::room_cleanup(&world.connections, &mut world.data, &mut world.pubsub);
                         if let Some(arc_app_state) = &world.arc_app_state {
-                            game2::game_cleanup(&world.connections,  &mut world.data, &mut world.pubsub, arc_app_state.clone());
+                            game::game_cleanup(&world.connections,  &mut world.data, &mut world.pubsub, arc_app_state.clone());
                         }
                     }
                     _ = game_ticker_timer.tick() => {
                         // game2::tick(&world.connections, &mut world.data, &mut world.pubsub);
-                        game2::tick(&world.connections, &mut world.data, &mut world.pubsub);
+                        game::tick(&world.connections, &mut world.data, &mut world.pubsub);
                     }
                     _ = ping_validation_timer.tick() => {
                         ws::ping_validation(&mut world.connections, &mut world.data, &mut world.pubsub);
@@ -208,16 +208,7 @@ fn process(
                 game_id,
                 action,
             } => {
-                // game::action::action(
-                //     connections,
-                //     data,
-                //     pubsub,
-                //     WsId(ws_id),
-                //     GameId(game_id),
-                //     action,
-                // );
-
-                game2::action(
+                game::action(
                     connections,
                     data,
                     pubsub,
@@ -231,7 +222,7 @@ fn process(
                 room_id,
                 game_id,
             } => {
-                game2::game_sync(
+                game::game_sync(
                     connections,
                     data,
                     pubsub,

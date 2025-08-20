@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::ws_world::{game2::model::TetrisGameAction, model::WsWorldRoomStatus};
+use crate::ws_world::{game::model::TetrisGameAction, model::WsWorldRoomStatus};
 
 /// server -> client
 #[derive(Debug, Serialize, Deserialize)]
@@ -73,14 +73,9 @@ pub enum ServerToClientWsMsg {
         room_id: String,
         tetries: HashMap<String, serde_json::Value>,
     },
+
     #[serde(rename_all = "camelCase")]
     GameAction {
-        game_id: String,
-        room_id: String,
-        action: HashMap<String, Vec<TetrisGameAction>>,
-    },
-    #[serde(rename_all = "camelCase")]
-    GameAction2 {
         game_id: String,
         room_id: String,
         action: HashMap<String, Vec<TetrisGameAction>>,

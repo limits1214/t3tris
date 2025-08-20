@@ -392,42 +392,43 @@ const HUDInfoMenu = () => {
     }
   }, [roomIsGameResultOpen]);
   return (
-    <Box
+    <Tabs.Root
+      defaultValue="roomInfo"
+      value={tab}
+      onValueChange={setTab}
       css={css`
+        pointer-events: auto;
         width: 100%;
-        /* height: 250px; */
-        max-height: 250px;
-        min-height: 200px;
-        overflow: auto;
       `}
     >
-      <Tabs.Root
-        defaultValue="roomInfo"
-        value={tab}
-        onValueChange={setTab}
+      <Tabs.List>
+        <Tabs.Trigger value="roomInfo">Room</Tabs.Trigger>
+        <Tabs.Trigger value="userInfo">User</Tabs.Trigger>
+        <Tabs.Trigger value="results">Result</Tabs.Trigger>
+      </Tabs.List>
+
+      <Box
+        pt="3"
         css={css`
           pointer-events: auto;
+          width: 100%;
+          /* height: 250px; */
+          max-height: 250px;
+          min-height: 200px;
+          overflow: auto;
         `}
       >
-        <Tabs.List>
-          <Tabs.Trigger value="roomInfo">Room</Tabs.Trigger>
-          <Tabs.Trigger value="userInfo">User</Tabs.Trigger>
-          <Tabs.Trigger value="results">Result</Tabs.Trigger>
-        </Tabs.List>
-
-        <Box pt="3">
-          <Tabs.Content value="roomInfo">
-            <HUDRoomInfo />
-          </Tabs.Content>
-          <Tabs.Content value="userInfo">
-            <HUDUserInfo />
-          </Tabs.Content>
-          <Tabs.Content value="results">
-            <HUDResults />
-          </Tabs.Content>
-        </Box>
-      </Tabs.Root>
-    </Box>
+        <Tabs.Content value="roomInfo">
+          <HUDRoomInfo />
+        </Tabs.Content>
+        <Tabs.Content value="userInfo">
+          <HUDUserInfo />
+        </Tabs.Content>
+        <Tabs.Content value="results">
+          <HUDResults />
+        </Tabs.Content>
+      </Box>
+    </Tabs.Root>
   );
 };
 
@@ -657,8 +658,8 @@ const HUDResults = () => {
       direction="column"
       css={css`
         /* width: 15vw; */
-        max-height: 400px;
-        overflow-y: auto;
+        /* max-height: 400px; */
+        /* overflow-y: auto; */
       `}
     >
       {roomGameResult.map((r, idx) => (

@@ -197,10 +197,9 @@ export class TetrisBoard {
   }
 
   spawnFromNext(): boolean {
-    // console.log("spawnFromNext");
-
     const nextTetr = this.ctrl.shiftNext();
     if (nextTetr) {
+      console.log("spawnFromNext", nextTetr);
       try {
         if (!this.spawnWithGameOverCheck(nextTetr)) {
           return false;
@@ -214,7 +213,8 @@ export class TetrisBoard {
 
         this.renderHandler.isDirty = true;
         return true;
-      } catch {
+      } catch (e) {
+        console.error("spawnWithGameOverCheck catch", e, "nextTetr", nextTetr);
         return false;
       }
     } else {
@@ -287,8 +287,9 @@ export class TetrisBoard {
     }
   }
   showFallingHint() {
-    this.board.removeFallingHint();
-    this.board.showFallingHint();
+    if (!this.isBoardActive) return;
+    // this.board.removeFallingHint();
+    // this.board.showFallingHint();
   }
 
   init(transform: Transform) {
@@ -435,7 +436,8 @@ class Controller implements TetrisBoardController {
   }
   spawn(tetrimino: Tetrimino): void {
     const b = this.tb.board;
-    b.applySpawnFalling(b.trySpawnFalling(tetrimino));
+    const plan = b.trySpawnFalling(tetrimino);
+    b.applySpawnFalling(plan);
 
     this.tb.renderHandler.isDirty = true;
 
@@ -459,7 +461,8 @@ class Controller implements TetrisBoardController {
   }
   lineClear(): void {
     const b = this.tb.board;
-    b.applyLineClear(b.tryLineClear());
+    const plan = b.tryLineClear();
+    b.applyLineClear(plan);
 
     this.tb.renderHandler.isDirty = true;
 
@@ -500,7 +503,8 @@ class Controller implements TetrisBoardController {
   }
   step(): void {
     const b = this.tb.board;
-    b.applyStep(b.tryStep());
+    const plan = b.tryStep();
+    b.applyStep(plan);
 
     this.tb.renderHandler.isDirty = true;
 
@@ -510,7 +514,8 @@ class Controller implements TetrisBoardController {
   }
   moveLeft(): void {
     const b = this.tb.board;
-    b.applyMoveFalling(b.tryMoveFalling("Left"));
+    const plan = b.tryMoveFalling("Left");
+    b.applyMoveFalling(plan);
 
     this.tb.renderHandler.isDirty = true;
     if (this.tb.wsSender) {
@@ -519,7 +524,8 @@ class Controller implements TetrisBoardController {
   }
   moveRight(): void {
     const b = this.tb.board;
-    b.applyMoveFalling(b.tryMoveFalling("Right"));
+    const plan = b.tryMoveFalling("Right");
+    b.applyMoveFalling(plan);
 
     this.tb.renderHandler.isDirty = true;
 
@@ -529,7 +535,8 @@ class Controller implements TetrisBoardController {
   }
   rotateLeft(): void {
     const b = this.tb.board;
-    b.applyRotateFalling(b.tryRotateFalling("Left"));
+    const plan = b.tryRotateFalling("Left");
+    b.applyRotateFalling(plan);
 
     this.tb.renderHandler.isDirty = true;
 
@@ -539,7 +546,8 @@ class Controller implements TetrisBoardController {
   }
   rotateRight(): void {
     const b = this.tb.board;
-    b.applyRotateFalling(b.tryRotateFalling("Right"));
+    const plan = b.tryRotateFalling("Right");
+    b.applyRotateFalling(plan);
 
     this.tb.renderHandler.isDirty = true;
 
@@ -549,12 +557,16 @@ class Controller implements TetrisBoardController {
   }
   softDrop(): void {
     const b = this.tb.board;
-    b.applyStep(b.tryStep());
+    try {
+      const plan = b.tryStep();
+      b.applyStep(plan);
+      this.tb.renderHandler.isDirty = true;
 
-    this.tb.renderHandler.isDirty = true;
-
-    if (this.tb.wsSender) {
-      this.tb.wsSender.wsSend("softDrop");
+      if (this.tb.wsSender) {
+        this.tb.wsSender.wsSend("softDrop");
+      }
+    } catch (e) {
+      console.error("softDrop", e);
     }
   }
   hardDrop(): number {
@@ -864,15 +876,23 @@ export class ActionHandler implements ActionDelegation {
   }
   actSoftDrop(): void {
     if (!this.tb.isBoardActive) return;
-    this.tb.ctrl.step();
+    try {
+      this.tb.ctrl.step();
 
-    if (this.tb.info.score !== undefined) {
-      this.tb.info.score += CONSTANT.score.SoftDrop;
+      if (this.tb.info.score !== undefined) {
+        this.tb.info.score += CONSTANT.score.SoftDrop;
+      }
+    } catch (e) {
+      console.error("actSoftDrop", e);
     }
+
     //TODO setinfo
   }
   actHardDrop(): void {
     if (!this.tb.isBoardActive) return;
+    const fallings = this.tb.board.getFallingBlocks() as FallingBlockAt[];
+    // console.log(fallings.length);
+    if (fallings.length === 0) return;
     const dropcnt = this.tb.ctrl.hardDrop();
 
     if (this.tb.info.score !== undefined) {

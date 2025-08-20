@@ -95,9 +95,6 @@ pub enum TetrisGameActionType {
         kind: String,
         combo: u32,
     },
-    // GameEnd {
-    //     elapsed: u128,
-    // },
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BoardEndKind {

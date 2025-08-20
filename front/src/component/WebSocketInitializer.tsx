@@ -265,7 +265,7 @@ const WebSocketInitializer = () => {
 
           break;
 
-        case "gameAction2":
+        case "gameAction":
           gameRef?.current?.onWsMessage(lastMessageData);
           break;
 

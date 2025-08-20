@@ -10,7 +10,7 @@ use crate::{
     ws_world::{
         WsData,
         connections::{WsConnections, WsWorldUser},
-        game2::{
+        game::{
             model::{BoardEndKind, TetrisGameActionType},
             tetris::TetrisGame,
         },

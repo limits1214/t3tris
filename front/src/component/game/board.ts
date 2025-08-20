@@ -199,7 +199,7 @@ export class TetrisBoard {
   spawnFromNext(): boolean {
     const nextTetr = this.ctrl.shiftNext();
     if (nextTetr) {
-      console.log("spawnFromNext", nextTetr);
+      // console.log("spawnFromNext", nextTetr);
       try {
         if (!this.spawnWithGameOverCheck(nextTetr)) {
           return false;

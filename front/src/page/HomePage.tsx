@@ -23,6 +23,7 @@ const HomePage = () => {
   const updateLobbyChats = useLobbyStore((s) => s.updateLobbyChats);
   const setWsToken = useWsStore((s) => s.setWsToken);
   const navigate = useNavigate();
+  const setUserInfo = useAuthStore((s) => s.setUserInfo);
   useEffect(() => {
     if (wsReadyState === ReadyState.OPEN) {
       console.log("lobby sub");
@@ -42,6 +43,15 @@ const HomePage = () => {
       }
     };
   }, [isInitialWsLoginEnd, send, wsReadyState]);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const userInfo = await getUserInfo();
+      console.log(userInfo);
+      setUserInfo(userInfo);
+    };
+    fetch();
+  }, []);
 
   return (
     <Flex
@@ -251,18 +261,11 @@ const CreateRoom = () => {
 const MyInfo = () => {
   const readyState = useWsStore((s) => s.readyState);
 
-  const { logout, setAccessToken, setRefreshToken } = useAuthStore();
+  const { userInfo, logout, setAccessToken, setRefreshToken, setUserInfo } =
+    useAuthStore();
   const wsUserId = useWsUserStore((s) => s.wsUserId);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  // const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const send = useWsStore((s) => s.send);
-  useEffect(() => {
-    const fetch = async () => {
-      const userInfo = await getUserInfo();
-      console.log(userInfo);
-      setUserInfo(userInfo);
-    };
-    fetch();
-  }, []);
 
   const [nickName, setNickName] = useState("");
   const handleGuestLogin = async () => {

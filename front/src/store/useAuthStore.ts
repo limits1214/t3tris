@@ -1,23 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { UserInfo } from "../api/user";
 
 type AuthState = {
-  // isInitialRefreshDone: boolean;
-  // isAuthenticated: boolean;
   accessToken: string | null;
   refreshToken: string | null;
+  userInfo: UserInfo | null;
   setAccessToken: (token: string) => void;
   setRefreshToken: (token: string) => void;
-  // setAuth: (token: string) => void;
   logout: () => void;
-  // setIsInitialRefeshDone: () => void;
+  setUserInfo: (userInfo: UserInfo | null) => void;
 };
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      // isInitialRefreshDone: false,
-      // isAuthenticated: false,
+      userInfo: null,
       accessToken: null,
       refreshToken: null,
       setAccessToken(token) {
@@ -26,19 +24,17 @@ export const useAuthStore = create<AuthState>()(
       setRefreshToken(token) {
         set({ refreshToken: token });
       },
-      // setAuth: (token: string) => {
-      //   set({ isAuthenticated: true, accessToken: token });
-      // },
       logout: () => {
-        set({ accessToken: null, refreshToken: null });
+        set({ accessToken: null, refreshToken: null, userInfo: null });
       },
-      // setIsInitialRefeshDone: () => {
-      //   set({ isInitialRefreshDone: true });
-      // },
+      setUserInfo(userInfo) {
+        set({ userInfo });
+      },
     }),
     {
       name: "auth-store",
       partialize: (state) => ({
+        userInfo: state.userInfo,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),

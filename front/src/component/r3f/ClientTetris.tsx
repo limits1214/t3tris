@@ -17,7 +17,6 @@ export type ClientTetrisController = {
   createMulitPlayerBoard: (boardId: BoardId, nickName: string) => void;
   createMultiSubBoard: (boardId: BoardId, nickName: string) => void;
   createPlayerBoard: (boardId: BoardId, nickName: string) => void;
-  createSubBoard: (boardId: BoardId, nickName: string) => void;
   moveBoard: (boardId: BoardId, newTransform: Transform) => void;
   deleteBoard: (boardId: BoardId) => void;
 
@@ -66,9 +65,7 @@ export const ClientTetris = forwardRef<
     createPlayerBoard(boardId, nickName) {
       gameManager.current.createPlayerBoard(boardId, nickName);
     },
-    createSubBoard(boardId, nickName) {
-      gameManager.current.createSubBoard(boardId, nickName);
-    },
+
     deleteBoard(boardId) {
       gameManager.current.deleteBoard(boardId);
     },

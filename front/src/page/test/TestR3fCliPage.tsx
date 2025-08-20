@@ -94,9 +94,7 @@ const ThreeComponent = () => {
     createPlayerBoard: button((get) => {
       ref.current?.createPlayerBoard(get("boardId"), get("boardId"));
     }),
-    creatSubBoard: button((get) => {
-      ref.current?.createSubBoard(get("boardId"), get("boardId"));
-    }),
+
     deleteBoard: button((get) => {
       ref.current?.deleteBoard(get("boardId"));
     }),
@@ -158,44 +156,3 @@ const ThreeComponent = () => {
     </>
   );
 };
-
-// const BorderedBlockMaterial = shaderMaterial(
-//   {
-//     borderWidth: 0.05,
-//     borderColor: new THREE.Color("black"),
-//     fillColor: new THREE.Color("orange")
-//   },
-//   `
-//     varying vec2 vUv;
-//     void main() {
-//       vUv = uv;
-//       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-//     }
-//   `,
-//   `
-//     varying vec2 vUv;
-//     uniform float borderWidth;
-//     uniform vec3 borderColor;
-//     uniform vec3 fillColor;
-
-//     void main() {
-//       float bw = borderWidth;
-//       bool isBorder = vUv.x < bw || vUv.x > 1.0 - bw || vUv.y < bw || vUv.y > 1.0 - bw;
-//       vec3 color = isBorder ? borderColor : fillColor;
-//       gl_FragColor = vec4(color, 1.0);
-//     }
-//   `
-// );
-// extend({ BorderedBlockMaterial });
-
-// const BorderedBlock = () => {
-//   // const material = useMemo(() => new THREE.MeshStandardMaterial(), []);
-
-//   return (
-//     <mesh position={[0, 0, 0]}>
-//       <boxGeometry args={[1, 1, 1]} />
-//       {/* 👇 여기서 커스텀 머티리얼 사용 */}
-//       <borderedBlockMaterial attach="material" />
-//     </mesh>
-//   );
-// };

@@ -83,31 +83,6 @@ export class WsReceiver {
         } else if (typeof action === "string" && action === "step") {
           if (k === this.gm.mainBoardId) continue;
           this.gm.boards[k]?.ctrl.step();
-        } else if (typeof action === "string" && action === "doStep") {
-          if (k !== this.gm.mainBoardId) continue;
-          // board end 했는데 doStep해버리면 rust js, recursive use of an object detected which would lead to unsafe aliasing in rust 에러발생
-          if (!this.gm.boards[k]?.isBoardActive) continue;
-          // console.log("doStep", document.hidden);
-
-          if (this.gm.boards[k]) {
-            try {
-              this.gm.boards[k].stepTick = 0;
-              this.gm.boards[k].ctrl.step();
-            } catch {
-              if (!this.gm.boards[k].isPlacingDelay) {
-                this.gm.boards[k].isPlacingDelay = true;
-                this.gm.boards[k].placingDelayTick = 0;
-                this.gm.boards[k].placingResetCnt = 15;
-              }
-
-              // out focus 일경우 강제 티킹해버리기 ticking 이 호출되지 않는다 hidden 이여서
-              if (document.hidden) {
-                this.gm.boards[k].isPlacingDelay = true;
-                this.gm.boards[k].placingDelayTick = 999;
-                this.gm.boards[k].tickerHandler?.ticking();
-              }
-            }
-          }
         } else if (typeof action === "string" && action === "softDrop") {
           if (k === this.gm.mainBoardId) continue;
           this.gm.boards[k]?.ctrl.softDrop();
@@ -117,22 +92,6 @@ export class WsReceiver {
         } else if (typeof action === "string" && action === "removeFalling") {
           if (k === this.gm.mainBoardId) continue;
           this.gm.boards[k]?.ctrl.removeFalling();
-        } else if (typeof action === "string" && action === "ticking") {
-          // if (k === this.gm.mainBoardId) continue;
-          this.gm.boards[k]?.tickerHandler?.ticking();
-        } else if (typeof action === "string" && action === "boardStart") {
-          // if (k !== this.gm.mainBoardId) continue;
-          const next = Array(5)
-            .fill(null)
-            .map(() => {
-              return this.gm.boards[k]!.getTetriminoFromSevenBag();
-            });
-
-          this.gm.boards[k]?.ctrl.setup({
-            hold: null,
-            next: next,
-          });
-          this.gm.boards[k]?.ctrl.boardStart();
         } else if (
           typeof action === "object" &&
           action !== null &&
@@ -181,6 +140,19 @@ export class WsReceiver {
           const kind = action["scoreEffect"].kind;
           const combo = action["scoreEffect"].combo;
           this.gm.boards[k]?.ctrl.scoreEffect(kind, combo);
+        } else if (typeof action === "string" && action === "boardStart") {
+          // if (k !== this.gm.mainBoardId) continue;
+          const next = Array(5)
+            .fill(null)
+            .map(() => {
+              return this.gm.boards[k]!.getTetriminoFromSevenBag();
+            });
+
+          this.gm.boards[k]?.ctrl.setup({
+            hold: null,
+            next: next,
+          });
+          this.gm.boards[k]?.ctrl.boardStart();
         } else if (
           typeof action === "object" &&
           action !== null &&
@@ -208,26 +180,6 @@ export class WsReceiver {
           const empty = action["doGarbageAdd"].empty;
           console.log("doGarbageAdd", empty);
           this.gm.boards[k]?.ctrl.garbageAdd(empty);
-          // if (this.gm.boards[k]) {
-          //   this.gm.boards[k].addGarbageQueue = [
-          //     ...this.gm.boards[k].addGarbageQueue,
-          //     ...empty,
-          //   ];
-          // }
-        } else if (
-          typeof action === "object" &&
-          action !== null &&
-          "addGarbage" in action
-        ) {
-          // if (k === this.gm.mainBoardId) continue;
-          // const empty = action["addGarbage"].empty;
-          // this.gm.boards[k]?.ctrl.garbageAdd(empty);
-        } else if (typeof action === "string" && action === "doSpawnNext") {
-          if (k !== this.gm.mainBoardId) continue;
-          const isSuccess = this.gm.boards[k]?.spawnFromNext();
-          if (!isSuccess) {
-            this.gm.boards[k]?.ctrl.boardEnd();
-          }
         }
       }
     }

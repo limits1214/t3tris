@@ -1,9 +1,4 @@
 export class GameSound {
-  //
-  init() {
-    //
-  }
-  destroy() {
-    //
-  }
+  init() {}
+  destroy() {}
 }

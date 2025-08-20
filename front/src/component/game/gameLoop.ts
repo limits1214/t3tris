@@ -1,35 +1,5 @@
 import type { TickerDelegation } from "./type";
-//
-// setup
-// start timer 3, 2, 1
-// start
-// loop
-// end
-// export class GameLoop {
-//   accumulatedDelta = 0;
-//   lastTicking = 0;
-//   oneTick = 1 / 60; //fps
 
-//   // ticker = new Ticker();
-//   delegation: TickerDelegation | undefined;
-
-//   gameLoopStart() {
-//     this.accumulatedDelta = 0;
-//     this.delegation?.initTicking();
-//   }
-
-//   gameLoopUpdate(delta: number) {
-//     this.accumulatedDelta += delta;
-//     if (this.accumulatedDelta - this.lastTicking >= this.oneTick) {
-//       this.delegation?.ticking();
-//       this.lastTicking += this.oneTick;
-//     }
-//   }
-
-//   gameLoopEnd() {
-//     this.delegation?.endTicking();
-//   }
-// }
 export class GameLoop {
   private accumulatedDelta = 0;
   private readonly oneTick = 1 / 60; // seconds per tick

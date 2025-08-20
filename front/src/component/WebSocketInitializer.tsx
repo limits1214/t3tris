@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-// import { useAuthStore } from "../store/useAuthStore";
 import useWebSocket from "react-use-websocket";
 import { useWsStore } from "../store/useWsStore";
 import { beforeTokenCheckAndRefresh, getWsToken } from "../api/auth";
@@ -49,11 +48,6 @@ const WebSocketInitializer = () => {
     setWsToken(wt);
     return `${apiUrl}/ws/haha?ws_token=${wt}`;
   }, [wsToken]);
-
-  // const getSocketUrl = useCallback(async () => {
-  //   const ws_token = await getWsToken();
-  //   return `${apiUrl}/ws/haha?ws_token=${ws_token}`
-  // }, []);
 
   const { sendMessage, readyState } = useWebSocket(getSocketUrl, {
     shouldReconnect: (closeEvent) => {
@@ -138,7 +132,7 @@ const WebSocketInitializer = () => {
           break;
 
         case "roomCreated":
-          navigate(`/room2/${data.roomId}`);
+          navigate(`/room/${data.roomId}`);
           break;
         case "roomEntered":
           break;
@@ -270,178 +264,6 @@ const WebSocketInitializer = () => {
           }
 
           break;
-        case "gameAction":
-          /*w
-              {
-                "type":"gameAction",
-                "data":{
-                  "game_id":"ppnuEnBLwqX81ge-mQ-9B",
-                  "room_id":"VWEgR-WHTLwkrUcX9QpGG",
-                  "action":{
-                    "Reqp_9gOX8veBzmzXF4J7":[
-                      {"Setup":{"next":["Z","Z","Z","O","S"]}},
-                      {"SpawnNext":{"spawned":"Z","added_next":"T"}}
-                    ]
-                  }
-                }
-              }
-
-            */
-
-          // for (const [k, v] of Object.entries(data.action as string | object)) {
-          //   if (gameRef?.current?.getMyBoardId() === k) {
-          //     gameRef.current.predicatesLock();
-          //   }
-          //   for (const { action, seq } of v) {
-          //     console.log("action:", action, seq);
-          //     if (gameRef?.current?.getMyBoardId() === k) {
-          //       if (!gameRef.current.predicateValidation({ action, seq })) {
-          //         console.log("strat board sync");
-          //         gameRef.current.boardSyncLock();
-          //         handleBoardSync(data.gameId, data.roomId);
-          //         break;
-          //       }
-          //     }
-          //     if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "setup" in action
-          //     ) {
-          //       gameRef?.current?.boardReset(k);
-          //       // v["gameSetup"]
-          //       // gameRef?.current?.boardSpawnNext(k, )
-          //       const nexts = action["setup"].next;
-          //       for (const next of nexts) {
-          //         gameRef?.current?.nextAdd(k, next);
-          //       }
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "nextAdd" in action
-          //     ) {
-          //       const t = action["nextAdd"].next;
-          //       gameRef?.current?.nextAdd(k, t);
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "spawnFromNext" in action
-          //     ) {
-          //       const t = action["spawnFromNext"].spawn;
-          //       gameRef?.current?.spawnFromNext(k, t);
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "spawnFromHold" in action
-          //     ) {
-          //       const t = action["spawnFromHold"].spawn;
-          //       const hold = action["spawnFromHold"].hold;
-          //       gameRef?.current?.spawnFromHold(k, t, hold);
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "holdFalling" in action
-          //     ) {
-          //       const t = action["holdFalling"].hold;
-          //       gameRef?.current?.holdFalling(k, t);
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "score" in action
-          //     ) {
-          //       const kind = action["score"].kind;
-          //       const level = action["score"].level;
-          //       const score = action["score"].score;
-          //       const line = action["score"].line;
-          //       const combo = action["score"].combo;
-          //       gameRef?.current?.infoTextUpdate(k, { level, score, line });
-          //       if (
-          //         kind === "single" ||
-          //         kind === "double" ||
-          //         kind === "triple" ||
-          //         kind === "tetris" ||
-          //         kind === "tSpinZero" ||
-          //         kind === "tSpinSingle" ||
-          //         kind === "tSpinDouble" ||
-          //         kind === "tSpinTriple"
-          //       ) {
-          //         let txt = kind + "\n ";
-          //         if (combo > 0) {
-          //           txt += `${combo} combo`;
-          //         }
-          //         gameRef?.current?.scoreEffect(k, txt);
-          //       }
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "boardEnd" in action
-          //     ) {
-          //       const elapsed = action["boardEnd"].elapsed;
-          //       gameRef?.current?.addEndCover(k, "t");
-          //       gameRef?.current?.timerOff(k);
-          //       gameRef?.current?.infoTextUpdate(k, { time: elapsed / 1000 });
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "garbage" in action
-          //     ) {
-          //       const queue = action["garbage"].queue;
-          //       gameRef?.current?.garbageQueueSet(k, queue);
-          //     } else if (
-          //       typeof action === "object" &&
-          //       action !== null &&
-          //       "garbageAdd" in action
-          //     ) {
-          //       const emptyx = action["garbageAdd"].empty;
-          //       gameRef?.current?.garbageAdd(k, emptyx);
-          //     } else if (
-          //       typeof action === "string" &&
-          //       action === "removeFalling"
-          //     ) {
-          //       gameRef?.current?.removeFalling(k);
-          //     } else if (typeof action === "string" && action === "moveLeft") {
-          //       if (gameRef?.current?.getMyBoardId() === k) {
-          //         continue;
-          //       }
-          //       gameRef?.current?.moveLeft(k);
-          //     } else if (typeof action === "string" && action === "moveRight") {
-          //       if (gameRef?.current?.getMyBoardId() === k) {
-          //         continue;
-          //       }
-          //       gameRef?.current?.moveRight(k);
-          //     } else if (
-          //       typeof action === "string" &&
-          //       action === "rotateRight"
-          //     ) {
-          //       if (gameRef?.current?.getMyBoardId() === k) {
-          //         continue;
-          //       }
-          //       gameRef?.current?.rotateRight(k);
-          //     } else if (
-          //       typeof action === "string" &&
-          //       action === "rotateLeft"
-          //     ) {
-          //       if (gameRef?.current?.getMyBoardId() === k) {
-          //         continue;
-          //       }
-          //       gameRef?.current?.rotateLeft(k);
-          //     } else if (typeof action === "string" && action === "softDrop") {
-          //       gameRef?.current?.step(k);
-          //     } else if (typeof action === "string" && action === "hardDrop") {
-          //       gameRef?.current?.hardDrop(k);
-          //     } else if (typeof action === "string" && action === "step") {
-          //       gameRef?.current?.step(k);
-          //     } else if (typeof action === "string" && action === "placing") {
-          //       gameRef?.current?.placing(k);
-          //     } else if (typeof action === "string" && action === "lineClear") {
-          //       gameRef?.current?.lineClear(k);
-          //     }
-          //   }
-          //   if (gameRef?.current?.getMyBoardId() === k) {
-          //     gameRef.current.predicatesUnLock();
-          //   }
-          // }
-
-          break;
 
         case "gameAction2":
           gameRef?.current?.onWsMessage(lastMessageData);
@@ -457,32 +279,6 @@ const WebSocketInitializer = () => {
       returnMessage: JSON.stringify({ type: "pong" }),
     },
   });
-
-  // const handleBoardSync = (gameId: string, roomId: string) => {
-  //   const obj = {
-  //     type: "gameBoardSync",
-  //     data: {
-  //       gameId,
-  //       roomId,
-  //     },
-  //   };
-  //   sendMessage(JSON.stringify(obj));
-  // };
-
-  // todo accessToken이 바뀐다고 재연결하지 않고
-  // 연결이 되면 액세스토큰 바뀌어도 재연결하지않게
-  // 만약 연결이 안됬다면, 액세스토큰 바뀔때마다 재연결
-  // useEffect(() => {
-  //   // if ((readyState === ReadyState.CLOSED || readyState === ReadyState.UNINSTANTIATED)
-  //   //     && accessToken && !isTokenExpired(accessToken)) {
-  //   //   setSocketUrl(`${apiUrl}/ws/hahaha?access_token=${accessToken}`);
-  //   // }
-
-  //   connect();
-  //   return () => {
-  //     console.log('CLEAN')
-  //   }
-  // }, [socketUrl])
 
   useEffect(() => {
     setReadyState(readyState);

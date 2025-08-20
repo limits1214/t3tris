@@ -57,11 +57,6 @@ export interface BoardDelegatin {
   applyStep(): void;
   placefalling(): void;
   tryClearLine(): number[];
-  // evtSetup(setup: BoardSetup): void;
-  // evtBeforeStartTimer(time: number): void;
-  // evtGameStart(): void;
-  // evtGameOver(): void;
-  // evtStep(): void;
 }
 
 export type BoardSetup = {

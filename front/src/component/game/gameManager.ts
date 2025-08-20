@@ -95,13 +95,6 @@ export class GameManager {
     this.boards[boardId] = newBoard;
   }
 
-  createSubBoard(boardId: BoardId, nickName: string) {
-    const newBoard = new TetrisBoard(this.render, boardId, nickName);
-    newBoard.actionHandler = new ActionHandler(newBoard);
-    newBoard.init(this.mainBoardTransform);
-    this.boards[boardId] = newBoard;
-  }
-
   deleteBoard(boardId: BoardId) {
     this.boards[boardId]?.destroy();
     delete this.boards[boardId];

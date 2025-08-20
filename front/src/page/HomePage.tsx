@@ -13,7 +13,6 @@ import type { RoomInfo } from "../store/useRoomStore";
 import { ReadyState } from "react-use-websocket";
 import { useNavigate } from "react-router-dom";
 import { useWsUserStore } from "../store/useWsUserStore";
-import { gameTypeMap } from "./RoomPage";
 import { readyStateString } from "../util/ws";
 
 const HomePage = () => {
@@ -425,7 +424,7 @@ const RoomListItem = ({
   const navigate = useNavigate();
   const wsUserId = useWsUserStore((s) => s.wsUserId);
   const roomEnter = (roomId: string) => {
-    navigate(`/room2/${roomId}`);
+    navigate(`/room/${roomId}`);
   };
   return (
     <Flex
@@ -451,7 +450,7 @@ const RoomListItem = ({
         <Text>
           방: {roomInfo.roomName} ({roomInfo.roomStatus}){" "}
         </Text>
-        <Text>게임모드: {gameTypeMap(roomInfo.gameType)}</Text>
+        <Text>게임모드: {roomInfo.gameType}</Text>
         <Text>
           방장: {roomInfo.roomHostUser?.nickName}, 참가자:{" "}
           {roomInfo.roomUsers.length}

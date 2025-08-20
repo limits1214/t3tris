@@ -621,6 +621,7 @@ class Timer {
   }
 }
 
+// ticking은 solo ticker와 같음
 export class MultiTickerHandler implements TickerDelegation {
   tb: TetrisBoard;
   constructor(tetrisBoard: TetrisBoard) {
@@ -683,32 +684,6 @@ export class MultiTickerHandler implements TickerDelegation {
         }
       }
     }
-
-    // this.tb.tick += 1;
-    // this.tb.stepTick += 1;
-
-    // // combo tick
-    // if (this.tb.comboTick > 0) {
-    //   this.tb.comboTick -= 1;
-    // } else {
-    //   this.tb.comboTick = 0;
-    //   this.tb.combo = 0;
-    // }
-
-    // if (this.tb.isPlacingDelay) {
-    //   try {
-    //     this.tb.board.tryStep();
-    //   } catch {
-    //     this.tb.placingDelayTick += 1;
-    //     if (this.tb.placingDelayTick >= 30) {
-    //       this.tb.isPlacingDelay = false;
-    //       const [, score] = this.tb.placing();
-    //       if (score) {
-    //         this.tb.ctrl.scoreEffect(score, this.tb.combo);
-    //       }
-    //     }
-    //   }
-    // }
   }
 }
 

@@ -1,7 +1,7 @@
 services:
   front:
     # build: ../../front
-    image: ghcr.io/limits1214/t3tris-front:latest
+    image: ghcr.io/limits1214/tetris-front:latest
     container_name: tetris-front
     # restart: always
     networks:
@@ -11,7 +11,7 @@ services:
     # build:
     #   context: ../../back
     #   dockerfile: api/Dockerfile
-    image: ghcr.io/limits1214/t3tris-back-api:latest
+    image: ghcr.io/limits1214/tetris-back-api:latest
     container_name: tetris-back-api
     environment:
       ENV__REDIS__REDIS_URL: ${REDIS_URL}
@@ -26,7 +26,7 @@ services:
     # build:
     #   context: ../../back
     #   dockerfile: api/Dockerfile
-    image: ghcr.io/limits1214/t3tris-back-ws:latest
+    image: ghcr.io/limits1214/tetris-back-ws:latest
     container_name: tetris-back-ws
     environment:
       ENV__REDIS__REDIS_URL: ${REDIS_URL}
